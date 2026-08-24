@@ -95,21 +95,36 @@ function appliquerMigrations(connexion: DatabaseSync): void {
   }
 }
 
+let profondeurTransaction = 0
+
 /**
  * Exécute `action` dans une transaction. Toute exception annule l'ensemble.
  * Une vente, une réception ou une validation d'inventaire touchent plusieurs
  * tables : elles doivent réussir entièrement ou ne rien laisser derrière elles.
+ *
+ * Ré-entrante : une opération métier en appelle souvent une autre qui est
+ * elle-même transactionnelle (une vente rafraîchit les alertes, une
+ * configuration crée un utilisateur). Les appels imbriqués ouvrent un point de
+ * sauvegarde plutôt qu'une seconde transaction — que SQLite refuserait — et
+ * c'est la transaction la plus externe qui valide ou annule l'ensemble.
  */
 export function transaction<T>(action: () => T): T {
   const connexion = base()
-  connexion.exec('BEGIN IMMEDIATE')
+  const imbriquee = profondeurTransaction > 0
+  const point = `pt_${profondeurTransaction}`
+
+  connexion.exec(imbriquee ? `SAVEPOINT ${point}` : 'BEGIN IMMEDIATE')
+  profondeurTransaction++
+
   try {
     const resultat = action()
-    connexion.exec('COMMIT')
+    connexion.exec(imbriquee ? `RELEASE ${point}` : 'COMMIT')
+    profondeurTransaction--
     return resultat
   } catch (erreur) {
+    profondeurTransaction--
     try {
-      connexion.exec('ROLLBACK')
+      connexion.exec(imbriquee ? `ROLLBACK TO ${point}; RELEASE ${point}` : 'ROLLBACK')
     } catch {
       /* la transaction a déjà été annulée */
     }

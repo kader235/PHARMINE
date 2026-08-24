@@ -1,0 +1,731 @@
+/**
+ * Scénario de bout en bout : une journée de pharmacie.
+ *
+ * Exerce les services réels sur une base neuve, exactement comme le fera
+ * l'application. Aucune donnée n'est simulée : chaque chiffre vérifié est
+ * calculé par le logiciel.
+ */
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+import { base, fermerBase, ouvrirBase } from '../src/main/db'
+import * as auth from '../src/main/services/auth'
+import * as configuration from '../src/main/services/configuration'
+import * as produits from '../src/main/services/produits'
+import * as stock from '../src/main/services/stock'
+import * as achats from '../src/main/services/achats'
+import * as caisse from '../src/main/services/caisse'
+import * as ventes from '../src/main/services/ventes'
+import * as partenaires from '../src/main/services/partenaires'
+import * as inventaire from '../src/main/services/inventaire'
+import * as finances from '../src/main/services/finances'
+import * as pilotage from '../src/main/services/pilotage'
+import * as alertes from '../src/main/services/alertes'
+import { aujourdhui, decalerJours } from '../src/main/services/commun'
+
+let reussis = 0
+let echoues = 0
+const echecs: string[] = []
+
+function verifier(condition: boolean, description: string, observe?: unknown): void {
+  if (condition) {
+    reussis++
+    console.log(`  OK    | ${description}`)
+  } else {
+    echoues++
+    echecs.push(description)
+    console.log(`  ECHEC | ${description}${observe !== undefined ? ` -> ${JSON.stringify(observe)}` : ''}`)
+  }
+}
+
+function refuse(description: string, action: () => unknown, motifAttendu?: string): void {
+  try {
+    action()
+    echoues++
+    echecs.push(description)
+    console.log(`  ECHEC | ${description} -> accepte alors que cela devait etre refuse`)
+  } catch (erreur) {
+    const message = (erreur as Error).message
+    const bon = !motifAttendu || message.toLowerCase().includes(motifAttendu.toLowerCase())
+    if (bon) {
+      reussis++
+      console.log(`  OK    | ${description}`)
+    } else {
+      echoues++
+      echecs.push(description)
+      console.log(`  ECHEC | ${description} -> refuse pour une autre raison : ${message}`)
+    }
+  }
+}
+
+function titre(texte: string): void {
+  console.log(`\n-- ${texte} ${'-'.repeat(Math.max(0, 62 - texte.length))}`)
+}
+
+const dossier = mkdtempSync(join(tmpdir(), 'pharmina-e2e-'))
+const cheminBase = join(dossier, 'donnees', 'pharmina.db')
+
+try {
+  ouvrirBase(cheminBase)
+
+  // ==========================================================================
+  titre('Première configuration')
+
+  verifier(auth.besoinConfiguration(), 'une base neuve exige la configuration initiale')
+
+  refuse(
+    'un mot de passe trop court est refusé',
+    () =>
+      configuration.configurerPharmacie({
+        pharmacie: { nom: 'X', devise: 'XOF', deviseSymbole: 'FCFA', deviseDecimales: 0 },
+        administrateur: { nomComplet: 'A', identifiant: 'admin', motDePasse: 'abc1' }
+      }),
+    'au moins 8'
+  )
+
+  const { utilisateurId: adminId } = configuration.configurerPharmacie({
+    pharmacie: {
+      nom: 'Pharmacie du Plateau',
+      ville: 'Abidjan',
+      pays: "Côte d'Ivoire",
+      telephone: '+225 27 20 00 00 00',
+      devise: 'XOF',
+      deviseSymbole: 'FCFA',
+      deviseDecimales: 0
+    },
+    administrateur: {
+      nomComplet: 'Marie Dupont',
+      identifiant: 'marie',
+      motDePasse: 'Officine2026'
+    }
+  })
+
+  verifier(adminId > 0, "l'administrateur est créé")
+  verifier(!auth.besoinConfiguration(), 'le logiciel est configuré')
+  refuse(
+    'une seconde configuration est refusée',
+    () =>
+      configuration.configurerPharmacie({
+        pharmacie: { nom: 'Autre', devise: 'XOF', deviseSymbole: 'FCFA', deviseDecimales: 0 },
+        administrateur: { nomComplet: 'B', identifiant: 'b', motDePasse: 'Officine2026' }
+      }),
+    'déjà configuré'
+  )
+
+  // ==========================================================================
+  titre('Connexion et sécurité')
+
+  refuse('un mot de passe erroné est refusé', () => auth.connecter('marie', 'mauvais'), 'incorrect')
+  refuse('un identifiant inconnu est refusé', () => auth.connecter('inconnu', 'Officine2026'), 'incorrect')
+
+  const session = auth.connecter('marie', 'Officine2026')
+  verifier(session.utilisateur.nom_complet === 'Marie Dupont', 'connexion réussie')
+  verifier(session.permissions.length === 50, "l'administrateur reçoit les 50 permissions", session.permissions.length)
+
+  const caissierId = auth.creerUtilisateur(
+    { nomComplet: 'Jean Kouassi', identifiant: 'jean', motDePasse: 'Comptoir2026', roleId: 3 },
+    adminId
+  )
+  const permissionsCaissier = auth.permissionsDe(caissierId)
+  verifier(permissionsCaissier.includes('ventes.creer'), 'le caissier peut vendre')
+  verifier(!permissionsCaissier.includes('produits.prix'), 'le caissier ne peut pas modifier un prix')
+  verifier(!permissionsCaissier.includes('ventes.remise'), 'le caissier ne peut pas appliquer de remise')
+
+  refuse(
+    'le dernier administrateur ne peut pas être désactivé',
+    () => auth.modifierUtilisateur(adminId, { actif: false }, caissierId),
+    'dernier administrateur'
+  )
+
+  // ==========================================================================
+  titre('Catalogue')
+
+  const refs = produits.referentiels()
+  verifier(refs.formes.length >= 18 && refs.unites.length >= 8, 'le référentiel pharmaceutique est disponible')
+
+  const doliprane = produits.creerProduit(
+    {
+      nomCommercial: 'Doliprane',
+      nomGenerique: 'Paracétamol',
+      principeActif: 'paracétamol',
+      dosage: '500 mg',
+      categorieId: 1,
+      formeId: 1,
+      uniteId: 2,
+      prixAchat: 900,
+      prixVente: 1500,
+      stockMin: 20,
+      emplacement: 'Rayon A-12',
+      codesBarres: ['3400930000001']
+    },
+    adminId
+  )
+
+  const amoxicilline = produits.creerProduit(
+    {
+      nomCommercial: 'Amoxicilline',
+      nomGenerique: 'Amoxicilline',
+      dosage: '500 mg',
+      categorieId: 1,
+      formeId: 2,
+      prixAchat: 3100,
+      prixVente: 4800,
+      stockMin: 10,
+      ordonnanceRequise: true,
+      emplacement: 'Rayon A-14'
+    },
+    adminId
+  )
+
+  const gel = produits.creerProduit(
+    {
+      nomCommercial: 'Gel hydroalcoolique',
+      dosage: '250 ml',
+      categorieId: 3,
+      prixAchat: 1150,
+      prixVente: 2000,
+      stockMin: 8,
+      emplacement: 'Rayon C-02'
+    },
+    adminId
+  )
+
+  verifier(produits.produit(doliprane)?.stock === 0, 'un produit créé démarre à zéro en stock')
+  verifier(
+    produits.produit(doliprane)?.etat_stock === 'rupture',
+    'un produit sans stock est en rupture'
+  )
+
+  refuse(
+    'un code-barres déjà attribué est refusé',
+    () =>
+      produits.creerProduit(
+        { nomCommercial: 'Copie', prixAchat: 1, prixVente: 2, stockMin: 1, codesBarres: ['3400930000001'] },
+        adminId
+      ),
+    'déjà attribué'
+  )
+
+  verifier(produits.rechercheRapide('paracetamol').length === 1, 'recherche sans accent : « paracetamol »')
+  verifier(produits.rechercheRapide('DOLIP').length === 1, 'recherche partielle en majuscules : « DOLIP »')
+  verifier(
+    produits.rechercheRapide('3400930000001')[0]?.id === doliprane,
+    'recherche par code-barres exact'
+  )
+
+  // ==========================================================================
+  titre('Réception fournisseur et création des lots')
+
+  const labo = partenaires.enregistrerFournisseur(
+    null,
+    { nom: 'Laboratoire SantéPlus', telephone: '+225 07 00 00 00 00', conditionsPaiement: '30 jours' },
+    adminId
+  )
+
+  refuse(
+    'une date de péremption déjà dépassée est refusée',
+    () =>
+      achats.enregistrerReception(
+        {
+          fournisseurId: labo,
+          lignes: [
+            { produitId: doliprane, quantite: 10, prixAchat: 900, numeroLot: 'X', datePeremption: decalerJours(aujourdhui(), -5) }
+          ]
+        },
+        adminId
+      ),
+    'déjà dépassée'
+  )
+
+  const reception = achats.enregistrerReception(
+    {
+      fournisseurId: labo,
+      lignes: [
+        // Volontairement dans le désordre : le lot le plus lointain est saisi en premier.
+        { produitId: doliprane, quantite: 60, prixAchat: 900, numeroLot: 'LOT-TARD', datePeremption: decalerJours(aujourdhui(), 400) },
+        { produitId: doliprane, quantite: 40, prixAchat: 880, numeroLot: 'LOT-TOT', datePeremption: decalerJours(aujourdhui(), 45) },
+        { produitId: amoxicilline, quantite: 25, prixAchat: 3100, numeroLot: 'AMX-01', datePeremption: decalerJours(aujourdhui(), 300) },
+        { produitId: gel, quantite: 30, prixAchat: 1150, numeroLot: 'GEL-01', datePeremption: decalerJours(aujourdhui(), 700) }
+      ],
+      montantPaye: 50_000,
+      modePaiement: 'virement'
+    },
+    adminId
+  )
+
+  verifier(reception.total === 60 * 900 + 40 * 880 + 25 * 3100 + 30 * 1150, 'le total de la réception est correct', reception.total)
+  verifier(produits.produit(doliprane)?.stock === 100, 'le stock du Doliprane est de 100 après réception')
+  verifier(produits.produit(doliprane)?.etat_stock === 'disponible', 'le produit repasse en disponible')
+
+  const dette = partenaires.listerFournisseurs().find((f) => f.id === labo)
+  verifier(dette?.solde_du === reception.total - 50_000, 'la dette fournisseur est calculée', dette?.solde_du)
+
+  // ==========================================================================
+  titre('FEFO — premier périmé, premier sorti')
+
+  const allocation = stock.allouerFEFO(doliprane, 50)
+  verifier(allocation.lignes[0]?.numero === 'LOT-TOT', 'le lot qui expire le plus tôt est servi en premier')
+  verifier(allocation.lignes[0]?.quantite === 40, 'ce lot est vidé avant de passer au suivant')
+  verifier(allocation.lignes[1]?.numero === 'LOT-TARD', 'le reste vient du lot suivant')
+  verifier(allocation.lignes[1]?.quantite === 10, 'la quantité complémentaire est correcte')
+  verifier(allocation.lignes.length === 2, 'exactement deux lots sont mobilisés')
+
+  refuse(
+    'une allocation au-delà du stock est refusée',
+    () => stock.allouerFEFO(doliprane, 500),
+    'insuffisant'
+  )
+
+  // ==========================================================================
+  titre('Caisse')
+
+  refuse(
+    'vendre sans caisse ouverte est refusé',
+    () =>
+      ventes.enregistrerVente(
+        { lignes: [{ produitId: gel, quantite: 1 }], paiements: [{ mode: 'especes', montant: 2000 }] },
+        adminId,
+        session.permissions
+      ),
+    'caisse'
+  )
+
+  const sessionCaisse = caisse.ouvrirCaisse(50_000, adminId)
+  verifier(sessionCaisse.statut === 'ouverte', 'la caisse est ouverte')
+  refuse('deux caisses ouvertes sont impossibles', () => caisse.ouvrirCaisse(10_000, adminId), 'déjà ouverte')
+
+  // ==========================================================================
+  titre('Vente au comptoir')
+
+  const controle = ventes.verifierVente(
+    { lignes: [{ produitId: amoxicilline, quantite: 2 }], paiements: [{ mode: 'especes', montant: 10_000 }] },
+    session.permissions
+  )
+  verifier(controle.total === 9600, 'le total est calculé avant validation', controle.total)
+  verifier(controle.monnaieRendue === 400, 'la monnaie à rendre est calculée', controle.monnaieRendue)
+  verifier(
+    controle.avertissements.some((a) => a.code === 'ordonnance_requise' && !a.bloquant),
+    'un produit sous ordonnance déclenche un avertissement non bloquant'
+  )
+
+  const vente1 = ventes.enregistrerVente(
+    {
+      lignes: [
+        { produitId: doliprane, quantite: 45 },
+        { produitId: gel, quantite: 2 }
+      ],
+      paiements: [{ mode: 'especes', montant: 71_500 }]
+    },
+    adminId,
+    session.permissions
+  )
+
+  verifier(vente1.total === 45 * 1500 + 2 * 2000, 'le total de la vente est correct', vente1.total)
+  verifier(vente1.monnaie_rendue === 0, 'aucune monnaie à rendre sur compte juste')
+  verifier(vente1.reste_a_payer === 0, 'la vente est intégralement réglée')
+
+  const lignesDoliprane = vente1.lignes.filter((l) => l.produit_id === doliprane)
+  verifier(lignesDoliprane.length === 2, 'la vente est ventilée sur les deux lots servis')
+  verifier(
+    lignesDoliprane.reduce((s, l) => s + l.quantite, 0) === 45,
+    'la somme des lots servis correspond à la quantité vendue'
+  )
+  verifier(
+    vente1.cout_total === 40 * 880 + 5 * 900 + 2 * 1150,
+    'le coût de revient suit les lots réellement sortis',
+    vente1.cout_total
+  )
+  verifier(produits.produit(doliprane)?.stock === 55, 'le stock est décrémenté de 45', produits.produit(doliprane)?.stock)
+
+  const lotTot = stock.lotsDe(doliprane, true).find((l) => l.numero === 'LOT-TOT')
+  verifier(lotTot?.quantite_restante === 0, 'le lot le plus proche de la péremption est épuisé')
+
+  const mouvements = stock.mouvements({ produitId: doliprane })
+  verifier(
+    mouvements.filter((m) => m.type === 'vente').length === 2,
+    'un mouvement de stock par lot sorti'
+  )
+
+  // ==========================================================================
+  titre('Prévention des erreurs')
+
+  const trop = ventes.verifierVente(
+    { lignes: [{ produitId: gel, quantite: 999 }], paiements: [{ mode: 'especes', montant: 10 }] },
+    session.permissions
+  )
+  verifier(
+    trop.avertissements.some((a) => a.code === 'stock_insuffisant' && a.bloquant),
+    'un stock insuffisant est signalé comme bloquant'
+  )
+
+  refuse(
+    'une vente au-delà du stock est refusée',
+    () =>
+      ventes.enregistrerVente(
+        { lignes: [{ produitId: gel, quantite: 999 }], paiements: [{ mode: 'especes', montant: 10 }] },
+        adminId,
+        session.permissions
+      ),
+    'insuffisant'
+  )
+
+  const remise = ventes.verifierVente(
+    {
+      lignes: [{ produitId: gel, quantite: 1, remise: 1500 }],
+      paiements: [{ mode: 'especes', montant: 500 }]
+    },
+    session.permissions
+  )
+  verifier(
+    remise.avertissements.some((a) => a.code === 'remise_excessive' && a.bloquant),
+    'une remise de 75 % dépasse le maximum autorisé'
+  )
+
+  const sansDroit = ventes.verifierVente(
+    { lignes: [{ produitId: gel, quantite: 1, remise: 100 }], paiements: [{ mode: 'especes', montant: 1900 }] },
+    permissionsCaissier
+  )
+  verifier(
+    sansDroit.avertissements.some((a) => a.code === 'remise_excessive' && a.bloquant),
+    'un caissier sans droit de remise est bloqué'
+  )
+
+  // Deux lignes du même produit ne doivent pas allouer chacune tout le stock.
+  const doublon = ventes.verifierVente(
+    {
+      lignes: [
+        { produitId: gel, quantite: 20 },
+        { produitId: gel, quantite: 20 }
+      ],
+      paiements: [{ mode: 'especes', montant: 80_000 }]
+    },
+    session.permissions
+  )
+  verifier(
+    doublon.avertissements.some((a) => a.code === 'stock_insuffisant'),
+    'deux lignes du même produit sont cumulées avant contrôle du stock'
+  )
+
+  // ==========================================================================
+  titre('Vente à crédit et règlement')
+
+  const client = partenaires.enregistrerClient(
+    null,
+    { nom: 'Aminata Traoré', telephone: '+225 07 11 22 33 44', plafondCredit: 20_000 },
+    adminId
+  )
+
+  const horsPlafond = ventes.verifierVente(
+    {
+      clientId: client,
+      lignes: [{ produitId: amoxicilline, quantite: 6 }],
+      paiements: [{ mode: 'especes', montant: 1000 }]
+    },
+    session.permissions
+  )
+  verifier(
+    horsPlafond.avertissements.some((a) => a.code === 'plafond_credit' && a.bloquant),
+    'un dépassement de plafond de crédit est bloqué'
+  )
+
+  const venteCredit = ventes.enregistrerVente(
+    {
+      clientId: client,
+      lignes: [{ produitId: amoxicilline, quantite: 3 }],
+      paiements: [{ mode: 'especes', montant: 5000 }]
+    },
+    adminId,
+    session.permissions
+  )
+  verifier(venteCredit.total === 14_400, 'total de la vente à crédit', venteCredit.total)
+  verifier(venteCredit.reste_a_payer === 9400, 'le reste à payer devient une créance', venteCredit.reste_a_payer)
+
+  const avantReglement = partenaires.listerClients().find((c) => c.id === client)
+  verifier(avantReglement?.solde_du === 9400, 'la créance client est calculée', avantReglement?.solde_du)
+
+  refuse(
+    'un règlement supérieur à la créance est refusé',
+    () => partenaires.encaisserCreance(client, 50_000, 'especes', null, adminId),
+    'dépasse'
+  )
+
+  partenaires.encaisserCreance(client, 4000, 'especes', venteCredit.id, adminId)
+  verifier(
+    partenaires.listerClients().find((c) => c.id === client)?.solde_du === 5400,
+    'la créance diminue après règlement partiel'
+  )
+
+  refuse(
+    "un client avec créance ne peut pas être archivé",
+    () => partenaires.archiverClient(client, true, adminId),
+    'créance'
+  )
+
+  // ==========================================================================
+  titre('Annulation de vente')
+
+  const stockAvantAnnulation = produits.produit(amoxicilline)!.stock
+  ventes.annulerVente(venteCredit.id, 'Erreur de saisie du pharmacien', adminId)
+
+  verifier(
+    produits.produit(amoxicilline)?.stock === stockAvantAnnulation + 3,
+    'le stock est restitué dans son lot d’origine'
+  )
+  verifier(ventes.detailVente(venteCredit.id)?.statut === 'annulee', 'la vente est marquée annulée')
+  refuse(
+    'une vente déjà annulée ne peut pas l’être deux fois',
+    () => ventes.annulerVente(venteCredit.id, 'test', adminId),
+    'déjà annulée'
+  )
+
+  // ==========================================================================
+  titre('Dépenses')
+
+  const depense = finances.enregistrerDepense(
+    { date: aujourdhui(), categorieId: 5, libelle: 'Transport livraison', montant: 15_000 },
+    adminId
+  )
+  verifier(depense > 0, 'la dépense est enregistrée')
+  refuse(
+    'une dépense datée du futur est refusée',
+    () =>
+      finances.enregistrerDepense(
+        { date: decalerJours(aujourdhui(), 3), categorieId: 5, libelle: 'Futur', montant: 100 },
+        adminId
+      ),
+    'futur'
+  )
+
+  // ==========================================================================
+  titre('Inventaire')
+
+  const inv = inventaire.ouvrirInventaire(
+    { libelle: 'Inventaire général', perimetre: 'total' },
+    adminId
+  )
+  verifier(inv.nb_lignes! > 0, 'les lignes d’inventaire sont générées depuis les lots en stock', inv.nb_lignes)
+  refuse(
+    'un second inventaire simultané est refusé',
+    () => inventaire.ouvrirInventaire({ libelle: 'Autre', perimetre: 'total' }, adminId),
+    'déjà en cours'
+  )
+
+  const detailInv = inventaire.inventaire(inv.id)!
+  const ligneGel = detailInv.lignes.find((l) => l.produit_id === gel)!
+  // Le comptage physique révèle deux unités manquantes.
+  inventaire.saisirComptage(ligneGel.id, ligneGel.stock_theorique - 2, 'Casse constatée en rayon', adminId)
+
+  const stockGelAvant = produits.produit(gel)!.stock
+  const resultat = inventaire.validerInventaire(inv.id, adminId)
+
+  verifier(resultat.lignesAjustees === 1, 'un seul écart est ajusté', resultat.lignesAjustees)
+  verifier(resultat.ecartUnites === -2, 'l’écart en unités est correct', resultat.ecartUnites)
+  verifier(resultat.ecartValeur === -2 * 1150, 'l’écart est valorisé au prix d’achat', resultat.ecartValeur)
+  verifier(produits.produit(gel)?.stock === stockGelAvant - 2, 'le stock est corrigé après validation')
+
+  const mouvementInventaire = stock.mouvements({ produitId: gel }).find((m) => m.type === 'inventaire')
+  verifier(!!mouvementInventaire, 'l’ajustement laisse un mouvement de stock tracé')
+  verifier(
+    mouvementInventaire?.motif === 'Casse constatée en rayon',
+    'la justification du comptage est conservée'
+  )
+
+  // ==========================================================================
+  titre('Alertes')
+
+  // On force une rupture pour vérifier que l'alerte apparaît puis disparaît.
+  stock.sortirStock(gel, produits.produit(gel)!.stock, 'perte', 'Dégât des eaux', adminId)
+
+  // Le lot à 45 jours a été entièrement vendu plus haut : on reçoit un lot
+  // réellement proche de la péremption pour exercer la surveillance.
+  achats.enregistrerReception(
+    {
+      fournisseurId: labo,
+      lignes: [
+        { produitId: amoxicilline, quantite: 5, prixAchat: 3100, numeroLot: 'AMX-URGENT', datePeremption: decalerJours(aujourdhui(), 20) }
+      ]
+    },
+    adminId
+  )
+
+  alertes.rafraichirAlertes()
+
+  const listeAlertes = alertes.listerAlertes()
+  verifier(
+    listeAlertes.some((a) => a.type === 'rupture' && a.entite_id === gel),
+    'la rupture déclenche une alerte urgente'
+  )
+  verifier(
+    listeAlertes.some((a) => a.type === 'peremption_proche'),
+    'un lot expirant dans 20 jours déclenche une alerte de péremption'
+  )
+  verifier(
+    stock.peremptions().some((l) => l.numero === 'AMX-URGENT' && l.palier === 'j30'),
+    'ce lot est classé dans le palier « moins de 30 jours »'
+  )
+  verifier(
+    listeAlertes.some((a) => a.type === 'dette_fournisseur'),
+    'la dette fournisseur est signalée'
+  )
+
+  achats.enregistrerReception(
+    {
+      fournisseurId: labo,
+      lignes: [{ produitId: gel, quantite: 40, prixAchat: 1150, numeroLot: 'GEL-02', datePeremption: decalerJours(aujourdhui(), 500) }]
+    },
+    adminId
+  )
+  alertes.rafraichirAlertes()
+  verifier(
+    !alertes.listerAlertes().some((a) => a.type === 'rupture' && a.entite_id === gel),
+    'l’alerte disparaît d’elle-même une fois le stock réapprovisionné'
+  )
+
+  // ==========================================================================
+  titre('Tableau de bord')
+
+  const bord = pilotage.tableauDeBord()
+  const ventesDuJour = ventes.listerVentes({ statut: 'finalisee' })
+  const caAttendu = ventesDuJour.reduce((s, v) => s + v.total, 0)
+
+  verifier(!bord.aucuneDonnee, 'le tableau de bord dispose de données réelles')
+  verifier(bord.chiffreAffaires.valeur === caAttendu, "le chiffre d'affaires correspond aux ventes", {
+    tableau: bord.chiffreAffaires.valeur,
+    attendu: caAttendu
+  })
+  verifier(bord.nbVentes.valeur === ventesDuJour.length, 'le nombre de ventes correspond')
+  verifier(bord.depenses.valeur === 15_000, 'les dépenses du jour remontent', bord.depenses.valeur)
+  verifier(bord.caisse.ouverte, 'la caisse est signalée ouverte')
+  verifier(bord.activite.length > 0, 'l’activité récente est alimentée')
+  verifier(
+    bord.activite.every((a) => a.at !== null && a.libelle !== null),
+    'chaque ligne d’activité provient d’une opération réelle'
+  )
+
+  // ==========================================================================
+  titre('Clôture de caisse')
+
+  const etat = caisse.etatCaisse()
+  const especesVente1 = 71_500 - vente1.monnaie_rendue
+  const especesCredit = 5000
+  const theoriqueAttendu = 50_000 + especesVente1 + especesCredit - 15_000 - especesCredit
+
+  verifier(
+    etat.theoriqueEspeces === theoriqueAttendu,
+    'le théorique en espèces intègre ventes, dépense et remboursement d’annulation',
+    { calcule: etat.theoriqueEspeces, attendu: theoriqueAttendu }
+  )
+
+  refuse(
+    'un écart de caisse sans justification est refusé',
+    () => caisse.cloturerCaisse(etat.theoriqueEspeces - 5000, null, adminId),
+    'justification'
+  )
+
+  const cloture = caisse.cloturerCaisse(etat.theoriqueEspeces - 5000, 'Erreur de rendu de monnaie', adminId)
+  verifier(cloture.ecart === -5000, 'l’écart de caisse est calculé', cloture.ecart)
+  verifier(caisse.sessionOuverte() === null, 'aucune caisse ne reste ouverte après clôture')
+
+  // ==========================================================================
+  titre('Synthèse financière')
+
+  const synthese = finances.synthese(aujourdhui(), aujourdhui())
+  const margeAttendue = synthese.chiffreAffaires - synthese.coutMarchandises
+
+  verifier(synthese.chiffreAffaires === caAttendu, 'le chiffre d’affaires de la synthèse concorde')
+  verifier(synthese.margeBrute === margeAttendue, 'la marge brute est cohérente')
+  verifier(synthese.resultat === margeAttendue - 15_000, 'le résultat déduit les dépenses')
+  verifier(synthese.valeurStock > 0, 'la valeur du stock est calculée', synthese.valeurStock)
+  verifier(
+    synthese.parModePaiement.some((m) => m.mode === 'especes'),
+    'la répartition par mode de paiement est renseignée'
+  )
+
+  // ==========================================================================
+  titre('Journal d’activité')
+
+  const journal = pilotage.journal({ limite: 500 })
+  const attendues = [
+    'Connexion',
+    'Pharmacie configurée',
+    'Produit créé',
+    'Réception enregistrée',
+    'Caisse ouverte',
+    'Vente enregistrée',
+    'Vente annulée',
+    'Inventaire validé',
+    'Caisse clôturée',
+    'Dépense enregistrée'
+  ]
+  for (const action of attendues) {
+    verifier(journal.some((j) => j.action === action), `le journal trace « ${action} »`)
+  }
+  verifier(
+    journal.every((j) => j.at && j.resume !== null),
+    'chaque entrée du journal est horodatée et décrite'
+  )
+
+  // ==========================================================================
+  titre('Sauvegarde')
+
+  const sauvegarde = configuration.creerSauvegarde(cheminBase, join(dossier, 'sauvegardes'), 'manuelle', adminId)
+  verifier(sauvegarde.taille > 0, 'la sauvegarde produit un fichier', `${Math.round(sauvegarde.taille / 1024)} Ko`)
+
+  const controleSauvegarde = configuration.controlerSauvegarde(sauvegarde.fichier)
+  verifier(controleSauvegarde.valide, 'la sauvegarde est relisible et intègre')
+  verifier(
+    configuration.controlerSauvegarde(join(dossier, 'inexistant.db')).valide === false,
+    'un fichier inexistant est rejeté'
+  )
+
+  // ==========================================================================
+  titre('Intégrité finale de la base')
+
+  const integrite = base().prepare('PRAGMA integrity_check').get() as { integrity_check: string }
+  verifier(integrite.integrity_check === 'ok', 'la base est intègre après le scénario complet')
+
+  const violations = base().prepare('PRAGMA foreign_key_check').all()
+  verifier(violations.length === 0, 'aucune violation de clé étrangère', violations.length)
+
+  const lotsIncoherents = base()
+    .prepare('SELECT COUNT(*) n FROM lots WHERE quantite_restante < 0 OR quantite_restante > quantite_initiale')
+    .get() as { n: number }
+  verifier(lotsIncoherents.n === 0, 'aucun lot dans un état impossible')
+
+  // Le stock affiché doit toujours égaler la somme des mouvements enregistrés.
+  const ecartsStock = base()
+    .prepare(
+      `SELECT p.id, p.nom_commercial, s.stock,
+              COALESCE((SELECT SUM(quantite) FROM mouvements_stock WHERE produit_id = p.id), 0) AS somme
+       FROM produits p JOIN v_stock_produit s ON s.produit_id = p.id
+       WHERE s.stock <> COALESCE((SELECT SUM(quantite) FROM mouvements_stock WHERE produit_id = p.id), 0)`
+    )
+    .all()
+  verifier(
+    ecartsStock.length === 0,
+    'le stock de chaque produit égale la somme de ses mouvements',
+    ecartsStock
+  )
+} catch (erreur) {
+  echoues++
+  console.log('\nERREUR NON RATTRAPEE :', (erreur as Error).message)
+  console.log((erreur as Error).stack)
+} finally {
+  try {
+    fermerBase()
+  } catch {
+    /* déjà fermée */
+  }
+  rmSync(dossier, { recursive: true, force: true })
+}
+
+console.log(`\n${'='.repeat(66)}`)
+console.log(`  ${reussis} verification(s) reussie(s), ${echoues} echec(s)`)
+if (echecs.length) {
+  console.log('\n  Echecs :')
+  for (const e of echecs) console.log(`    - ${e}`)
+}
+console.log(`${'='.repeat(66)}\n`)
+
+process.exit(echoues ? 1 : 0)

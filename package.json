@@ -12,7 +12,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "start": "electron-vite preview",
     "dist:win": "electron-vite build && electron-builder --win",
-    "test": "electron tests/schema.test.js && electron tests/seed.test.js"
+    "test": "electron tests/schema.test.js && electron tests/seed.test.js && npm run test:e2e",
+    "test:e2e": "electron-vite build && electron out/main/e2e.js"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

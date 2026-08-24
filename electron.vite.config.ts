@@ -11,7 +11,14 @@ export default defineConfig({
       alias: { '@shared': shared, '@main': resolve(__dirname, 'src/main') }
     },
     build: {
-      rollupOptions: { input: { index: resolve(__dirname, 'src/main/index.ts') } }
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/main/index.ts'),
+          // Le scénario de bout en bout est compilé par la même chaîne que
+          // l'application : il exerce exactement le code qui sera livré.
+          e2e: resolve(__dirname, 'tests/e2e.ts')
+        }
+      }
     }
   },
   preload: {
