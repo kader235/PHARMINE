@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Lot, MouvementStock, Page, ProduitEtat } from '@shared/types'
 import { useAction, useDifferee, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
+import { useFonctions } from '../app/fonctions'
 import { useNavigation, type Destination } from '../app/navigation'
 import { useNotifications } from '../ui/Notifications'
 import {
@@ -50,6 +51,32 @@ export default function Stock({ destination }: { destination: Destination }) {
   })
 
   const total = useRequete<Page<ProduitEtat>>('produits.lister', { parPage: 500 })
+
+  useFonctions('stock', [
+    {
+      touche: 'F5',
+      libelle: 'Actualiser',
+      action: () => {
+        liste.recharger()
+        total.recharger()
+      }
+    },
+    {
+      touche: 'F7',
+      libelle: 'Ruptures',
+      action: () => setFiltre((f) => (f === 'rupture' ? 'tous' : 'rupture'))
+    },
+    {
+      touche: 'F8',
+      libelle: 'Stock faible',
+      action: () => setFiltre((f) => (f === 'faible' ? 'tous' : 'faible'))
+    },
+    {
+      touche: 'F9',
+      libelle: 'Mouvements',
+      action: () => setOnglet((o) => (o === 'mouvements' ? 'etat' : 'mouvements'))
+    }
+  ])
 
   const produits = total.donnees?.lignes ?? []
   const valeur = produits.reduce((s, p) => s + p.valeur_achat, 0)

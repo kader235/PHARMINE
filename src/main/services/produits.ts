@@ -120,6 +120,37 @@ export function rechercheRapide(saisie: string, limite = 20): ProduitEtat[] {
     .all(fts, limite) as unknown as ProduitEtat[]
 }
 
+/**
+ * Recherche par code-barres, en correspondance exacte.
+ *
+ * Un lecteur renvoie parfois un EAN-13 la ou le catalogue stocke l'EAN-8, ou
+ * l'inverse : on tente donc aussi la variante sans le zero de tete, ce qui
+ * evite au pharmacien de ressaisir des codes qui ne different que par un
+ * caractere de remplissage.
+ */
+export function parCodeBarres(code: string): ProduitEtat | null {
+  const brut = code.trim()
+  if (!brut) return null
+
+  const variantes = new Set([brut, brut.replace(/^0+/, '')])
+  if (brut.length === 12) variantes.add('0' + brut)
+
+  for (const variante of variantes) {
+    if (!variante) continue
+    const trouve = base()
+      .prepare(
+        `SELECT p.* FROM v_produit_etat p
+         WHERE p.archived_at IS NULL
+           AND (p.code_interne = :code
+                OR p.id IN (SELECT produit_id FROM produit_codes_barres WHERE code = :code))
+         LIMIT 1`
+      )
+      .get({ code: variante }) as unknown as ProduitEtat | undefined
+    if (trouve) return trouve
+  }
+  return null
+}
+
 export function produit(id: number): ProduitEtat | null {
   const p = base().prepare('SELECT * FROM v_produit_etat WHERE id = ?').get(id) as unknown as ProduitEtat | undefined
   if (!p) return null

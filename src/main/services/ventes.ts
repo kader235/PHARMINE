@@ -11,6 +11,7 @@ import type {
 import {
   ErreurMetier,
   aujourdhui,
+  debutDeJournee,
   decalerJours,
   journaliser,
   maintenant,
@@ -206,7 +207,7 @@ function preparer(demande: DemandeVente, permissions: Set<string>): Preparation 
            JOIN ventes v ON v.id = vl.vente_id
            WHERE vl.produit_id = ? AND v.statut = 'finalisee' AND v.at >= ?`
         )
-        .get(produitId, decalerJours(aujourdhui(), -90) + 'T00:00:00.000Z') as unknown as { m: number | null }
+        .get(produitId, debutDeJournee(decalerJours(aujourdhui(), -90))) as unknown as { m: number | null }
 
       if (habituelle.m !== null && demandee.quantite > habituelle.m * 5) {
         avertissements.push({

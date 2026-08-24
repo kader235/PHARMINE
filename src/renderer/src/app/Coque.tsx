@@ -9,11 +9,15 @@ import {
   type DefinitionModule
 } from './navigation'
 import RechercheGlobale from './RechercheGlobale'
+import { BarreEtat, BarreFonctions } from './Barres'
+import { FournisseurFonctions } from './fonctions'
 import Icone from '../ui/Icone'
 import { BoutonIcone, Bouton, Modale, Champ, Bandeau } from '../ui/Composants'
 import { useNotifications } from '../ui/Notifications'
 import { useRequete, useAction, useRaccourci } from '../lib/hooks'
-import { initiales } from '../lib/format'
+import { heure, initiales } from '../lib/format'
+import { ecouterCaisseModifiee } from '../lib/evenements'
+import type { EtatCaisse } from '@shared/types'
 
 import TableauDeBord from '../modules/TableauDeBord'
 import Ventes from '../modules/Ventes'
@@ -78,11 +82,25 @@ export default function Coque() {
   }, [])
 
   const alertes = useRequete<{ urgent: number; important: number; total: number }>('alertes.compter')
+  const caisse = useRequete<EtatCaisse>('caisse.etat')
+  const [horloge, setHorloge] = useState(() => heure(new Date().toISOString()))
+
+  // L'heure de la barre d'état se remet à jour toutes les trente secondes :
+  // suffisant pour rester juste, assez rare pour ne rien coûter.
+  useEffect(() => {
+    const minuteur = setInterval(() => setHorloge(heure(new Date().toISOString())), 30_000)
+    return () => clearInterval(minuteur)
+  }, [])
+
+  // Une vente ou un mouvement de caisse met la barre d'état à jour aussitôt,
+  // sans attendre un changement d'écran.
+  useEffect(() => ecouterCaisseModifiee(() => caisse.recharger()), [caisse.recharger])
 
   // Le compteur d'alertes se rafraîchit à chaque changement d'écran : il reste
   // juste sans imposer de sondage permanent.
   useEffect(() => {
     alertes.recharger()
+    caisse.recharger()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [destination.module])
 
@@ -103,6 +121,7 @@ export default function Coque() {
 
   return (
     <ContexteNavigation.Provider value={naviguer}>
+      <FournisseurFonctions>
       <div className="application">
         <nav className={`nav${reduite ? ' reduite' : ''}`} aria-label="Navigation principale">
           <div className="nav-entete">
@@ -203,6 +222,9 @@ export default function Coque() {
               <Ecran destination={destination} />
             </div>
           </main>
+
+          <BarreFonctions />
+          <BarreEtat caisse={caisse.donnees} horloge={horloge} />
         </div>
       </div>
 
@@ -225,6 +247,7 @@ export default function Coque() {
           }}
         />
       ) : null}
+      </FournisseurFonctions>
     </ContexteNavigation.Provider>
   )
 }

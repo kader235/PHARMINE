@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { LotPeremption, PalierPeremption } from '@shared/types'
 import { useAction, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
+import { useFonctions } from '../app/fonctions'
 import type { Destination } from '../app/navigation'
 import { useNotifications } from '../ui/Notifications'
 import {
@@ -58,6 +59,27 @@ export default function Peremptions({ destination }: { destination: Destination 
   const resume = useRequete<Record<PalierPeremption, { lots: number; valeur: number }>>(
     'stock.resumePeremptions'
   )
+
+  useFonctions('peremptions', [
+    {
+      touche: 'F5',
+      libelle: 'Actualiser',
+      action: () => {
+        lots.recharger()
+        resume.recharger()
+      }
+    },
+    {
+      touche: 'F7',
+      libelle: 'Lots périmés',
+      action: () => setPalier((p) => (p === 'expire' ? 'tous' : 'expire'))
+    },
+    {
+      touche: 'F8',
+      libelle: 'Moins de 30 jours',
+      action: () => setPalier((p) => (p === 'j30' ? 'tous' : 'j30'))
+    }
+  ])
 
   const filtres = (lots.donnees ?? []).filter(
     (l) =>

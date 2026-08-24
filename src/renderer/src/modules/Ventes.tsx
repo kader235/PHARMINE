@@ -1,17 +1,26 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type {
+  ApercuCompte,
   Avertissement,
   Client,
   DemandeVente,
   ModePaiement,
+  Pharmacie,
   ProduitEtat,
   Vente,
   VenteDetail
 } from '@shared/types'
 import { useAction, useDifferee, useRequete } from '../lib/hooks'
+import { appeler } from '../lib/api'
 import { useSession } from '../app/Session'
 import { useNavigation, type Destination } from '../app/navigation'
+import { useFonctions } from '../app/fonctions'
 import { useNotifications } from '../ui/Notifications'
+import { signalerCaisseModifiee } from '../lib/evenements'
+import { useLecteurCodeBarres } from '../lib/codeBarres'
+import { useImpression, FORMATS, type FormatImpression } from '../ui/Impression'
+import { FactureVente, TicketDeCaisse } from '../ui/Documents'
 import Icone from '../ui/Icone'
 import {
   Bandeau,
@@ -19,6 +28,7 @@ import {
   BoutonIcone,
   Champ,
   ChampMontant,
+  Chargement,
   EntetePage,
   Etiquette,
   EtatVide,
@@ -27,7 +37,7 @@ import {
   ZoneTexte
 } from '../ui/Composants'
 import Tableau, { CellulePrincipale, RechercheTableau } from '../ui/Tableau'
-import { dateCourte, depuis, heure, modePaiement, montant, nombre } from '../lib/format'
+import { dateCourte, depuis, heure, modePaiement, montant, nombre, versEntier } from '../lib/format'
 
 interface LignePanier {
   produit: ProduitEtat
@@ -35,12 +45,30 @@ interface LignePanier {
   remise: number
 }
 
-const MODES: { valeur: ModePaiement; libelle: string }[] = [
+interface Reglement {
+  id: number
+  mode: Exclude<ModePaiement, 'credit'>
+  montant: number
+}
+
+const MODES: { valeur: Reglement['mode']; libelle: string }[] = [
   { valeur: 'especes', libelle: 'Espèces' },
   { valeur: 'mobile_money', libelle: 'Mobile Money' },
-  { valeur: 'carte', libelle: 'Carte' },
-  { valeur: 'virement', libelle: 'Virement' }
+  { valeur: 'carte', libelle: 'Carte bancaire' },
+  { valeur: 'virement', libelle: 'Virement' },
+  { valeur: 'cheque', libelle: 'Chèque' }
 ]
+
+const APPOINTS = [500, 1000, 2000, 5000, 10_000]
+
+interface Reglages {
+  formatImpressionDefaut: FormatImpression
+  ticketAutomatique: boolean
+  piedTicket: string
+  copiesFacture: number
+  scanAjouteDirectement: boolean
+  avertirScanInconnu: boolean
+}
 
 export default function Ventes({ destination }: { destination: Destination }) {
   const session = useSession()
@@ -60,11 +88,11 @@ export default function Ventes({ destination }: { destination: Destination }) {
   return (
     <>
       <EntetePage
-        titre={onglet === 'comptoir' ? 'Nouvelle vente' : 'Historique des ventes'}
+        titre={onglet === 'comptoir' ? 'Comptoir' : 'Historique des ventes'}
         description={
           onglet === 'comptoir'
-            ? 'Recherchez, ajoutez au panier, encaissez.'
-            : 'Toutes les ventes enregistrées, avec leur détail par lot.'
+            ? 'Recherchez, ajoutez au panier, encaissez. Tout se fait au clavier.'
+            : 'Toutes les ventes enregistrées, avec le détail des lots servis.'
         }
         actions={
           onglets.length > 1 ? <Segments valeur={onglet} options={onglets} onChange={setOnglet} /> : null
@@ -83,68 +111,80 @@ function Comptoir() {
   const session = useSession()
   const naviguer = useNavigation()
   const notifications = useNotifications()
+  const { imprimer } = useImpression()
   const action = useAction()
 
   const [saisie, setSaisie] = useState('')
   const [panier, setPanier] = useState<LignePanier[]>([])
   const [clientId, setClientId] = useState<number | null>(null)
-  const [mode, setMode] = useState<ModePaiement>('especes')
-  const [recu, setRecu] = useState(0)
-  const [recuModifie, setRecuModifie] = useState(false)
+  const [reglements, setReglements] = useState<Reglement[]>([{ id: 1, mode: 'especes', montant: 0 }])
+  const [reglementAjuste, setReglementAjuste] = useState(false)
   const [note, setNote] = useState('')
   const [survol, setSurvol] = useState(0)
   const [choixClient, setChoixClient] = useState(false)
+  const [saisieRemise, setSaisieRemise] = useState(false)
   const [ticket, setTicket] = useState<VenteDetail | null>(null)
+  const [derniereVente, setDerniereVente] = useState<VenteDetail | null>(null)
+  const [scanInconnu, setScanInconnu] = useState<string | null>(null)
 
   const champRecherche = useRef<HTMLInputElement>(null)
+  const compteurReglement = useRef(1)
   const differee = useDifferee(saisie, 140)
 
   const caisse = useRequete<{ session: { reference: string } | null }>('caisse.etat')
-  const clients = useRequete<Client[]>('clients.lister', {}, session.peut('clients.voir'))
-
+  const reglages = useRequete<Reglages>('app.reglages')
   const resultats = useRequete<ProduitEtat[]>(
     'produits.rechercheRapide',
     { saisie: differee },
     differee.trim().length >= 2
   )
-
-  const client = clients.donnees?.find((c) => c.id === clientId) ?? null
+  const compte = useRequete<ApercuCompte>(
+    'clients.apercuCompte',
+    { id: clientId },
+    clientId !== null && session.peut('clients.voir')
+  )
 
   const sousTotal = panier.reduce((s, l) => s + l.produit.prix_vente * l.quantite, 0)
   const remise = panier.reduce((s, l) => s + l.remise, 0)
   const total = sousTotal - remise
+  const totalRegle = reglements.reduce((s, r) => s + r.montant, 0)
+  const monnaie = Math.max(0, totalRegle - total)
+  const reste = Math.max(0, total - totalRegle)
 
   const demande = useMemo<DemandeVente>(
     () => ({
       clientId,
       lignes: panier.map((l) => ({ produitId: l.produit.id, quantite: l.quantite, remise: l.remise })),
-      paiements: recu > 0 ? [{ mode, montant: recu }] : [],
+      paiements: reglements.filter((r) => r.montant > 0).map((r) => ({ mode: r.mode, montant: r.montant })),
       note: note.trim() || undefined
     }),
-    [panier, clientId, mode, recu, note]
+    [panier, clientId, reglements, note]
   )
 
-  const controle = useRequete<{
-    avertissements: Avertissement[]
-    total: number
-    monnaieRendue: number
-    resteAPayer: number
-  }>('ventes.verifier', demande, panier.length > 0)
+  const controle = useRequete<{ avertissements: Avertissement[] }>(
+    'ventes.verifier',
+    demande,
+    panier.length > 0
+  )
 
   const avertissements = controle.donnees?.avertissements ?? []
   const bloquants = avertissements.filter((a) => a.bloquant)
   const signalements = avertissements.filter((a) => !a.bloquant)
-  const monnaie = Math.max(0, recu - total)
-  const reste = Math.max(0, total - recu)
+
+  // Le premier règlement suit le total tant que le caissier ne l'a pas corrigé :
+  // le compte juste est le cas courant, et cela évite d'annoncer un crédit
+  // alors qu'aucun paiement n'a encore été saisi.
+  useEffect(() => {
+    if (reglementAjuste) return
+    setReglements((r) => (r.length === 1 ? [{ ...r[0]!, montant: total }] : r))
+  }, [total, reglementAjuste])
 
   const ajouter = useCallback((produit: ProduitEtat) => {
     if (produit.stock_disponible <= 0) return
     setPanier((precedent) => {
       const existante = precedent.find((l) => l.produit.id === produit.id)
       if (existante) {
-        return precedent.map((l) =>
-          l.produit.id === produit.id ? { ...l, quantite: l.quantite + 1 } : l
-        )
+        return precedent.map((l) => (l.produit.id === produit.id ? { ...l, quantite: l.quantite + 1 } : l))
       }
       return [...precedent, { produit, quantite: 1, remise: 0 }]
     })
@@ -160,13 +200,33 @@ function Comptoir() {
     )
   }
 
-  function viderPanier(): void {
+  const viderPanier = useCallback(() => {
     setPanier([])
-    setRecu(0)
-    setRecuModifie(false)
-    setNote('')
     setClientId(null)
-    setMode('especes')
+    setNote('')
+    setReglementAjuste(false)
+    compteurReglement.current = 1
+    setReglements([{ id: 1, mode: 'especes', montant: 0 }])
+    champRecherche.current?.focus()
+  }, [])
+
+  function modifierReglement(id: number, champs: Partial<Reglement>): void {
+    setReglementAjuste(true)
+    setReglements((r) => r.map((l) => (l.id === id ? { ...l, ...champs } : l)))
+  }
+
+  function ajouterReglement(): void {
+    setReglementAjuste(true)
+    compteurReglement.current += 1
+    setReglements((r) => [
+      ...r,
+      { id: compteurReglement.current, mode: 'mobile_money', montant: Math.max(0, reste) }
+    ])
+  }
+
+  function retirerReglement(id: number): void {
+    setReglementAjuste(true)
+    setReglements((r) => (r.length === 1 ? r : r.filter((l) => l.id !== id)))
   }
 
   function auClavier(e: React.KeyboardEvent): void {
@@ -186,26 +246,127 @@ function Comptoir() {
     }
   }
 
+
+  // --- Lecteur de codes-barres ---------------------------------------------
+  const traiterScan = useCallback(
+    async (code: string) => {
+      setScanInconnu(null)
+      const produit = await appeler<ProduitEtat | null>('produits.parCodeBarres', { code })
+
+      if (!produit) {
+        // Le code lu est reporté dans la recherche : le pharmacien voit ce que
+        // le lecteur a réellement transmis et peut chercher autrement.
+        setSaisie(code)
+        if (reglages.donnees?.avertirScanInconnu !== false) setScanInconnu(code)
+        return
+      }
+
+      if (produit.stock_disponible <= 0) {
+        setSaisie(produit.nom_commercial)
+        notifications.attention(
+          'Produit en rupture',
+          `${produit.nom_commercial} a été reconnu mais son stock est épuisé.`
+        )
+        return
+      }
+
+      if (reglages.donnees?.scanAjouteDirectement === false) {
+        setSaisie(produit.nom_commercial)
+        return
+      }
+
+      ajouter(produit)
+    },
+    [ajouter, notifications, reglages.donnees]
+  )
+
+  // Le lecteur est neutralisé pendant qu'une fenêtre modale est ouverte :
+  // il ne doit pas alimenter le panier pendant la saisie d'un client.
+  const modaleOuverte = choixClient || saisieRemise || ticket !== null
+  useLecteurCodeBarres({ onScan: traiterScan, actif: !modaleOuverte })
+
   useEffect(() => setSurvol(0), [differee])
 
-  // Le montant reçu suit le total tant que le caissier ne l'a pas corrigé :
-  // le cas courant est le compte juste, et cela évite d'afficher une alerte
-  // de crédit alors qu'aucun paiement n'a encore été saisi.
-  useEffect(() => {
-    if (!recuModifie) setRecu(total)
-  }, [total, recuModifie])
+  const imprimerVente = useCallback(
+    (vente: VenteDetail, format: FormatImpression, duplicata?: boolean) => {
+      const document: ReactNode =
+        format === 'ticket' || format === 'ticket57' ? (
+          <TicketDeCaisse
+            vente={vente}
+            pharmacie={session.pharmacie}
+            clientNom={vente.client_nom ?? null}
+            pied={reglages.donnees?.piedTicket}
+            copie={duplicata ? 'DUPLICATA' : undefined}
+          />
+        ) : (
+          <FactureVente
+            vente={vente}
+            pharmacie={session.pharmacie}
+            clientNom={vente.client_nom ?? null}
+            duplicata={duplicata}
+          />
+        )
+      imprimer(document, format)
+    },
+    [imprimer, session.pharmacie, reglages.donnees]
+  )
 
-  async function finaliser(): Promise<void> {
+  const formatDefaut: FormatImpression = reglages.donnees?.formatImpressionDefaut ?? 'ticket'
+
+  const finaliser = useCallback(async () => {
+    if (!panier.length || bloquants.length) return
     const resultat = await action.executer<VenteDetail>('ventes.enregistrer', demande)
     if (resultat) {
+      setDerniereVente(resultat)
       setTicket(resultat)
+      if (reglages.donnees?.ticketAutomatique) imprimerVente(resultat, formatDefaut)
       viderPanier()
       caisse.recharger()
+      signalerCaisseModifiee()
+      if (clientId) compte.recharger()
       notifications.succes('Vente enregistrée', `${resultat.reference} — ${montant(resultat.total)}`)
     }
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panier.length, bloquants.length, demande, clientId, formatDefaut])
+
+  useFonctions('comptoir', [
+    { touche: 'F2', libelle: 'Rechercher', action: () => champRecherche.current?.focus() },
+    {
+      touche: 'F4',
+      libelle: clientId ? 'Changer de client' : 'Associer un client',
+      action: () => setChoixClient(true),
+      disponible: session.peut('clients.voir')
+    },
+    {
+      touche: 'F6',
+      libelle: 'Remise',
+      action: () => setSaisieRemise(true),
+      disponible: session.peut('ventes.remise') && panier.length > 0
+    },
+    {
+      touche: 'F8',
+      libelle: 'Vider le panier',
+      action: viderPanier,
+      disponible: panier.length > 0
+    },
+    {
+      touche: 'F9',
+      libelle: 'Encaisser',
+      action: finaliser,
+      disponible: panier.length > 0 && bloquants.length === 0,
+      saillante: true
+    },
+    {
+      touche: 'F12',
+      libelle: 'Réimprimer le dernier ticket',
+      action: () => derniereVente && imprimerVente(derniereVente, formatDefaut, true),
+      disponible: derniereVente !== null
+    }
+  ])
 
   const caisseFermee = caisse.donnees !== null && caisse.donnees.session === null
+  const c = compte.donnees
+  const depasse = c !== null && c !== undefined && c.disponible !== null && reste > c.disponible
 
   return (
     <>
@@ -222,8 +383,24 @@ function Comptoir() {
               ) : null
             }
           >
-            Les ventes doivent être rattachées à une session de caisse. Ouvrez la caisse avant de
-            commencer à encaisser.
+            Chaque vente doit être rattachée à une session de caisse.
+          </Bandeau>
+        </div>
+      ) : null}
+
+      {scanInconnu ? (
+        <div style={{ marginBottom: 12 }}>
+          <Bandeau
+            ton="attention"
+            titre={`Code-barres inconnu : ${scanInconnu}`}
+            action={
+              <Bouton compact onClick={() => setScanInconnu(null)}>
+                Fermer
+              </Bouton>
+            }
+          >
+            Aucun produit du catalogue ne porte ce code. Ouvrez la fiche du produit concerné pour
+            l’enregistrer, puis scannez à nouveau.
           </Bandeau>
         </div>
       ) : null}
@@ -241,6 +418,9 @@ function Comptoir() {
               autoFocus
               aria-label="Rechercher un produit"
             />
+            <span className="raccourci" title="Le lecteur de codes-barres fonctionne sur tout l’écran">
+              Douchette active
+            </span>
             <span className="raccourci">Entrée pour ajouter</span>
           </div>
 
@@ -248,13 +428,10 @@ function Comptoir() {
             {differee.trim().length < 2 ? (
               <EtatVide icone="code-barres" titre="Recherchez un produit">
                 Saisissez au moins deux lettres, ou scannez un code-barres. Les flèches et la touche
-                Entrée permettent d’ajouter au panier sans quitter le clavier.
+                Entrée ajoutent au panier sans quitter le clavier.
               </EtatVide>
             ) : resultats.chargement && !resultats.donnees ? (
-              <div className="chargement">
-                <span className="rotateur" />
-                Recherche…
-              </div>
+              <Chargement libelle="Recherche…" />
             ) : (resultats.donnees?.length ?? 0) === 0 ? (
               <EtatVide icone="recherche" titre={`Aucun produit pour « ${differee.trim()} »`}>
                 Vérifiez l’orthographe, ou créez ce produit depuis le catalogue s’il est nouveau.
@@ -279,11 +456,11 @@ function Comptoir() {
                           </Etiquette>
                         ) : null}
                       </strong>
-                      <span>
-                        {[produit.forme, produit.categorie, produit.emplacement].filter(Boolean).join(' · ')}
-                      </span>
+                      <span>{[produit.forme, produit.emplacement].filter(Boolean).join(' · ')}</span>
                     </span>
-                    <Etiquette ton={rupture ? 'danger' : produit.etat_stock === 'faible' ? 'attention' : 'succes'}>
+                    <Etiquette
+                      ton={rupture ? 'danger' : produit.etat_stock === 'faible' ? 'attention' : 'succes'}
+                    >
                       {rupture ? 'Rupture' : `${nombre(produit.stock_disponible)} en stock`}
                     </Etiquette>
                     <span className="prix">{montant(produit.prix_vente)}</span>
@@ -302,6 +479,7 @@ function Comptoir() {
               <p>
                 {panier.reduce((s, l) => s + l.quantite, 0)} article
                 {panier.reduce((s, l) => s + l.quantite, 0) > 1 ? 's' : ''}
+                {remise > 0 ? ` · remise ${montant(remise)}` : ''}
               </p>
             </div>
             {panier.length ? (
@@ -324,11 +502,16 @@ function Comptoir() {
                       {ligne.produit.nom_commercial} {ligne.produit.dosage ?? ''}
                     </strong>
                     <span>
-                      {montant(ligne.produit.prix_vente)} l’unité · {montant(ligne.produit.prix_vente * ligne.quantite)}
+                      {montant(ligne.produit.prix_vente)} × {ligne.quantite}
+                      {ligne.remise > 0 ? ` − ${montant(ligne.remise)}` : ''} ={' '}
+                      {montant(ligne.produit.prix_vente * ligne.quantite - ligne.remise)}
                     </span>
                   </div>
                   <div className="quantite">
-                    <button onClick={() => changerQuantite(ligne.produit.id, ligne.quantite - 1)} aria-label="Retirer un">
+                    <button
+                      onClick={() => changerQuantite(ligne.produit.id, ligne.quantite - 1)}
+                      aria-label="Retirer un"
+                    >
                       <Icone nom="moins" taille={13} />
                     </button>
                     <input
@@ -356,113 +539,168 @@ function Comptoir() {
             )}
           </div>
 
-          {signalements.length > 0 ? (
-            <div style={{ padding: '10px 12px', display: 'grid', gap: 6 }}>
-              {signalements.map((a, i) => (
-                <Bandeau key={i} ton="attention" titre={a.message}>
-                  {a.detail}
-                </Bandeau>
-              ))}
-            </div>
-          ) : null}
-
-          {bloquants.length > 0 ? (
+          {signalements.length > 0 || bloquants.length > 0 ? (
             <div style={{ padding: '10px 12px', display: 'grid', gap: 6 }}>
               {bloquants.map((a, i) => (
-                <Bandeau key={i} ton="danger" titre={a.message}>
+                <Bandeau key={`b${i}`} ton="danger" titre={a.message}>
+                  {a.detail}
+                </Bandeau>
+              ))}
+              {signalements.map((a, i) => (
+                <Bandeau key={`s${i}`} ton="attention" titre={a.message}>
                   {a.detail}
                 </Bandeau>
               ))}
             </div>
           ) : null}
 
-          <div className="panier-total">
+          <div className="total-a-payer">
             <span>Total à payer</span>
             <strong>{montant(total)}</strong>
           </div>
 
-          <div className="panneau-corps" style={{ display: 'grid', gap: 10 }}>
-            {session.peut('clients.voir') ? (
-              <div className="rangee espace">
-                <span style={{ color: 'var(--texte-attenue)', fontSize: 12 }}>
-                  {client ? (
-                    <>
-                      Client : <strong style={{ color: 'var(--texte)' }}>{client.nom}</strong>
-                    </>
+          {session.peut('clients.voir') ? (
+            <div style={{ padding: '10px 12px 0' }}>
+              {c ? (
+                <div className={`compte-client${depasse ? ' alerte' : ''}`}>
+                  <div className="compte-client-entete">
+                    <strong>{c.nom}</strong>
+                    <div className="rangee" style={{ gap: 2 }}>
+                      <Bouton compact variante="discret" onClick={() => setChoixClient(true)}>
+                        Changer
+                      </Bouton>
+                      <Bouton compact variante="discret" onClick={() => setClientId(null)}>
+                        Retirer
+                      </Bouton>
+                    </div>
+                  </div>
+                  <div className="compte-chiffre">
+                    <span>Encours du compte</span>
+                    <b>{montant(c.encours)}</b>
+                  </div>
+                  {c.plafond > 0 ? (
+                    <div className="compte-chiffre">
+                      <span>Crédit disponible</span>
+                      <b>{montant(c.disponible ?? 0)}</b>
+                    </div>
                   ) : (
-                    'Client de passage'
+                    <div className="compte-chiffre">
+                      <span>Plafond de crédit</span>
+                      <b>Aucun</b>
+                    </div>
                   )}
-                </span>
-                <div className="rangee" style={{ gap: 4 }}>
-                  {client ? (
-                    <Bouton compact variante="discret" onClick={() => setClientId(null)}>
-                      Retirer
-                    </Bouton>
-                  ) : null}
-                  <Bouton compact variante="discret" icone="client" onClick={() => setChoixClient(true)}>
-                    {client ? 'Changer' : 'Associer'}
-                  </Bouton>
+                  <div className="compte-chiffre">
+                    <span>{c.nbVentes} vente(s) · dernière visite</span>
+                    <b>{c.derniereVisite ? depuis(c.derniereVisite) : '—'}</b>
+                  </div>
                 </div>
-              </div>
-            ) : null}
+              ) : (
+                <Bouton pleine icone="client" onClick={() => setChoixClient(true)}>
+                  Associer un client <span className="raccourci">F4</span>
+                </Bouton>
+              )}
+            </div>
+          ) : null}
 
-            <div>
-              <div style={{ color: 'var(--texte-attenue)', fontSize: 11, fontWeight: 600, letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 6 }}>
-                Mode de paiement
-              </div>
-              <Segments valeur={mode} options={MODES} onChange={setMode} />
+          <div className="reglement">
+            <div className="reglement-titre">
+              <span>Règlement</span>
+              <button
+                type="button"
+                className="bouton discret compact"
+                onClick={ajouterReglement}
+                disabled={panier.length === 0}
+              >
+                <Icone nom="plus" taille={12} /> Paiement mixte
+              </button>
             </div>
 
-            <ChampMontant
-              libelle="Montant reçu"
-              valeur={recu}
-              onChangeValeur={(v) => {
-                setRecuModifie(true)
-                setRecu(v)
-              }}
-              aide={recuModifie ? undefined : 'Pré-rempli au total. Corrigez selon ce que remet le client.'}
-            />
+            {reglements.map((r) => (
+              <div className="reglement-ligne" key={r.id}>
+                <select
+                  value={r.mode}
+                  onChange={(e) => modifierReglement(r.id, { mode: e.target.value as Reglement['mode'] })}
+                  aria-label="Mode de règlement"
+                >
+                  {MODES.map((m) => (
+                    <option key={m.valeur} value={m.valeur}>
+                      {m.libelle}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  inputMode="decimal"
+                  value={montant(r.montant, false)}
+                  onChange={(e) => modifierReglement(r.id, { montant: versEntier(e.target.value) })}
+                  aria-label="Montant réglé"
+                />
+                {reglements.length > 1 ? (
+                  <BoutonIcone
+                    icone="croix"
+                    titre="Retirer ce règlement"
+                    onClick={() => retirerReglement(r.id)}
+                  />
+                ) : (
+                  <span />
+                )}
+              </div>
+            ))}
 
-            <div className="rangee" style={{ gap: 6 }}>
-              <Bouton
-                compact
+            <div className="appoints">
+              <button
+                type="button"
+                className="appoint"
                 onClick={() => {
-                  setRecuModifie(true)
-                  setRecu(total)
+                  setReglementAjuste(true)
+                  setReglements((liste) => [{ ...liste[0]!, montant: total }, ...liste.slice(1)])
                 }}
               >
                 Compte juste
-              </Bouton>
-              {[1000, 2000, 5000, 10000].map((valeur) => (
-                <Bouton
+              </button>
+              {APPOINTS.map((valeur) => (
+                <button
                   key={valeur}
-                  compact
-                  variante="discret"
+                  type="button"
+                  className="appoint"
                   onClick={() => {
-                    setRecuModifie(true)
-                    setRecu((r) => r + valeur)
+                    setReglementAjuste(true)
+                    setReglements((liste) => [
+                      { ...liste[0]!, montant: liste[0]!.montant + valeur },
+                      ...liste.slice(1)
+                    ])
                   }}
                 >
                   +{montant(valeur, false)}
-                </Bouton>
+                </button>
               ))}
             </div>
+          </div>
 
+          <div className="bilan">
+            <div className="bilan-ligne">
+              <span>Total réglé</span>
+              <strong>{montant(totalRegle)}</strong>
+            </div>
             {monnaie > 0 ? (
-              <div className="ligne-resume">
+              <div className="bilan-ligne rendu saillant">
                 <span>Monnaie à rendre</span>
-                <strong style={{ color: 'var(--succes)', fontSize: 15 }}>{montant(monnaie)}</strong>
+                <strong>{montant(monnaie)}</strong>
               </div>
             ) : null}
             {reste > 0 && panier.length > 0 ? (
-              <div className="ligne-resume">
+              <div className="bilan-ligne credit saillant">
                 <span>Reste à payer (crédit)</span>
-                <strong style={{ color: 'var(--attention)', fontSize: 15 }}>{montant(reste)}</strong>
+                <strong>{montant(reste)}</strong>
               </div>
             ) : null}
+          </div>
 
-            {action.erreur ? <Bandeau ton="danger">{action.erreur.message}</Bandeau> : null}
-
+          <div className="panneau-corps">
+            {action.erreur ? (
+              <div style={{ marginBottom: 10 }}>
+                <Bandeau ton="danger">{action.erreur.message}</Bandeau>
+              </div>
+            ) : null}
             <Bouton
               variante="principal"
               pleine
@@ -471,7 +709,7 @@ function Comptoir() {
               enCours={action.enCours}
               onClick={finaliser}
             >
-              Finaliser la vente
+              Encaisser <span className="raccourci">F9</span>
             </Bouton>
           </div>
         </aside>
@@ -479,18 +717,94 @@ function Comptoir() {
 
       {choixClient ? (
         <ChoixClient
-          clients={clients.donnees ?? []}
           onChoisir={(id) => {
             setClientId(id)
             setChoixClient(false)
           }}
           onFermer={() => setChoixClient(false)}
-          onCree={() => clients.recharger()}
         />
       ) : null}
 
-      {ticket ? <Ticket vente={ticket} onFermer={() => setTicket(null)} /> : null}
+      {saisieRemise ? (
+        <SaisieRemise
+          panier={panier}
+          onFermer={() => setSaisieRemise(false)}
+          onAppliquer={(remises) => {
+            setPanier((p) => p.map((l) => ({ ...l, remise: remises[l.produit.id] ?? 0 })))
+            setSaisieRemise(false)
+          }}
+        />
+      ) : null}
+
+      {ticket ? (
+        <RecapitulatifVente
+          vente={ticket}
+          pharmacie={session.pharmacie}
+          formatDefaut={formatDefaut}
+          onImprimer={(format) => imprimerVente(ticket, format)}
+          onFermer={() => {
+            setTicket(null)
+            champRecherche.current?.focus()
+          }}
+        />
+      ) : null}
     </>
+  )
+}
+
+// ===========================================================================
+// Remise par ligne
+// ===========================================================================
+
+function SaisieRemise({
+  panier,
+  onFermer,
+  onAppliquer
+}: {
+  panier: LignePanier[]
+  onFermer: () => void
+  onAppliquer: (remises: Record<number, number>) => void
+}) {
+  const [remises, setRemises] = useState<Record<number, number>>(
+    Object.fromEntries(panier.map((l) => [l.produit.id, l.remise]))
+  )
+
+  const totalRemise = Object.values(remises).reduce((s, v) => s + v, 0)
+  const brut = panier.reduce((s, l) => s + l.produit.prix_vente * l.quantite, 0)
+  const excessive = panier.some((l) => (remises[l.produit.id] ?? 0) > l.produit.prix_vente * l.quantite)
+
+  return (
+    <Modale
+      titre="Appliquer une remise"
+      description="La remise se saisit ligne par ligne, en valeur."
+      onFermer={onFermer}
+      pied={
+        <>
+          <span className="a-gauche" style={{ fontSize: 12.5, color: 'var(--texte-attenue)' }}>
+            Remise totale : <strong>{montant(totalRemise)}</strong> sur {montant(brut)}
+          </span>
+          <Bouton onClick={onFermer}>Annuler</Bouton>
+          <Bouton variante="principal" disabled={excessive} onClick={() => onAppliquer(remises)}>
+            Appliquer
+          </Bouton>
+        </>
+      }
+    >
+      <div className="panneau-corps pile">
+        {excessive ? (
+          <Bandeau ton="danger">Une remise ne peut pas dépasser le montant de sa ligne.</Bandeau>
+        ) : null}
+        {panier.map((l) => (
+          <ChampMontant
+            key={l.produit.id}
+            libelle={`${l.produit.nom_commercial} ${l.produit.dosage ?? ''}`}
+            aide={`${l.quantite} × ${montant(l.produit.prix_vente)} = ${montant(l.produit.prix_vente * l.quantite)}`}
+            valeur={remises[l.produit.id] ?? 0}
+            onChangeValeur={(v) => setRemises((r) => ({ ...r, [l.produit.id]: v }))}
+          />
+        ))}
+      </div>
+    </Modale>
   )
 }
 
@@ -499,15 +813,11 @@ function Comptoir() {
 // ===========================================================================
 
 function ChoixClient({
-  clients,
   onChoisir,
-  onFermer,
-  onCree
+  onFermer
 }: {
-  clients: Client[]
   onChoisir: (id: number) => void
   onFermer: () => void
-  onCree: () => void
 }) {
   const session = useSession()
   const action = useAction()
@@ -515,36 +825,38 @@ function ChoixClient({
   const [creation, setCreation] = useState(false)
   const [nom, setNom] = useState('')
   const [telephone, setTelephone] = useState('')
+  const [plafond, setPlafond] = useState(0)
 
-  const filtres = clients.filter(
-    (c) =>
-      c.nom.toLowerCase().includes(recherche.toLowerCase()) ||
-      (c.telephone ?? '').includes(recherche)
-  )
+  const clients = useRequete<Client[]>('clients.lister', { recherche: recherche.trim() || undefined })
+  const liste = clients.donnees ?? []
 
   async function creer(): Promise<void> {
     const id = await action.executer<number>('clients.enregistrer', {
       id: null,
-      donnees: { nom: nom.trim(), telephone: telephone.trim() || null }
+      donnees: { nom: nom.trim(), telephone: telephone.trim() || null, plafondCredit: plafond }
     })
-    if (id) {
-      onCree()
-      onChoisir(id)
-    }
+    if (id) onChoisir(id)
   }
 
   return (
     <Modale
-      titre={creation ? 'Nouveau client' : 'Associer un client'}
+      titre={creation ? 'Nouveau client' : 'Compte client'}
       description={
-        creation ? undefined : 'Le client est facultatif : une vente au comptoir n’en exige pas.'
+        creation
+          ? 'Le plafond détermine le crédit que ce client pourra obtenir.'
+          : 'Le client est facultatif : une vente au comptoir n’en exige pas.'
       }
       onFermer={onFermer}
       pied={
         creation ? (
           <>
             <Bouton onClick={() => setCreation(false)}>Retour</Bouton>
-            <Bouton variante="principal" disabled={nom.trim().length < 2} enCours={action.enCours} onClick={creer}>
+            <Bouton
+              variante="principal"
+              disabled={nom.trim().length < 2}
+              enCours={action.enCours}
+              onClick={creer}
+            >
               Créer et associer
             </Bouton>
           </>
@@ -560,29 +872,47 @@ function ChoixClient({
           {action.erreur ? <Bandeau ton="danger">{action.erreur.message}</Bandeau> : null}
           <Champ libelle="Nom" obligatoire value={nom} onChange={(e) => setNom(e.target.value)} autoFocus />
           <Champ libelle="Téléphone" value={telephone} onChange={(e) => setTelephone(e.target.value)} />
+          <ChampMontant
+            libelle="Plafond de crédit"
+            valeur={plafond}
+            onChangeValeur={setPlafond}
+            aide="Laissez à zéro pour ne pas autoriser de crédit plafonné."
+          />
         </div>
       ) : (
         <>
           <div className="tableau-outils">
-            <RechercheTableau valeur={recherche} onChange={setRecherche} placeholder="Nom ou téléphone…" largeur={330} />
+            <RechercheTableau
+              valeur={recherche}
+              onChange={setRecherche}
+              placeholder="Nom ou téléphone…"
+              largeur={330}
+            />
           </div>
-          {filtres.length === 0 ? (
-            <EtatVide icone="client" titre={clients.length ? 'Aucun client trouvé' : 'Aucun client enregistré'}>
-              {clients.length
+          {clients.chargement && !clients.donnees ? (
+            <Chargement />
+          ) : liste.length === 0 ? (
+            <EtatVide icone="client" titre={recherche ? 'Aucun client trouvé' : 'Aucun client enregistré'}>
+              {recherche
                 ? 'Modifiez votre recherche ou créez un nouveau client.'
-                : 'Les clients enregistrés permettent de suivre un historique et d’accorder du crédit.'}
+                : 'Un compte client permet de suivre un historique et d’accorder du crédit.'}
             </EtatVide>
           ) : (
-            <div style={{ maxHeight: 340, overflowY: 'auto' }}>
-              {filtres.map((c) => (
+            <div style={{ maxHeight: 360, overflowY: 'auto' }}>
+              {liste.map((c) => (
                 <button key={c.id} className="produit-ligne" onClick={() => onChoisir(c.id)}>
                   <span className="nom">
                     <strong>{c.nom}</strong>
-                    <span>{c.telephone ?? 'Sans téléphone'}</span>
+                    <span>
+                      {c.telephone ?? 'Sans téléphone'}
+                      {c.plafond_credit > 0 ? ` · plafond ${montant(c.plafond_credit)}` : ''}
+                    </span>
                   </span>
                   {(c.solde_du ?? 0) > 0 ? (
                     <Etiquette ton="attention">{montant(c.solde_du)} dû</Etiquette>
-                  ) : null}
+                  ) : (
+                    <Etiquette ton="succes">À jour</Etiquette>
+                  )}
                 </button>
               ))}
             </div>
@@ -594,36 +924,100 @@ function ChoixClient({
 }
 
 // ===========================================================================
-// Ticket de vente
+// Récapitulatif après encaissement
 // ===========================================================================
 
-function Ticket({ vente, onFermer }: { vente: VenteDetail; onFermer: () => void }) {
+function RecapitulatifVente({
+  vente,
+  pharmacie,
+  formatDefaut,
+  onImprimer,
+  onFermer
+}: {
+  vente: VenteDetail
+  pharmacie: Pharmacie
+  formatDefaut: FormatImpression
+  onImprimer: (format: FormatImpression) => void
+  onFermer: () => void
+}) {
+  const [format, setFormat] = useState<FormatImpression>(formatDefaut)
+  const rendu = vente.monnaie_rendue
+  const credit = vente.reste_a_payer
+
+  // La touche Entrée enchaîne sur la vente suivante : au comptoir, on ne
+  // s'arrête pas pour cliquer.
+  useEffect(() => {
+    const gerer = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        onFermer()
+      }
+    }
+    window.addEventListener('keydown', gerer)
+    return () => window.removeEventListener('keydown', gerer)
+  }, [onFermer])
+
   return (
     <Modale
-      titre="Vente enregistrée"
-      description={`${vente.reference} · ${heure(vente.at)}`}
+      titre={`Vente ${vente.reference} enregistrée`}
+      description={`${heure(vente.at)} · ${vente.utilisateur ?? ''}${pharmacie.ville ? ` · ${pharmacie.ville}` : ''}`}
       onFermer={onFermer}
       pied={
         <>
-          <Bouton icone="imprimer" onClick={() => window.print()}>
-            Imprimer le ticket
-          </Bouton>
+          <div className="a-gauche rangee" style={{ gap: 6 }}>
+            <select
+              value={format}
+              onChange={(e) => setFormat(e.target.value as FormatImpression)}
+              aria-label="Format d’impression"
+              style={{
+                height: 32,
+                padding: '0 8px',
+                border: '1px solid var(--bordure-nette)',
+                borderRadius: 4,
+                fontSize: 12.5
+              }}
+            >
+              {FORMATS.map((f) => (
+                <option key={f.valeur} value={f.valeur}>
+                  {f.libelle}
+                </option>
+              ))}
+            </select>
+            <Bouton icone="imprimer" onClick={() => onImprimer(format)}>
+              Imprimer
+            </Bouton>
+          </div>
           <Bouton variante="principal" icone="plus" onClick={onFermer}>
-            Nouvelle vente
+            Vente suivante <span className="raccourci">Entrée</span>
           </Bouton>
         </>
       }
     >
       <div className="panneau-corps">
-        {vente.monnaie_rendue > 0 ? (
-          <div style={{ marginBottom: 12 }}>
-            <Bandeau ton="succes" titre={`Monnaie à rendre : ${montant(vente.monnaie_rendue)}`} />
+        {rendu > 0 ? (
+          <div
+            style={{
+              padding: '14px 16px',
+              marginBottom: 12,
+              borderRadius: 6,
+              background: 'var(--succes-fond)',
+              display: 'flex',
+              alignItems: 'baseline',
+              justifyContent: 'space-between'
+            }}
+          >
+            <span style={{ color: 'var(--succes)', fontWeight: 600 }}>Monnaie à rendre</span>
+            <strong style={{ color: 'var(--succes)', fontSize: 28, fontVariantNumeric: 'tabular-nums' }}>
+              {montant(rendu)}
+            </strong>
           </div>
         ) : null}
-        {vente.reste_a_payer > 0 ? (
+
+        {credit > 0 ? (
           <div style={{ marginBottom: 12 }}>
-            <Bandeau ton="attention" titre={`Crédit accordé : ${montant(vente.reste_a_payer)}`}>
-              Cette somme est enregistrée comme créance sur le compte du client.
+            <Bandeau ton="attention" titre={`Crédit accordé : ${montant(credit)}`}>
+              La somme est portée au compte de {vente.client_nom ?? 'ce client'} et apparaîtra sur son
+              relevé.
             </Bandeau>
           </div>
         ) : null}
@@ -651,16 +1045,8 @@ function Ticket({ vente, onFermer }: { vente: VenteDetail; onFermer: () => void 
 
         <div style={{ marginTop: 14 }}>
           <dl className="liste-definitions">
-            <dt>Sous-total</dt>
-            <dd>{montant(vente.sous_total)}</dd>
-            {vente.remise > 0 ? (
-              <>
-                <dt>Remise</dt>
-                <dd>− {montant(vente.remise)}</dd>
-              </>
-            ) : null}
             <dt>Total</dt>
-            <dd style={{ fontWeight: 700, color: 'var(--accent-fonce)' }}>{montant(vente.total)}</dd>
+            <dd style={{ fontWeight: 700 }}>{montant(vente.total)}</dd>
             {vente.paiements.map((p, i) => (
               <Fragment key={i}>
                 <dt>{modePaiement(p.mode)}</dt>
@@ -681,6 +1067,7 @@ function Ticket({ vente, onFermer }: { vente: VenteDetail; onFermer: () => void 
 function Historique({ destination }: { destination: Destination }) {
   const session = useSession()
   const notifications = useNotifications()
+  const { imprimer } = useImpression()
   const [recherche, setRecherche] = useState('')
   const [periode, setPeriode] = useState<'jour' | 'semaine' | 'mois' | 'tout'>('jour')
   const [detail, setDetail] = useState<number | null>(
@@ -701,6 +1088,52 @@ function Historique({ destination }: { destination: Destination }) {
     recherche: recherche.trim() || undefined,
     limite: 300
   })
+  const reglages = useRequete<Reglages>('app.reglages')
+  const formatDefaut: FormatImpression = reglages.donnees?.formatImpressionDefaut ?? 'ticket'
+
+  // Une réimpression porte toujours la mention « duplicata » : un second
+  // exemplaire ne doit jamais pouvoir passer pour l'original.
+  const reimprimer = useCallback(
+    async (venteId: number, format: FormatImpression = formatDefaut) => {
+      const vente = await appeler<VenteDetail>('ventes.detail', { id: venteId })
+      imprimer(
+        format === 'ticket' || format === 'ticket57' ? (
+          <TicketDeCaisse
+            vente={vente}
+            pharmacie={session.pharmacie}
+            clientNom={vente.client_nom ?? null}
+            pied={reglages.donnees?.piedTicket}
+            copie="DUPLICATA"
+          />
+        ) : (
+          <FactureVente
+            vente={vente}
+            pharmacie={session.pharmacie}
+            clientNom={vente.client_nom ?? null}
+            duplicata
+          />
+        ),
+        format
+      )
+    },
+    [imprimer, session.pharmacie, formatDefaut, reglages.donnees]
+  )
+
+  useFonctions('ventes-historique', [
+    { touche: 'F5', libelle: 'Actualiser', action: () => ventes.recharger() },
+    {
+      touche: 'F12',
+      libelle: 'Réimprimer la vente sélectionnée',
+      action: () => detail !== null && reimprimer(detail),
+      disponible: detail !== null
+    },
+    {
+      touche: 'F8',
+      libelle: 'Réimprimer en facture A4',
+      action: () => detail !== null && reimprimer(detail, 'a4'),
+      disponible: detail !== null
+    }
+  ])
 
   return (
     <>
@@ -710,15 +1143,14 @@ function Historique({ destination }: { destination: Destination }) {
             cle: 'reference',
             entete: 'Référence',
             largeur: '130px',
-            triSur: (v: Vente) => v.reference,
-            rendu: (v: Vente) => (
-              <CellulePrincipale titre={v.reference} sous={dateCourte(v.at)} />
-            )
+            triSur: (v: Vente) => v.at,
+            rendu: (v: Vente) => <CellulePrincipale titre={v.reference} sous={dateCourte(v.at)} />
           },
           {
             cle: 'client',
             entete: 'Client',
-            rendu: (v: Vente) => v.client_nom ?? <span style={{ color: 'var(--texte-faible)' }}>Client de passage</span>,
+            rendu: (v: Vente) =>
+              v.client_nom ?? <span style={{ color: 'var(--texte-faible)' }}>Client de passage</span>,
             triSur: (v: Vente) => v.client_nom ?? ''
           },
           {
@@ -760,6 +1192,25 @@ function Historique({ destination }: { destination: Destination }) {
             largeur: '130px',
             rendu: (v: Vente) => <span style={{ color: 'var(--texte-faible)' }}>{depuis(v.at)}</span>,
             triSur: (v: Vente) => v.at
+          },
+          {
+            cle: 'actions',
+            entete: '',
+            actions: true,
+            largeur: '110px',
+            rendu: (v: Vente) => (
+              <Bouton
+                compact
+                variante="discret"
+                icone="imprimer"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  reimprimer(v.id)
+                }}
+              >
+                Ticket
+              </Bouton>
+            )
           }
         ]}
         lignes={ventes.donnees}
@@ -768,9 +1219,14 @@ function Historique({ destination }: { destination: Destination }) {
         erreur={ventes.erreur}
         onReessayer={ventes.recharger}
         onLigneClic={(v) => setDetail(v.id)}
+        ligneSelectionnee={(v) => v.id === detail}
         parPage={25}
         filtreActif={recherche.trim().length > 0}
-        resume={(n) => `${n} vente${n > 1 ? 's' : ''}`}
+        resume={(n) =>
+          `${n} vente${n > 1 ? 's' : ''} · ${montant(
+            (ventes.donnees ?? []).filter((v) => v.statut === 'finalisee').reduce((s, v) => s + v.total, 0)
+          )}`
+        }
         outils={
           <>
             <RechercheTableau valeur={recherche} onChange={setRecherche} placeholder="Référence ou client…" />
@@ -788,7 +1244,7 @@ function Historique({ destination }: { destination: Destination }) {
         }
         vide={
           <EtatVide icone="vente" titre="Aucune vente sur cette période">
-            Les ventes finalisées apparaîtront ici avec leur détail par lot.
+            Les ventes finalisées apparaîtront ici avec le détail des lots servis.
           </EtatVide>
         }
         videApresFiltre={
@@ -802,6 +1258,8 @@ function Historique({ destination }: { destination: Destination }) {
         <DetailVente
           id={detail}
           onFermer={() => setDetail(null)}
+          formatDefaut={formatDefaut}
+          onImprimer={(format) => reimprimer(detail, format)}
           onAnnulee={() => {
             setDetail(null)
             ventes.recharger()
@@ -817,11 +1275,15 @@ function Historique({ destination }: { destination: Destination }) {
 function DetailVente({
   id,
   onFermer,
+  formatDefaut,
+  onImprimer,
   onAnnulee,
   peutAnnuler
 }: {
   id: number
   onFermer: () => void
+  formatDefaut: FormatImpression
+  onImprimer: (format: FormatImpression) => void
   onAnnulee: () => void
   peutAnnuler: boolean
 }) {
@@ -829,6 +1291,7 @@ function DetailVente({
   const action = useAction()
   const [motif, setMotif] = useState('')
   const [annulation, setAnnulation] = useState(false)
+  const [format, setFormat] = useState<FormatImpression>(formatDefaut)
 
   async function annuler(): Promise<void> {
     const resultat = await action.executer('ventes.annuler', { id, motif: motif.trim() })
@@ -839,7 +1302,7 @@ function DetailVente({
     return (
       <Modale titre="Détail de la vente" onFermer={onFermer}>
         <div className="panneau-corps">
-          {vente.erreur ? <Bandeau ton="danger">{vente.erreur.message}</Bandeau> : <Chargeur />}
+          {vente.erreur ? <Bandeau ton="danger">{vente.erreur.message}</Bandeau> : <Chargement />}
         </div>
       </Modale>
     )
@@ -868,7 +1331,7 @@ function DetailVente({
       >
         <div className="panneau-corps pile">
           <Bandeau ton="attention" titre="Cette opération est définitive">
-            Le stock de {v.lignes.length} ligne(s) sera restitué dans les lots d’origine, et la vente
+            Le stock de {v.lignes.length} ligne(s) sera restitué dans les lots d’origine. La vente
             restera visible dans l’historique avec son motif d’annulation.
           </Bandeau>
           {action.erreur ? <Bandeau ton="danger">{action.erreur.message}</Bandeau> : null}
@@ -897,8 +1360,26 @@ function DetailVente({
               Annuler cette vente
             </Bouton>
           ) : null}
-          <Bouton icone="imprimer" onClick={() => window.print()}>
-            Imprimer
+          <select
+            value={format}
+            onChange={(e) => setFormat(e.target.value as FormatImpression)}
+            aria-label="Format de réimpression"
+            style={{
+              height: 32,
+              padding: '0 8px',
+              border: '1px solid var(--bordure-nette)',
+              borderRadius: 4,
+              fontSize: 12.5
+            }}
+          >
+            {FORMATS.map((f) => (
+              <option key={f.valeur} value={f.valeur}>
+                {f.libelle}
+              </option>
+            ))}
+          </select>
+          <Bouton icone="imprimer" onClick={() => onImprimer(format)}>
+            Réimprimer
           </Bouton>
           <Bouton variante="principal" onClick={onFermer}>
             Fermer
@@ -910,7 +1391,7 @@ function DetailVente({
         {v.statut === 'annulee' ? (
           <div style={{ marginBottom: 12 }}>
             <Bandeau ton="danger" titre="Vente annulée">
-              {v.note ?? 'Le stock a été restitué.'}
+              Le stock a été restitué dans ses lots d’origine.
             </Bandeau>
           </div>
         ) : null}
@@ -940,7 +1421,7 @@ function DetailVente({
 
         <div style={{ marginTop: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
           <div>
-            <div className="formulaire-titre">Paiements</div>
+            <div className="formulaire-titre">Règlements</div>
             <dl className="liste-definitions">
               {v.paiements.map((p, i) => (
                 <Fragment key={i}>
@@ -976,14 +1457,5 @@ function DetailVente({
         </div>
       </div>
     </Modale>
-  )
-}
-
-function Chargeur() {
-  return (
-    <div className="chargement">
-      <span className="rotateur" />
-      Chargement…
-    </div>
   )
 }

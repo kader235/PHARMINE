@@ -12,10 +12,12 @@ import {
   Etiquette,
   EtatVide,
   Indicateur,
+  Liste,
   Panneau,
   Segments
 } from '../ui/Composants'
 import Tableau, { CellulePrincipale } from '../ui/Tableau'
+import { FORMATS } from '../ui/Impression'
 import { dateCourte, depuis, nombre } from '../lib/format'
 
 interface Parametre {
@@ -37,11 +39,23 @@ interface Sauvegarde {
   message: string | null
 }
 
+/**
+ * Réglages dont les valeurs sont énumérées : on propose une liste plutôt qu'un
+ * champ libre, où une faute de frappe casserait silencieusement l'impression.
+ */
+const CHOIX: Record<string, { valeur: string; libelle: string }[]> = {
+  'impression.format_defaut': FORMATS.map((f) => ({
+    valeur: f.valeur,
+    libelle: `${f.libelle} — ${f.description}`
+  }))
+}
+
 const CATEGORIES: Record<string, string> = {
   general: 'Général',
   stock: 'Stock et péremptions',
   ventes: 'Ventes',
   caisse: 'Caisse',
+  impression: 'Impression et documents',
   securite: 'Sécurité et sauvegardes'
 }
 
@@ -245,7 +259,17 @@ function Regles({ modifiable }: { modifiable: boolean }) {
         <Panneau key={categorie} titre={CATEGORIES[categorie] ?? categorie}>
           <div className="pile" style={{ gap: 14 }}>
             {liste.map((p) =>
-              p.type === 'booleen' ? (
+              CHOIX[p.cle] ? (
+                <Liste
+                  key={p.cle}
+                  libelle={p.libelle}
+                  aide={p.description ?? undefined}
+                  options={CHOIX[p.cle]!.map((c) => ({ valeur: c.valeur, libelle: c.libelle }))}
+                  value={valeur(p)}
+                  disabled={!modifiable}
+                  onChange={(e) => setModifs({ ...modifs, [p.cle]: e.target.value })}
+                />
+              ) : p.type === 'booleen' ? (
                 <Case
                   key={p.cle}
                   libelle={p.libelle}

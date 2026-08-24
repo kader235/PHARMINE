@@ -1,6 +1,7 @@
 import type { TableauDeBord as DonneesTableau } from '@shared/types'
 import { useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
+import { useFonctions } from '../app/fonctions'
 import { useNavigation } from '../app/navigation'
 import Icone, { type NomIcone } from '../ui/Icone'
 import {
@@ -20,6 +21,29 @@ export default function TableauDeBord() {
   const session = useSession()
   const naviguer = useNavigation()
   const { donnees, chargement, erreur, recharger } = useRequete<DonneesTableau>('pilotage.tableauDeBord')
+
+  useFonctions('tableau-bord', [
+    {
+      touche: 'F2',
+      libelle: 'Nouvelle vente',
+      action: () => naviguer({ module: 'ventes' }),
+      disponible: session.peut('ventes.creer'),
+      saillante: true
+    },
+    {
+      touche: 'F3',
+      libelle: 'Enregistrer une réception',
+      action: () => naviguer({ module: 'achats', filtre: 'nouveau' }),
+      disponible: session.peut('achats.valider')
+    },
+    {
+      touche: 'F4',
+      libelle: 'Ajouter un produit',
+      action: () => naviguer({ module: 'produits', filtre: 'nouveau' }),
+      disponible: session.peut('produits.creer')
+    },
+    { touche: 'F5', libelle: 'Actualiser', action: recharger }
+  ])
 
   if (erreur) return <ErreurEcran erreur={erreur} onReessayer={recharger} />
   if (!donnees) return <Chargement libelle="Préparation du tableau de bord…" />

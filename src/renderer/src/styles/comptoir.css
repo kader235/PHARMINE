@@ -1,0 +1,309 @@
+/* =============================================================================
+   PHARMINA — Chrome de l'application et écran de vente
+
+   Barre de touches de fonction et barre d'état : les logiciels d'officine se
+   pilotent au clavier, le vendeur ne quitte pas le comptoir pour attraper la
+   souris. Les actions du module courant restent donc visibles avec leur
+   touche, et l'état de la caisse ne disparaît jamais de l'écran.
+   ============================================================================= */
+
+.barre-fonctions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: stretch;
+  gap: 1px;
+  height: 34px;
+  padding: 0 6px;
+  background: var(--nav-fond);
+  border-top: 1px solid var(--nav-bordure);
+  overflow-x: auto;
+}
+
+.touche-fonction {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 11px;
+  border: 0;
+  background: transparent;
+  color: var(--nav-texte);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.touche-fonction:hover:not(:disabled) {
+  background: var(--nav-survol);
+  color: var(--nav-texte-fort);
+}
+
+.touche-fonction:disabled {
+  opacity: 0.38;
+}
+
+.touche-fonction kbd {
+  display: inline-block;
+  min-width: 26px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #0d2529;
+  color: #7fb6b2;
+  font: 600 10.5px var(--police);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.touche-fonction.saillante {
+  color: var(--nav-texte-fort);
+  font-weight: 600;
+}
+
+.touche-fonction.saillante kbd {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* --- Barre d'état ----------------------------------------------------------- */
+
+.barre-etat {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 12px;
+  background: #0f272c;
+  color: #8fb0ae;
+  font-size: 11.5px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.etat-bloc {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 12px;
+  border-right: 1px solid #1d3d42;
+}
+
+.etat-bloc:first-child {
+  padding-left: 0;
+}
+
+.etat-bloc.a-droite {
+  margin-left: auto;
+  border-right: 0;
+  border-left: 1px solid #1d3d42;
+}
+
+.etat-bloc:last-child {
+  border-right: 0;
+}
+
+.etat-bloc strong {
+  color: #dcefec;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.etat-pastille {
+  width: 7px;
+  height: 7px;
+  flex: 0 0 7px;
+  border-radius: 50%;
+}
+
+.etat-pastille.ouverte {
+  background: #3fbe86;
+  box-shadow: 0 0 0 3px rgba(63, 190, 134, 0.18);
+}
+
+.etat-pastille.fermee {
+  background: #d9705f;
+  box-shadow: 0 0 0 3px rgba(217, 112, 95, 0.18);
+}
+
+/* =============================================================================
+   Comptoir : règlement
+   ============================================================================= */
+
+.reglement {
+  border-top: 1px solid var(--bordure);
+  padding: 11px 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.reglement-titre {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--texte-attenue);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.reglement-ligne {
+  display: grid;
+  grid-template-columns: 1fr 116px 28px;
+  align-items: center;
+  gap: 6px;
+}
+
+.reglement-ligne select,
+.reglement-ligne input {
+  height: 30px;
+  border: 1px solid var(--bordure-nette);
+  border-radius: var(--rayon);
+  background: var(--surface);
+  font-size: 12.5px;
+  outline: 0;
+}
+
+.reglement-ligne select {
+  padding: 0 6px;
+}
+
+.reglement-ligne input {
+  padding: 0 8px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.reglement-ligne select:focus,
+.reglement-ligne input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-clair);
+}
+
+.appoints {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.appoint {
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface-attenuee);
+  color: var(--texte-attenue);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.appoint:hover {
+  background: var(--surface-active);
+  border-color: var(--accent-bordure);
+  color: var(--accent-fonce);
+}
+
+.bilan {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--bordure-legere);
+  background: var(--surface-attenuee);
+}
+
+.bilan-ligne {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 12.5px;
+  color: var(--texte-attenue);
+}
+
+.bilan-ligne strong {
+  color: var(--texte);
+  font-variant-numeric: tabular-nums;
+}
+
+.bilan-ligne.saillant strong {
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.bilan-ligne.rendu strong {
+  color: var(--succes);
+}
+
+.bilan-ligne.credit strong {
+  color: var(--attention);
+}
+
+/* --- Fiche du compte client, au comptoir ------------------------------------ */
+
+.compte-client {
+  display: grid;
+  gap: 5px;
+  padding: 9px 11px;
+  border: 1px solid var(--accent-bordure);
+  border-radius: var(--rayon);
+  background: var(--accent-clair);
+}
+
+.compte-client.alerte {
+  border-color: #e3c48f;
+  background: var(--attention-fond);
+}
+
+.compte-client-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.compte-client-entete strong {
+  font-size: 12.5px;
+  color: var(--accent-fonce);
+}
+
+.compte-client.alerte .compte-client-entete strong {
+  color: var(--attention);
+}
+
+.compte-chiffre {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: 11.5px;
+  color: #2c6560;
+}
+
+.compte-client.alerte .compte-chiffre {
+  color: #7d5207;
+}
+
+.compte-chiffre b {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Total à payer, très visible : c'est le chiffre que le vendeur annonce. */
+.total-a-payer {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 12px;
+  border-top: 1px solid var(--bordure);
+  background: #f2f8f7;
+}
+
+.total-a-payer span {
+  color: var(--texte-attenue);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.total-a-payer strong {
+  color: var(--accent-fonce);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}

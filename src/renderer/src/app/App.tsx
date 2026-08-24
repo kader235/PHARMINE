@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import type { Pharmacie, SessionActive } from '@shared/types'
 import { appeler } from '../lib/api'
 import { FournisseurNotifications } from '../ui/Notifications'
+import { FournisseurImpression } from '../ui/Impression'
 import { Chargement, ErreurEcran } from '../ui/Composants'
 import { FournisseurSession } from './Session'
 import Connexion from './Connexion'
@@ -57,7 +58,8 @@ export default function App() {
   }
 
   return (
-    <FournisseurNotifications>
+    <FournisseurImpression>
+      <FournisseurNotifications>
       {etat.besoinConfiguration ? (
         <Configuration onTermine={charger} />
       ) : session ? (
@@ -67,6 +69,7 @@ export default function App() {
       ) : (
         <Connexion nomPharmacie={etat.pharmacie?.nom ?? ''} onConnecte={setSession} />
       )}
-    </FournisseurNotifications>
+      </FournisseurNotifications>
+    </FournisseurImpression>
   )
 }

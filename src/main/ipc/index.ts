@@ -1,4 +1,5 @@
-import { ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { dialog, ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { writeFileSync } from 'node:fs'
 import { ErreurMetier, journaliser } from '../services/commun'
 import * as auth from '../services/auth'
 import * as produits from '../services/produits'
@@ -85,6 +86,7 @@ const CANAUX: Record<string, Canal> = {
     sessionId: ctx.sessionId,
     pharmacie: auth.pharmacie()
   })),
+  'app.reglages': connecte(() => configuration.reglagesInterface()),
   'auth.changerMotDePasse': connecte((p: { ancien: string | null; nouveau: string }, ctx) =>
     auth.changerMotDePasse(ctx.utilisateurId, p.ancien, p.nouveau)
   ),
@@ -96,6 +98,7 @@ const CANAUX: Record<string, Canal> = {
   // --- Produits --------------------------------------------------------------
   'produits.lister': c('produits.voir', (p) => produits.listerProduits(p ?? {})),
   'produits.rechercheRapide': c('produits.voir', (p: { saisie: string }) => produits.rechercheRapide(p.saisie)),
+  'produits.parCodeBarres': c('produits.voir', (p: { code: string }) => produits.parCodeBarres(p.code)),
   'produits.detail': c('produits.voir', (p: { id: number }) => produits.produit(p.id)),
   'produits.statistiques': c('produits.voir', (p: { id: number }) => produits.statistiquesProduit(p.id)),
   'produits.referentiels': c('produits.voir', () => produits.referentiels()),
@@ -174,6 +177,10 @@ const CANAUX: Record<string, Canal> = {
   ),
   'clients.archiver': c('clients.gerer', (p: { id: number; archiver: boolean }, ctx) =>
     partenaires.archiverClient(p.id, p.archiver, ctx.utilisateurId)
+  ),
+  'clients.apercuCompte': c('clients.voir', (p: { id: number }) => partenaires.apercuCompte(p.id)),
+  'clients.releve': c('clients.voir', (p: { id: number; depuis?: string }) =>
+    partenaires.releveCompte(p.id, p.depuis)
   ),
   'clients.reglement': c(
     'clients.reglement',
@@ -258,7 +265,41 @@ const CANAUX: Record<string, Canal> = {
   ),
   'sauvegardes.controler': c('sauvegardes.restaurer', (p: { fichier: string }) =>
     configuration.controlerSauvegarde(p.fichier)
+  ),
+
+  // --- Export de fichiers ----------------------------------------------------
+  'exports.enregistrer': c('rapports.exporter', (p: { nomFichier: string; contenu: string }, ctx) =>
+    exporter(p.nomFichier, p.contenu, ctx.utilisateurId)
   )
+}
+
+/**
+ * Enregistre un fichier choisi par l'utilisateur. L'interface ne peut pas
+ * ecrire sur le disque : elle passe par ici, et l'utilisateur choisit toujours
+ * l'emplacement lui-meme.
+ */
+function exporter(nomFichier: string, contenu: string, utilisateurId: number): { fichier: string } | null {
+  const choix = dialog.showSaveDialogSync({
+    title: 'Enregistrer le fichier',
+    defaultPath: nomFichier,
+    filters: [
+      { name: 'Fichier CSV', extensions: ['csv'] },
+      { name: 'Tous les fichiers', extensions: ['*'] }
+    ]
+  })
+  if (!choix) return null
+
+  // BOM UTF-8 : sans lui, Excel affiche les accents de travers.
+  writeFileSync(choix, '﻿' + contenu, 'utf8')
+
+  journaliser({
+    utilisateurId,
+    action: 'Export',
+    entite: 'rapport',
+    resume: nomFichier
+  })
+
+  return { fichier: choix }
 }
 
 export function enregistrerCanaux(): void {

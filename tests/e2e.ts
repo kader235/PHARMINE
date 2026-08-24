@@ -22,7 +22,13 @@ import * as inventaire from '../src/main/services/inventaire'
 import * as finances from '../src/main/services/finances'
 import * as pilotage from '../src/main/services/pilotage'
 import * as alertes from '../src/main/services/alertes'
-import { aujourdhui, decalerJours } from '../src/main/services/commun'
+import {
+  aujourdhui,
+  debutDeJournee,
+  decalerJours,
+  finDeJournee,
+  maintenant
+} from '../src/main/services/commun'
 
 let reussis = 0
 let echoues = 0
@@ -215,6 +221,61 @@ try {
   )
 
   // ==========================================================================
+  titre('Bornes de journee et fuseau horaire')
+
+  // Les horodatages sont en UTC, mais un pharmacien raisonne en jours locaux.
+  // Sans conversion explicite, la fenetre du jour se decale du fuseau horaire
+  // et le chiffre d affaires tombe a zero des que les deux dates different.
+  const jour = aujourdhui()
+  const instant = maintenant()
+  verifier(
+    debutDeJournee(jour) <= instant && instant <= finDeJournee(jour),
+    'l instant present tombe dans les bornes du jour local',
+    { debut: debutDeJournee(jour), instant, fin: finDeJournee(jour) }
+  )
+  verifier(
+    debutDeJournee(jour) < finDeJournee(jour),
+    'le debut de journee precede la fin'
+  )
+  verifier(
+    finDeJournee(decalerJours(jour, -1)) < debutDeJournee(jour),
+    'deux journees consecutives ne se chevauchent pas'
+  )
+
+  titre('Lecture des codes-barres')
+
+  verifier(
+    produits.parCodeBarres('3400930000001')?.id === doliprane,
+    'un code-barres exact designe le bon produit'
+  )
+  verifier(produits.parCodeBarres('  3400930000001  ')?.id === doliprane, 'les espaces sont ignores')
+  verifier(
+    produits.parCodeBarres('03400930000001')?.id === doliprane,
+    'un zero de tete supplementaire est tolere'
+  )
+  const codeInterneDoliprane = produits.produit(doliprane)!.code_interne
+  verifier(
+    produits.parCodeBarres(codeInterneDoliprane)?.id === doliprane,
+    `le code interne (${codeInterneDoliprane}) est accepte comme code lu`
+  )
+  verifier(produits.parCodeBarres('0000000000000') === null, 'un code inconnu ne renvoie rien')
+  verifier(produits.parCodeBarres('') === null, 'un code vide ne renvoie rien')
+
+  titre('Parametres d impression')
+
+  const reglages = configuration.reglagesInterface()
+  verifier(
+    ['ticket', 'ticket57', 'a5', 'a4'].includes(reglages.formatImpressionDefaut),
+    'le format d impression par defaut est connu',
+    reglages.formatImpressionDefaut
+  )
+  verifier(reglages.piedTicket.length > 0, 'le pied de ticket a une valeur par defaut')
+  verifier(reglages.scanAjouteDirectement === true, 'le scan ajoute au panier par defaut')
+  verifier(
+    base().prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v === 3,
+    'la base est a la derniere version du schema'
+  )
+
   titre('Réception fournisseur et création des lots')
 
   const labo = partenaires.enregistrerFournisseur(

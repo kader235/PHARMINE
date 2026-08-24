@@ -41,6 +41,8 @@ export interface Pharmacie {
   pays: string | null
   telephone: string | null
   email: string | null
+  registre_commerce: string | null
+  numero_ordre: string | null
   devise: string
   devise_symbole: string
   devise_decimales: number
@@ -168,6 +170,33 @@ export interface Client {
   total_achats?: number
   solde_du?: number
   derniere_visite?: string | null
+}
+
+/** Situation d'un compte client, telle qu'affichée au comptoir. */
+export interface ApercuCompte {
+  clientId: number
+  nom: string
+  telephone: string | null
+  plafond: number
+  encours: number
+  /** null lorsqu'aucun plafond n'est fixé. */
+  disponible: number | null
+  nbVentes: number
+  totalAchats: number
+  derniereVisite: string | null
+  dernierReglement: string | null
+}
+
+/** Ligne de relevé de compte, avec son solde cumulé. */
+export interface LigneReleve {
+  at: string
+  type: 'vente' | 'reglement'
+  reference: string
+  libelle: string
+  debit: number
+  credit: number
+  solde: number
+  utilisateur: string | null
 }
 
 export interface LigneCommande {

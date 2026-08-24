@@ -1,8 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { Depense } from '@shared/types'
 import { useAction, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
+import { useFonctions } from '../app/fonctions'
+import { enregistrerCSV } from '../lib/export'
 import { useNotifications } from '../ui/Notifications'
+import { signalerCaisseModifiee } from '../lib/evenements'
 import {
   Bandeau,
   Bouton,
@@ -62,6 +65,49 @@ export default function Finances() {
 
   const s = synthese.donnees
 
+  const exporterDepenses = useCallback(async () => {
+    const lignes = (depenses.donnees ?? []).map((d) => [
+      d.reference,
+      d.date,
+      d.categorie ?? '',
+      d.libelle,
+      d.beneficiaire ?? '',
+      modePaiement(d.mode),
+      montant(d.montant, false),
+      d.utilisateur ?? ''
+    ])
+    const fichier = await enregistrerCSV(
+      `depenses-${depuis}-${jusqua}`,
+      ['Reference', 'Date', 'Categorie', 'Libelle', 'Beneficiaire', 'Mode', 'Montant', 'Enregistre par'],
+      lignes
+    )
+    if (fichier) notifications.succes('Export terminé', fichier)
+  }, [depenses.donnees, depuis, jusqua, notifications])
+
+  useFonctions('finances', [
+    {
+      touche: 'F2',
+      libelle: 'Enregistrer une dépense',
+      action: () => setSaisieDepense(true),
+      disponible: session.peut('depenses.creer'),
+      saillante: true
+    },
+    {
+      touche: 'F5',
+      libelle: 'Actualiser',
+      action: () => {
+        synthese.recharger()
+        depenses.recharger()
+      }
+    },
+    {
+      touche: 'F8',
+      libelle: 'Exporter les dépenses',
+      action: exporterDepenses,
+      disponible: session.peut('rapports.exporter') && (depenses.donnees?.length ?? 0) > 0
+    }
+  ])
+
   return (
     <>
       <EntetePage
@@ -79,6 +125,15 @@ export default function Finances() {
               ]}
               onChange={changerPeriode}
             />
+            {session.peut('rapports.exporter') ? (
+              <Bouton
+                icone="telecharger"
+                disabled={(depenses.donnees?.length ?? 0) === 0}
+                onClick={exporterDepenses}
+              >
+                Exporter
+              </Bouton>
+            ) : null}
             {session.peut('depenses.creer') ? (
               <Bouton variante="principal" icone="plus" onClick={() => setSaisieDepense(true)}>
                 Enregistrer une dépense
@@ -262,6 +317,7 @@ export default function Finances() {
             setSaisieDepense(false)
             depenses.recharger()
             synthese.recharger()
+            signalerCaisseModifiee()
             notifications.succes('Dépense enregistrée')
           }}
         />

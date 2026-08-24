@@ -19,6 +19,25 @@ export function decalerJours(date: string, jours: number): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
+/**
+ * Bornes UTC d'un jour civil local.
+ *
+ * Les horodatages sont stockés en UTC, mais un pharmacien raisonne en jours
+ * locaux : sa journée commence à minuit chez lui. Coller un « Z » sur une date
+ * civile revient à décaler la fenêtre du décalage horaire, et les ventes
+ * tombent alors hors du jour dès que l'heure locale et UTC ne coïncident plus.
+ * Ces deux fonctions convertissent explicitement, sans jamais mélanger les deux.
+ */
+export function debutDeJournee(jour: string): string {
+  // Sans « Z », JavaScript interprète la chaîne en heure locale : c'est
+  // exactement ce que l'on veut avant de repasser en UTC.
+  return new Date(`${jour}T00:00:00`).toISOString()
+}
+
+export function finDeJournee(jour: string): string {
+  return new Date(`${jour}T23:59:59.999`).toISOString()
+}
+
 /** Erreur métier : son message est destiné à l'utilisateur, pas au développeur. */
 export class ErreurMetier extends Error {
   constructor(

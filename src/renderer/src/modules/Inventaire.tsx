@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Inventaire as SessionInventaire, InventaireLigne } from '@shared/types'
 import { useAction, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
+import { useFonctions } from '../app/fonctions'
 import { useNotifications } from '../ui/Notifications'
 import {
   Bandeau,
@@ -29,6 +30,24 @@ export default function Inventaire() {
 
   const enCours = useRequete<SessionInventaire | null>('inventaire.enCours')
   const historique = useRequete<SessionInventaire[]>('inventaire.lister')
+
+  useFonctions('inventaire', [
+    {
+      touche: 'F2',
+      libelle: 'Ouvrir un inventaire',
+      action: () => setOuverture(true),
+      disponible: session.peut('inventaire.creer') && !enCours.donnees,
+      saillante: true
+    },
+    {
+      touche: 'F5',
+      libelle: 'Actualiser',
+      action: () => {
+        enCours.recharger()
+        historique.recharger()
+      }
+    }
+  ])
 
   function rafraichir(): void {
     enCours.recharger()

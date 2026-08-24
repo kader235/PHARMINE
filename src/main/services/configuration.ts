@@ -1,7 +1,15 @@
 import { readdirSync, statSync, unlinkSync } from 'node:fs'
 import { base, sauvegarder, transaction, verifierSauvegarde } from '../db'
 import type { Pharmacie } from '@shared/types'
-import { ErreurMetier, aujourdhui, journaliser, maintenant, parametreEntier } from './commun'
+import {
+  ErreurMetier,
+  aujourdhui,
+  journaliser,
+  maintenant,
+  parametre,
+  parametreBooleen,
+  parametreEntier
+} from './commun'
 import { creerUtilisateur, type DemandeUtilisateur } from './auth'
 
 export interface DemandeConfiguration {
@@ -253,6 +261,36 @@ export function statistiquesBase(): {
     mouvements: compte('mouvements_stock'),
     depuis: premiere.a,
     version: version.v
+  }
+}
+
+export interface ReglagesInterface {
+  formatImpressionDefaut: string
+  ticketAutomatique: boolean
+  piedTicket: string
+  copiesFacture: number
+  scanAjouteDirectement: boolean
+  avertirScanInconnu: boolean
+  remiseMaxPourcent: number
+  exigerCaisseOuverte: boolean
+}
+
+/**
+ * Reglages dont l'interface a besoin pour se comporter correctement au
+ * comptoir. Volontairement restreint et accessible a tout utilisateur
+ * connecte : un caissier n'a pas le droit de consulter les parametres, mais
+ * son ecran doit malgre tout savoir sur quel format imprimer.
+ */
+export function reglagesInterface(): ReglagesInterface {
+  return {
+    formatImpressionDefaut: parametre('impression.format_defaut') ?? 'ticket',
+    ticketAutomatique: parametreBooleen('impression.ticket_automatique', false),
+    piedTicket: parametre('impression.pied_ticket') ?? 'Merci de votre visite',
+    copiesFacture: parametreEntier('impression.copies_facture', 1),
+    scanAjouteDirectement: parametreBooleen('comptoir.scan_ajoute_directement', true),
+    avertirScanInconnu: parametreBooleen('comptoir.avertir_scan_inconnu', true),
+    remiseMaxPourcent: parametreEntier('ventes.remise_max_pourcent', 10),
+    exigerCaisseOuverte: parametreBooleen('caisse.exiger_ouverture', true)
   }
 }
 

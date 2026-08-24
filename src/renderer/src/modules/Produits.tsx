@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { Lot, MouvementStock, Page, ProduitEtat } from '@shared/types'
 import { useAction, useDifferee, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
+import { useFonctions } from '../app/fonctions'
 import type { Destination } from '../app/navigation'
 import { useNotifications } from '../ui/Notifications'
 import {
@@ -53,6 +54,22 @@ export default function Produits({ destination }: { destination: Destination }) 
   })
 
   const referentiels = useRequete<Referentiels>('produits.referentiels')
+
+  useFonctions('produits', [
+    {
+      touche: 'F2',
+      libelle: 'Nouveau produit',
+      action: () => setEdition({ produit: null }),
+      disponible: session.peut('produits.creer'),
+      saillante: true
+    },
+    { touche: 'F5', libelle: 'Actualiser', action: () => liste.recharger() },
+    {
+      touche: 'F7',
+      libelle: 'Voir les ruptures',
+      action: () => setFiltreEtat((f) => (f === 'rupture' ? 'tous' : 'rupture'))
+    }
+  ])
 
   return (
     <>

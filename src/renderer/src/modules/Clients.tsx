@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react'
-import type { Client } from '@shared/types'
+import { useCallback, useEffect, useState } from 'react'
+import type { ApercuCompte, Client, LigneReleve } from '@shared/types'
 import { useAction, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
+import { useFonctions } from '../app/fonctions'
 import type { Destination } from '../app/navigation'
 import { useNotifications } from '../ui/Notifications'
+import { useImpression } from '../ui/Impression'
+import { ReleveDeCompte } from '../ui/Documents'
 import {
   Bandeau,
   Bouton,
@@ -13,17 +16,20 @@ import {
   EntetePage,
   Etiquette,
   EtatVide,
+  Indicateur,
   Liste,
   Modale,
+  Segments,
   ZoneTexte
 } from '../ui/Composants'
 import Tableau, { CellulePrincipale, RechercheTableau } from '../ui/Tableau'
-import { dateCourte, depuis, montant } from '../lib/format'
+import { dateCourte, depuis, montant, nombre } from '../lib/format'
 
 export default function Clients({ destination }: { destination: Destination }) {
   const session = useSession()
   const notifications = useNotifications()
   const [recherche, setRecherche] = useState('')
+  const [filtre, setFiltre] = useState<'tous' | 'debiteurs'>('tous')
   const [edition, setEdition] = useState<{ client: Client | null } | null>(null)
   const [detail, setDetail] = useState<number | null>(null)
 
@@ -32,13 +38,34 @@ export default function Clients({ destination }: { destination: Destination }) {
   }, [destination])
 
   const liste = useRequete<Client[]>('clients.lister', { recherche: recherche.trim() || undefined })
-  const creances = (liste.donnees ?? []).reduce((s, c) => s + Math.max(0, c.solde_du ?? 0), 0)
+
+  const tous = liste.donnees ?? []
+  const affiches = filtre === 'debiteurs' ? tous.filter((c) => (c.solde_du ?? 0) > 0) : tous
+  const creances = tous.reduce((s, c) => s + Math.max(0, c.solde_du ?? 0), 0)
+  const debiteurs = tous.filter((c) => (c.solde_du ?? 0) > 0).length
+
+  useFonctions('clients', [
+    {
+      touche: 'F2',
+      libelle: 'Nouveau client',
+      action: () => setEdition({ client: null }),
+      disponible: session.peut('clients.gerer'),
+      saillante: true
+    },
+    { touche: 'F5', libelle: 'Actualiser', action: () => liste.recharger() },
+    {
+      touche: 'F7',
+      libelle: 'Voir les débiteurs',
+      action: () => setFiltre((f) => (f === 'debiteurs' ? 'tous' : 'debiteurs')),
+      disponible: debiteurs > 0
+    }
+  ])
 
   return (
     <>
       <EntetePage
         titre="Clients"
-        description="Historique d’achat, créances et plafonds de crédit."
+        description="Comptes clients, historique d’achat et créances en cours."
         actions={
           session.peut('clients.gerer') ? (
             <Bouton variante="principal" icone="plus" onClick={() => setEdition({ client: null })}>
@@ -47,6 +74,25 @@ export default function Clients({ destination }: { destination: Destination }) {
           ) : null
         }
       />
+
+      <div className="indicateurs">
+        <Indicateur
+          libelle="Comptes clients"
+          valeur={nombre(tous.length)}
+          detail={<span>Clients enregistrés</span>}
+        />
+        <Indicateur
+          libelle="Créances en cours"
+          valeur={montant(creances)}
+          ton={creances > 0 ? 'danger' : undefined}
+          detail={<span>Ventes à crédit non réglées</span>}
+        />
+        <Indicateur
+          libelle="Clients débiteurs"
+          valeur={nombre(debiteurs)}
+          detail={<span>Comptes avec un solde dû</span>}
+        />
+      </div>
 
       <Tableau
         colonnes={[
@@ -75,11 +121,15 @@ export default function Clients({ destination }: { destination: Destination }) {
             entete: 'Plafond',
             nombre: true,
             rendu: (c: Client) =>
-              c.plafond_credit > 0 ? montant(c.plafond_credit) : <span style={{ color: 'var(--texte-faible)' }}>Aucun</span>
+              c.plafond_credit > 0 ? (
+                montant(c.plafond_credit)
+              ) : (
+                <span style={{ color: 'var(--texte-faible)' }}>Aucun</span>
+              )
           },
           {
             cle: 'solde',
-            entete: 'Créance',
+            entete: 'Solde dû',
             nombre: true,
             rendu: (c: Client) =>
               (c.solde_du ?? 0) > 0 ? (
@@ -90,16 +140,32 @@ export default function Clients({ destination }: { destination: Destination }) {
             triSur: (c: Client) => c.solde_du ?? 0
           }
         ]}
-        lignes={liste.donnees}
+        lignes={affiches}
         cle={(c) => c.id}
         chargement={liste.chargement}
         erreur={liste.erreur}
         onReessayer={liste.recharger}
         onLigneClic={(c) => setDetail(c.id)}
         parPage={25}
-        filtreActif={recherche.trim().length > 0}
-        resume={(n) => `${n} client${n > 1 ? 's' : ''} · ${montant(creances)} de créances`}
-        outils={<RechercheTableau valeur={recherche} onChange={setRecherche} placeholder="Nom, téléphone ou code…" />}
+        filtreActif={recherche.trim().length > 0 || filtre !== 'tous'}
+        resume={(n) => `${n} client${n > 1 ? 's' : ''}`}
+        outils={
+          <>
+            <RechercheTableau
+              valeur={recherche}
+              onChange={setRecherche}
+              placeholder="Nom, téléphone ou code…"
+            />
+            <Segments
+              valeur={filtre}
+              options={[
+                { valeur: 'tous', libelle: 'Tous' },
+                { valeur: 'debiteurs', libelle: `Débiteurs${debiteurs ? ` (${debiteurs})` : ''}` }
+              ]}
+              onChange={setFiltre}
+            />
+          </>
+        }
         vide={
           <EtatVide
             icone="client"
@@ -112,11 +178,15 @@ export default function Clients({ destination }: { destination: Destination }) {
               ) : undefined
             }
           >
-            Le client reste facultatif au comptoir. L’enregistrer permet de suivre son historique et
-            de lui accorder du crédit.
+            Le client reste facultatif au comptoir. Lui ouvrir un compte permet de suivre son
+            historique et de lui accorder du crédit dans une limite que vous fixez.
           </EtatVide>
         }
-        videApresFiltre={<EtatVide icone="recherche" titre="Aucun client ne correspond" />}
+        videApresFiltre={
+          <EtatVide icone="coche" titre="Aucun client débiteur">
+            Tous les comptes sont à jour.
+          </EtatVide>
+        }
       />
 
       {edition ? (
@@ -139,15 +209,16 @@ export default function Clients({ destination }: { destination: Destination }) {
             setDetail(null)
             setEdition({ client: c })
           }}
-          onRegle={() => {
-            liste.recharger()
-            notifications.succes('Règlement enregistré')
-          }}
+          onChange={() => liste.recharger()}
         />
       ) : null}
     </>
   )
 }
+
+// ===========================================================================
+// Formulaire
+// ===========================================================================
 
 function FormulaireClient({
   client,
@@ -225,7 +296,7 @@ function FormulaireClient({
           libelle="Plafond de crédit"
           valeur={d.plafondCredit}
           onChangeValeur={(v) => setD({ ...d, plafondCredit: v })}
-          aide="Au-delà, une vente à crédit sera refusée. Laissez à zéro pour ne pas autoriser de crédit plafonné."
+          aide="Au-delà, une vente à crédit sera refusée au comptoir. Zéro : aucun plafond fixé."
         />
         <ZoneTexte libelle="Notes" value={d.notes} onChange={(e) => setD({ ...d, notes: e.target.value })} />
       </div>
@@ -233,30 +304,57 @@ function FormulaireClient({
   )
 }
 
+// ===========================================================================
+// Fiche client : compte, relevé, règlements
+// ===========================================================================
+
 function FicheClient({
   id,
   onFermer,
   onModifier,
-  onRegle
+  onChange
 }: {
   id: number
   onFermer: () => void
   onModifier: (c: Client) => void
-  onRegle: () => void
+  onChange: () => void
 }) {
   const session = useSession()
+  const notifications = useNotifications()
+  const { imprimer } = useImpression()
   const action = useAction()
+
+  const [onglet, setOnglet] = useState<'compte' | 'releve' | 'coordonnees'>('compte')
   const [reglement, setReglement] = useState(false)
-  const [somme, setSomme] = useState(0)
-  const [mode, setMode] = useState<'especes' | 'mobile_money' | 'carte' | 'virement' | 'cheque'>('especes')
 
   const fiche = useRequete<
     Client & { ventes: { id: number; reference: string; at: string; total: number; reste_a_payer: number }[] }
   >('clients.detail', { id })
+  const compte = useRequete<ApercuCompte>('clients.apercuCompte', { id })
+  const releve = useRequete<LigneReleve[]>('clients.releve', { id })
 
-  if (!fiche.donnees) {
+  const imprimerReleve = useCallback(() => {
+    if (!compte.donnees || !releve.donnees) return
+    imprimer(
+      <ReleveDeCompte
+        compte={compte.donnees}
+        lignes={releve.donnees}
+        pharmacie={session.pharmacie}
+      />,
+      'a4'
+    )
+  }, [compte.donnees, releve.donnees, imprimer, session.pharmacie])
+
+  function rafraichir(): void {
+    fiche.recharger()
+    compte.recharger()
+    releve.recharger()
+    onChange()
+  }
+
+  if (!fiche.donnees || !compte.donnees) {
     return (
-      <Modale titre="Fiche client" onFermer={onFermer}>
+      <Modale titre="Compte client" onFermer={onFermer}>
         <div className="panneau-corps">
           {fiche.erreur ? <Bandeau ton="danger">{fiche.erreur.message}</Bandeau> : <Chargement />}
         </div>
@@ -265,68 +363,20 @@ function FicheClient({
   }
 
   const c = fiche.donnees
-  const solde = Math.max(0, c.solde_du ?? 0)
-
-  async function encaisser(): Promise<void> {
-    const r = await action.executer('clients.reglement', {
-      clientId: id,
-      montant: somme,
-      mode,
-      venteId: null
-    })
-    if (r !== null) {
-      setReglement(false)
-      fiche.recharger()
-      onRegle()
-    }
-  }
+  const compteur = compte.donnees
+  const solde = compteur.encours
 
   if (reglement) {
     return (
-      <Modale
-        titre="Encaisser une créance"
-        description={`${c.nom} — ${montant(solde)} restant dû`}
+      <ReglementCreance
+        compte={compteur}
         onFermer={() => setReglement(false)}
-        pied={
-          <>
-            <Bouton onClick={() => setReglement(false)}>Annuler</Bouton>
-            <Bouton
-              variante="principal"
-              disabled={somme <= 0 || somme > solde}
-              enCours={action.enCours}
-              onClick={encaisser}
-            >
-              Encaisser
-            </Bouton>
-          </>
-        }
-      >
-        <div className="panneau-corps pile">
-          {action.erreur ? <Bandeau ton="danger">{action.erreur.message}</Bandeau> : null}
-          <ChampMontant
-            libelle="Montant reçu"
-            obligatoire
-            valeur={somme}
-            onChangeValeur={setSomme}
-            erreur={somme > solde ? `Le règlement dépasse la créance (${montant(solde)}).` : undefined}
-          />
-          <Bouton compact onClick={() => setSomme(solde)}>
-            Solder la totalité
-          </Bouton>
-          <Liste
-            libelle="Mode de règlement"
-            options={[
-              { valeur: 'especes', libelle: 'Espèces' },
-              { valeur: 'mobile_money', libelle: 'Mobile Money' },
-              { valeur: 'carte', libelle: 'Carte' },
-              { valeur: 'virement', libelle: 'Virement' },
-              { valeur: 'cheque', libelle: 'Chèque' }
-            ]}
-            value={mode}
-            onChange={(e) => setMode(e.target.value as typeof mode)}
-          />
-        </div>
-      </Modale>
+        onRegle={() => {
+          setReglement(false)
+          rafraichir()
+          notifications.succes('Règlement encaissé')
+        }}
+      />
     )
   }
 
@@ -339,18 +389,13 @@ function FicheClient({
       pied={
         <>
           {solde > 0 && session.peut('clients.reglement') ? (
-            <Bouton
-              className="a-gauche"
-              variante="principal"
-              icone="caisse"
-              onClick={() => {
-                setSomme(solde)
-                setReglement(true)
-              }}
-            >
+            <Bouton className="a-gauche" variante="principal" icone="caisse" onClick={() => setReglement(true)}>
               Encaisser {montant(solde)}
             </Bouton>
           ) : null}
+          <Bouton icone="imprimer" onClick={imprimerReleve}>
+            Imprimer le relevé
+          </Bouton>
           {session.peut('clients.gerer') ? (
             <Bouton icone="crayon" onClick={() => onModifier(c)}>
               Modifier
@@ -360,46 +405,66 @@ function FicheClient({
         </>
       }
     >
-      <div className="panneau-corps">
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-          <div>
-            <div className="formulaire-titre">Coordonnées</div>
-            <dl className="liste-definitions">
-              <dt>Téléphone</dt>
-              <dd>{c.telephone ?? '—'}</dd>
-              <dt>Courriel</dt>
-              <dd>{c.email ?? '—'}</dd>
-              <dt>Adresse</dt>
-              <dd>{c.adresse ?? '—'}</dd>
-              <dt>Date de naissance</dt>
-              <dd>{dateCourte(c.date_naissance)}</dd>
-            </dl>
-          </div>
-          <div>
-            <div className="formulaire-titre">Compte</div>
-            <dl className="liste-definitions">
-              <dt>Total acheté</dt>
-              <dd>{montant(c.total_achats ?? 0)}</dd>
-              <dt>Plafond de crédit</dt>
-              <dd>{c.plafond_credit > 0 ? montant(c.plafond_credit) : 'Aucun'}</dd>
-              <dt>Créance en cours</dt>
-              <dd style={{ fontWeight: 700, color: solde > 0 ? 'var(--attention)' : 'var(--succes)' }}>
-                {montant(solde)}
-              </dd>
-              <dt>Dernière visite</dt>
-              <dd>{c.derniere_visite ? depuis(c.derniere_visite) : '—'}</dd>
-            </dl>
-          </div>
+      <div className="tableau-outils">
+        <Segments
+          valeur={onglet}
+          options={[
+            { valeur: 'compte', libelle: 'Compte' },
+            { valeur: 'releve', libelle: 'Relevé' },
+            { valeur: 'coordonnees', libelle: 'Coordonnées' }
+          ]}
+          onChange={setOnglet}
+        />
+        <div style={{ marginLeft: 'auto' }}>
+          {solde > 0 ? (
+            <Etiquette ton="attention">{montant(solde)} restant dû</Etiquette>
+          ) : (
+            <Etiquette ton="succes">Compte à jour</Etiquette>
+          )}
         </div>
+      </div>
 
-        <div style={{ marginTop: 18 }}>
-          <div className="formulaire-titre">Historique d’achat</div>
+      {onglet === 'compte' ? (
+        <div className="panneau-corps">
+          <div className="indicateurs" style={{ marginBottom: 14 }}>
+            <Indicateur
+              libelle="Solde dû"
+              valeur={montant(solde)}
+              ton={solde > 0 ? 'danger' : undefined}
+              detail={<span>Ventes à crédit non réglées</span>}
+            />
+            <Indicateur
+              libelle="Crédit disponible"
+              valeur={compteur.disponible === null ? 'Non plafonné' : montant(compteur.disponible)}
+              detail={
+                <span>
+                  {compteur.plafond > 0 ? `Plafond ${montant(compteur.plafond)}` : 'Aucun plafond fixé'}
+                </span>
+              }
+            />
+            <Indicateur
+              libelle="Total acheté"
+              valeur={montant(compteur.totalAchats)}
+              detail={<span>{nombre(compteur.nbVentes)} vente(s)</span>}
+            />
+            <Indicateur
+              libelle="Dernier règlement"
+              valeur={compteur.dernierReglement ? dateCourte(compteur.dernierReglement) : 'Aucun'}
+              detail={
+                <span>
+                  {compteur.derniereVisite ? `Dernière visite ${depuis(compteur.derniereVisite)}` : '—'}
+                </span>
+              }
+            />
+          </div>
+
+          <div className="formulaire-titre">Ventes du client</div>
           {c.ventes.length === 0 ? (
             <p style={{ fontSize: 12.5, color: 'var(--texte-faible)' }}>
               Aucune vente enregistrée pour ce client.
             </p>
           ) : (
-            <div className="tableau-defilement" style={{ maxHeight: 300, overflowY: 'auto' }}>
+            <div className="tableau-defilement" style={{ maxHeight: 260, overflowY: 'auto' }}>
               <table className="tableau">
                 <thead>
                   <tr>
@@ -429,12 +494,177 @@ function FicheClient({
             </div>
           )}
         </div>
+      ) : null}
 
-        {c.notes ? (
-          <div style={{ marginTop: 16 }}>
-            <div className="formulaire-titre">Notes</div>
-            <p style={{ fontSize: 12.5, color: 'var(--texte-attenue)' }}>{c.notes}</p>
+      {onglet === 'releve' ? (
+        releve.chargement && !releve.donnees ? (
+          <Chargement />
+        ) : (releve.donnees?.length ?? 0) === 0 ? (
+          <EtatVide icone="journal" titre="Aucun mouvement sur ce compte">
+            Le relevé se remplira dès la première vente à crédit ou le premier règlement.
+          </EtatVide>
+        ) : (
+          <div className="tableau-defilement" style={{ maxHeight: 420, overflowY: 'auto' }}>
+            <table className="tableau">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Référence</th>
+                  <th>Libellé</th>
+                  <th className="cellule-nombre">Débit</th>
+                  <th className="cellule-nombre">Crédit</th>
+                  <th className="cellule-nombre">Solde</th>
+                </tr>
+              </thead>
+              <tbody>
+                {releve.donnees!.map((l, i) => (
+                  <tr key={i}>
+                    <td>{dateCourte(l.at)}</td>
+                    <td>{l.reference}</td>
+                    <td>
+                      {l.libelle}
+                      {l.utilisateur ? (
+                        <span style={{ color: 'var(--texte-faible)' }}> · {l.utilisateur}</span>
+                      ) : null}
+                    </td>
+                    <td className="cellule-nombre">{l.debit > 0 ? montant(l.debit) : '—'}</td>
+                    <td className="cellule-nombre">
+                      {l.credit > 0 ? (
+                        <span style={{ color: 'var(--succes)' }}>{montant(l.credit)}</span>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
+                    <td className="cellule-nombre">
+                      <strong>{montant(l.solde)}</strong>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
+        )
+      ) : null}
+
+      {onglet === 'coordonnees' ? (
+        <div className="panneau-corps">
+          <dl className="liste-definitions">
+            <dt>Code client</dt>
+            <dd>{c.code}</dd>
+            <dt>Téléphone</dt>
+            <dd>{c.telephone ?? '—'}</dd>
+            <dt>Courriel</dt>
+            <dd>{c.email ?? '—'}</dd>
+            <dt>Adresse</dt>
+            <dd>{c.adresse ?? '—'}</dd>
+            <dt>Date de naissance</dt>
+            <dd>{dateCourte(c.date_naissance)}</dd>
+            <dt>Plafond de crédit</dt>
+            <dd>{c.plafond_credit > 0 ? montant(c.plafond_credit) : 'Aucun'}</dd>
+          </dl>
+          {c.notes ? (
+            <div style={{ marginTop: 16 }}>
+              <div className="formulaire-titre">Notes</div>
+              <p style={{ fontSize: 12.5, color: 'var(--texte-attenue)' }}>{c.notes}</p>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      {action.erreur ? (
+        <div style={{ padding: '0 14px 14px' }}>
+          <Bandeau ton="danger">{action.erreur.message}</Bandeau>
+        </div>
+      ) : null}
+    </Modale>
+  )
+}
+
+// ===========================================================================
+// Règlement d'une créance
+// ===========================================================================
+
+function ReglementCreance({
+  compte,
+  onFermer,
+  onRegle
+}: {
+  compte: ApercuCompte
+  onFermer: () => void
+  onRegle: () => void
+}) {
+  const action = useAction()
+  const [somme, setSomme] = useState(compte.encours)
+  const [mode, setMode] = useState<'especes' | 'mobile_money' | 'carte' | 'virement' | 'cheque'>('especes')
+
+  const restant = compte.encours - somme
+
+  async function encaisser(): Promise<void> {
+    const r = await action.executer('clients.reglement', {
+      clientId: compte.clientId,
+      montant: somme,
+      mode,
+      venteId: null
+    })
+    if (r !== null) onRegle()
+  }
+
+  return (
+    <Modale
+      titre="Encaisser une créance"
+      description={`${compte.nom} — ${montant(compte.encours)} restant dû`}
+      onFermer={onFermer}
+      pied={
+        <>
+          <Bouton onClick={onFermer}>Annuler</Bouton>
+          <Bouton
+            variante="principal"
+            disabled={somme <= 0 || somme > compte.encours}
+            enCours={action.enCours}
+            onClick={encaisser}
+          >
+            Encaisser {montant(somme)}
+          </Bouton>
+        </>
+      }
+    >
+      <div className="panneau-corps pile">
+        {action.erreur ? <Bandeau ton="danger">{action.erreur.message}</Bandeau> : null}
+        <ChampMontant
+          libelle="Montant reçu"
+          obligatoire
+          valeur={somme}
+          onChangeValeur={setSomme}
+          erreur={somme > compte.encours ? `Le règlement dépasse la créance (${montant(compte.encours)}).` : undefined}
+        />
+        <div className="rangee">
+          <Bouton compact onClick={() => setSomme(compte.encours)}>
+            Solder la totalité
+          </Bouton>
+          {compte.encours >= 2 ? (
+            <Bouton compact variante="discret" onClick={() => setSomme(Math.round(compte.encours / 2))}>
+              La moitié
+            </Bouton>
+          ) : null}
+        </div>
+        <Liste
+          libelle="Mode de règlement"
+          options={[
+            { valeur: 'especes', libelle: 'Espèces' },
+            { valeur: 'mobile_money', libelle: 'Mobile Money' },
+            { valeur: 'carte', libelle: 'Carte bancaire' },
+            { valeur: 'virement', libelle: 'Virement' },
+            { valeur: 'cheque', libelle: 'Chèque' }
+          ]}
+          value={mode}
+          onChange={(e) => setMode(e.target.value as typeof mode)}
+        />
+        {somme > 0 && somme <= compte.encours ? (
+          <Bandeau ton={restant === 0 ? 'succes' : 'info'}>
+            {restant === 0
+              ? 'Ce règlement solde entièrement le compte.'
+              : `Il restera ${montant(restant)} après ce règlement.`}
+          </Bandeau>
         ) : null}
       </div>
     </Modale>

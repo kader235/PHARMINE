@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Alerte, PrioriteAlerte } from '@shared/types'
 import { useAction, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
+import { useFonctions } from '../app/fonctions'
 import { useNavigation, type CleModule } from '../app/navigation'
 import { useNotifications } from '../ui/Notifications'
 import Icone, { type NomIcone } from '../ui/Icone'
@@ -49,6 +50,21 @@ export default function Alertes() {
   const [filtre, setFiltre] = useState<PrioriteAlerte | 'toutes'>('toutes')
 
   const alertes = useRequete<Alerte[]>('alertes.lister')
+
+  useFonctions('alertes', [
+    { touche: 'F5', libelle: 'Recalculer', action: rafraichir },
+    {
+      touche: 'F7',
+      libelle: 'Urgent seulement',
+      action: () => setFiltre((f) => (f === 'urgent' ? 'toutes' : 'urgent'))
+    },
+    {
+      touche: 'F9',
+      libelle: 'Tout marquer comme lu',
+      action: toutMarquer,
+      disponible: session.peut('alertes.traiter')
+    }
+  ])
 
   const liste = (alertes.donnees ?? []).filter((a) => filtre === 'toutes' || a.priorite === filtre)
   const compte = (p: PrioriteAlerte) => (alertes.donnees ?? []).filter((a) => a.priorite === p).length

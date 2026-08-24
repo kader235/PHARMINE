@@ -39,6 +39,27 @@ async function photographier(fenetre: BrowserWindow, nom: string, attente = 700)
   console.log(`  capture : ${fichier}`)
 }
 
+/**
+ * Photographie la page telle qu'elle sortira de l'imprimante : on force le
+ * média « print » le temps de la capture, ce qui applique réellement les
+ * règles @media print.
+ */
+async function photographierEnImpression(fenetre: BrowserWindow, nom: string): Promise<void> {
+  const debogueur = fenetre.webContents.debugger
+  try {
+    debogueur.attach('1.3')
+    await debogueur.sendCommand('Emulation.setEmulatedMedia', { media: 'print' })
+    await photographier(fenetre, nom, 500)
+    await debogueur.sendCommand('Emulation.setEmulatedMedia', { media: '' })
+  } finally {
+    try {
+      debogueur.detach()
+    } catch {
+      /* déjà détaché */
+    }
+  }
+}
+
 /** Renseigne un champ React : le setter natif déclenche bien onChange. */
 const SAISIR = `
   (selecteur, valeur) => {
@@ -90,7 +111,7 @@ function preparerDonnees(): void {
     ['Lait infantile 1er âge', null, '400 g', 5, 12, 4600, 6900, 6, 'Rayon D-01', false]
   ]
 
-  const ids = catalogue.map(([nom, generique, dosage, categorie, forme, achat, vente, min, emplacement, ordonnance]) =>
+  const ids = catalogue.map(([nom, generique, dosage, categorie, forme, achat, vente, min, emplacement, ordonnance], index) =>
     produits.creerProduit(
       {
         nomCommercial: nom,
@@ -104,7 +125,9 @@ function preparerDonnees(): void {
         prixVente: vente,
         stockMin: min,
         emplacement,
-        ordonnanceRequise: ordonnance
+        ordonnanceRequise: ordonnance,
+        // Un EAN-13 par produit : le banc peut ainsi simuler une douchette.
+        codesBarres: [`340093000${String(index + 1).padStart(4, '0')}`]
       },
       admin
     )
@@ -332,6 +355,178 @@ app.whenReady().then(async () => {
     `document.querySelector('.produit-ligne:not([disabled])')?.click()`
   )
   await photographier(fenetre, 'comptoir-panier', 900)
+
+  // --- Vente complète, jusqu'au ticket imprimé -------------------------------
+  // window.print ouvrirait une boîte de dialogue bloquante : on la neutralise,
+  // puis on demande à Electron de produire le PDF avec les mêmes règles
+  // @media print. C'est donc le document réellement sorti de l'imprimante
+  // que l'on vérifie, pas une approximation.
+  await fenetre.webContents.executeJavaScript('window.print = () => {}; true')
+
+  const clic = (contient: string) => `
+    (() => {
+      const b = Array.from(document.querySelectorAll('button'))
+        .find((e) => e.textContent && e.textContent.includes(${JSON.stringify(contient)}))
+      if (b) { b.click(); return true }
+      return false
+    })()`
+
+  await fenetre.webContents.executeJavaScript(clic('+5 000'))
+  await photographier(fenetre, 'comptoir-reglement', 500)
+
+  await fenetre.webContents.executeJavaScript(clic('Encaisser'))
+  await photographier(fenetre, 'vente-encaissee', 1800)
+
+  const imprime = await fenetre.webContents.executeJavaScript(clic('Imprimer'))
+  await new Promise((r) => setTimeout(r, 900))
+
+  if (imprime) {
+    // Le PDF sert d'archive ; la capture en média « print » sert au contrôle
+    // visuel, car elle montre exactement ce que la feuille de style
+    // d'impression produit.
+    const ticket = await fenetre.webContents.printToPDF({ pageSize: 'A4', printBackground: false })
+    writeFileSync(join(sortie, 'ticket-de-caisse.pdf'), ticket)
+    console.log(`  document : ticket-de-caisse.pdf (${ticket.length} octets)`)
+
+    await photographierEnImpression(fenetre, 'ticket-imprime')
+  } else {
+    console.log('  ATTENTION : bouton d impression introuvable, ticket non verifie')
+  }
+
+  // Le recapitulatif doit etre referme : le lecteur de codes-barres est
+  // volontairement inactif tant qu'une fenetre modale est ouverte.
+  await fenetre.webContents.executeJavaScript(clic('Vente suivante'))
+  await new Promise((r) => setTimeout(r, 600))
+
+  // --- Lecteur de codes-barres ----------------------------------------------
+  // Une douchette se comporte en clavier : elle emet les touches en rafale puis
+  // un Entree. On reproduit exactement cela, sans toucher au champ de saisie.
+  await fenetre.webContents.executeJavaScript(`document.querySelectorAll('.nav-lien')[1].click()`)
+  await new Promise((r) => setTimeout(r, 900))
+
+  const resultatScan = await fenetre.webContents.executeJavaScript(`
+    (async () => {
+      const code = '3400930000001'
+      const touche = (c) => {
+        const evenement = new KeyboardEvent('keydown', {
+          key: c,
+          code: c >= '0' && c <= '9' ? 'Digit' + c : 'Enter',
+          bubbles: true,
+          cancelable: true
+        })
+        document.body.dispatchEvent(evenement)
+      }
+      for (const c of code) touche(c)
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })
+      )
+      await new Promise((r) => setTimeout(r, 800))
+      const lignes = document.querySelectorAll('.panier-ligne')
+      return {
+        articles: lignes.length,
+        premier: lignes[0] ? lignes[0].textContent.slice(0, 40) : null
+      }
+    })()`)
+
+  console.log(`  scan simule -> ${JSON.stringify(resultatScan)}`)
+  await photographier(fenetre, 'comptoir-apres-scan', 400)
+
+  // --- Les trois formats de document ----------------------------------------
+  await fenetre.webContents.executeJavaScript(`document.querySelectorAll('.nav-lien')[1].click()`)
+  await new Promise((r) => setTimeout(r, 700))
+  await fenetre.webContents.executeJavaScript(`
+    (() => {
+      const b = Array.from(document.querySelectorAll('.segments button'))
+        .find((e) => e.textContent && e.textContent.trim() === 'Historique')
+      if (b) b.click()
+      return !!b
+    })()`)
+  await new Promise((r) => setTimeout(r, 900))
+  await fenetre.webContents.executeJavaScript(`
+    (() => {
+      const ligne = document.querySelector('table.tableau tbody tr')
+      if (ligne) ligne.click()
+      return !!ligne
+    })()`)
+  await new Promise((r) => setTimeout(r, 900))
+
+  for (const [format, nom] of [
+    ['a4', 'facture-a4'],
+    ['a5', 'facture-a5']
+  ] as const) {
+    const change = await fenetre.webContents.executeJavaScript(`
+      (() => {
+        const s = document.querySelector('.modale select[aria-label="Format de réimpression"]')
+        if (!s) return false
+        const setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set
+        setter.call(s, ${JSON.stringify(format)})
+        s.dispatchEvent(new Event('change', { bubbles: true }))
+        return true
+      })()`)
+    if (!change) {
+      console.log(`  ATTENTION : selecteur de format introuvable pour ${nom}`)
+      continue
+    }
+    await new Promise((r) => setTimeout(r, 400))
+    await fenetre.webContents.executeJavaScript(clic('Réimprimer'))
+    await new Promise((r) => setTimeout(r, 800))
+    await photographierEnImpression(fenetre, nom)
+  }
+
+  await fenetre.webContents.executeJavaScript(clic('Fermer'))
+  await new Promise((r) => setTimeout(r, 500))
+
+  // --- Compte client : releve imprime ---------------------------------------
+  const indexClients = (await fenetre.webContents.executeJavaScript(`
+    Array.from(document.querySelectorAll('.nav-lien'))
+      .findIndex((b) => b.textContent && b.textContent.includes('Clients'))
+  `)) as number
+
+  if (indexClients >= 0) {
+    await fenetre.webContents.executeJavaScript(
+      `document.querySelectorAll('.nav-lien')[${indexClients}].click()`
+    )
+    await photographier(fenetre, 'clients', 1100)
+
+    // On filtre sur les debiteurs : un releve vide ne prouve rien.
+    await fenetre.webContents.executeJavaScript(`
+      (() => {
+        const b = Array.from(document.querySelectorAll('.segments button'))
+          .find((e) => e.textContent && e.textContent.startsWith('Débiteurs'))
+        if (b) b.click()
+        return !!b
+      })()`)
+    await new Promise((r) => setTimeout(r, 700))
+
+    const ouvert = await fenetre.webContents.executeJavaScript(`
+      (() => {
+        const ligne = document.querySelector('table.tableau tbody tr')
+        if (!ligne) return false
+        ligne.click()
+        return true
+      })()`)
+
+    if (ouvert) {
+      await photographier(fenetre, 'compte-client', 1200)
+
+      await fenetre.webContents.executeJavaScript(`
+        (() => {
+          const b = Array.from(document.querySelectorAll('button'))
+            .find((e) => e.textContent && e.textContent.trim() === 'Relevé')
+          if (b) { b.click(); return true }
+          return false
+        })()`)
+      await photographier(fenetre, 'releve-de-compte', 900)
+
+      const imprimeReleve = await fenetre.webContents.executeJavaScript(clic('Imprimer le'))
+      await new Promise((r) => setTimeout(r, 900))
+      if (imprimeReleve) {
+        await photographierEnImpression(fenetre, 'releve-imprime')
+      } else {
+        console.log('  ATTENTION : bouton du releve introuvable')
+      }
+    }
+  }
 
   console.log(`\n${etapes} capture(s) dans ${sortie}`)
   if (erreurs.length) {

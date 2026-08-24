@@ -14,10 +14,15 @@ export default defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/main/index.ts'),
+          // Entrées de test : exclues de la distribution par `PHARMINA_SANS_TESTS`.
           // Le scénario de bout en bout est compilé par la même chaîne que
           // l'application : il exerce exactement le code qui sera livré.
-          e2e: resolve(__dirname, 'tests/e2e.ts'),
-          apercu: resolve(__dirname, 'tests/apercu.ts')
+          ...(process.env.PHARMINA_SANS_TESTS
+            ? {}
+            : {
+                e2e: resolve(__dirname, 'tests/e2e.ts'),
+                apercu: resolve(__dirname, 'tests/apercu.ts')
+              })
         }
       }
     }

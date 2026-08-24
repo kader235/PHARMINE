@@ -1,7 +1,7 @@
 import type { SQLInputValue } from 'node:sqlite'
 import { base, transaction } from '../db'
 import type { Depense } from '@shared/types'
-import { ErreurMetier, aujourdhui, journaliser, prochaineReference } from './commun'
+import { ErreurMetier, aujourdhui, debutDeJournee, finDeJournee, journaliser, prochaineReference } from './commun'
 import { sessionOuverte } from './caisse'
 
 export interface DemandeDepense {
@@ -148,7 +148,7 @@ export interface SyntheseFinanciere {
 
 export function synthese(depuis: string, jusqua: string): SyntheseFinanciere {
   const db = base()
-  const bornes = { d: depuis + 'T00:00:00.000Z', f: jusqua + 'T23:59:59.999Z' }
+  const bornes = { d: debutDeJournee(depuis), f: finDeJournee(jusqua) }
 
   const ventes = db
     .prepare(

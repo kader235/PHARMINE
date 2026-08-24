@@ -3,6 +3,7 @@ import type { Achat, Fournisseur, ProduitEtat } from '@shared/types'
 import { appeler } from '../lib/api'
 import { useAction, useDifferee, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
+import { useFonctions } from '../app/fonctions'
 import type { Destination } from '../app/navigation'
 import { useNotifications } from '../ui/Notifications'
 import Icone from '../ui/Icone'
@@ -46,6 +47,27 @@ export default function Achats({ destination }: { destination: Destination }) {
   }, [destination, session])
 
   const achats = useRequete<Achat[]>('achats.lister', { impayes: impayes || undefined, limite: 300 })
+
+  useFonctions('achats', [
+    {
+      touche: 'F2',
+      libelle: 'Enregistrer une réception',
+      action: () => setReception(true),
+      disponible: session.peut('achats.valider'),
+      saillante: true
+    },
+    { touche: 'F5', libelle: 'Actualiser', action: () => achats.recharger() },
+    {
+      touche: 'F7',
+      libelle: 'Réceptions non soldées',
+      action: () => setImpayes((v) => !v)
+    },
+    {
+      touche: 'F8',
+      libelle: 'Produits à commander',
+      action: () => setOnglet((o) => (o === 'suggestions' ? 'liste' : 'suggestions'))
+    }
+  ])
 
   return (
     <>

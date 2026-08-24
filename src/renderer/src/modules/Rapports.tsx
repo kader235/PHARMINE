@@ -1,5 +1,11 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useRequete } from '../lib/hooks'
+import { useSession } from '../app/Session'
+import { useFonctions } from '../app/fonctions'
+import { useNotifications } from '../ui/Notifications'
+import { useImpression } from '../ui/Impression'
+import { DocumentTableau } from '../ui/Documents'
+import { enregistrerCSV } from '../lib/export'
 import {
   Bouton,
   Champ,
@@ -15,11 +21,67 @@ import { aujourdhui, dateCourte, debutDuMois, decalerJours, montant, nombre } fr
 type Rapport = 'ventes' | 'produits' | 'stock'
 type Periode = 'semaine' | 'mois' | 'trimestre' | 'personnalise'
 
+/** Ce que chaque écran de rapport publie pour l'impression et l'export. */
+export interface SortieRapport {
+  titre: string
+  colonnes: { entete: string; droite?: boolean }[]
+  lignes: (string | number)[][]
+  totaux?: (string | number)[]
+}
+
 export default function Rapports() {
+  const session = useSession()
+  const notifications = useNotifications()
+  const { imprimer } = useImpression()
   const [rapport, setRapport] = useState<Rapport>('ventes')
   const [periode, setPeriode] = useState<Periode>('mois')
   const [depuis, setDepuis] = useState(debutDuMois())
   const [jusqua, setJusqua] = useState(aujourdhui())
+  const [sortie, setSortie] = useState<SortieRapport | null>(null)
+
+  const sousTitre =
+    rapport === 'stock' ? 'Situation au jour de l edition' : `Du ${dateCourte(depuis)} au ${dateCourte(jusqua)}`
+
+  const imprimerRapport = useCallback(() => {
+    if (!sortie) return
+    imprimer(
+      <DocumentTableau
+        titre={sortie.titre}
+        sousTitre={sousTitre}
+        pharmacie={session.pharmacie}
+        colonnes={sortie.colonnes}
+        lignes={sortie.lignes}
+        totaux={sortie.totaux}
+      />,
+      'a4'
+    )
+  }, [sortie, sousTitre, imprimer, session.pharmacie])
+
+  const exporterRapport = useCallback(async () => {
+    if (!sortie) return
+    const fichier = await enregistrerCSV(
+      `${sortie.titre.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${depuis}`,
+      sortie.colonnes.map((c) => c.entete),
+      sortie.lignes
+    )
+    if (fichier) notifications.succes('Export terminé', fichier)
+  }, [sortie, depuis, notifications])
+
+  useFonctions('rapports', [
+    {
+      touche: 'F8',
+      libelle: 'Exporter en CSV',
+      action: exporterRapport,
+      disponible: sortie !== null && session.peut('rapports.exporter')
+    },
+    {
+      touche: 'F12',
+      libelle: 'Imprimer',
+      action: imprimerRapport,
+      disponible: sortie !== null,
+      saillante: true
+    }
+  ])
 
   function changerPeriode(p: Periode): void {
     setPeriode(p)
@@ -46,7 +108,12 @@ export default function Rapports() {
               ]}
               onChange={setRapport}
             />
-            <Bouton icone="imprimer" onClick={() => window.print()}>
+            {session.peut('rapports.exporter') ? (
+              <Bouton icone="telecharger" disabled={!sortie} onClick={exporterRapport}>
+                Exporter
+              </Bouton>
+            ) : null}
+            <Bouton icone="imprimer" disabled={!sortie} onClick={imprimerRapport}>
               Imprimer
             </Bouton>
           </>
@@ -95,14 +162,22 @@ export default function Rapports() {
         </div>
       ) : null}
 
-      {rapport === 'ventes' ? <RapportVentes depuis={depuis} jusqua={jusqua} /> : null}
-      {rapport === 'produits' ? <RapportProduits depuis={depuis} jusqua={jusqua} /> : null}
-      {rapport === 'stock' ? <RapportStock /> : null}
+      {rapport === 'ventes' ? <RapportVentes depuis={depuis} jusqua={jusqua} onSortie={setSortie} /> : null}
+      {rapport === 'produits' ? <RapportProduits depuis={depuis} jusqua={jusqua} onSortie={setSortie} /> : null}
+      {rapport === 'stock' ? <RapportStock onSortie={setSortie} /> : null}
     </>
   )
 }
 
-function RapportVentes({ depuis, jusqua }: { depuis: string; jusqua: string }) {
+function RapportVentes({
+  depuis,
+  jusqua,
+  onSortie
+}: {
+  depuis: string
+  jusqua: string
+  onSortie: (s: SortieRapport | null) => void
+}) {
   const [granularite, setGranularite] = useState<'jour' | 'semaine' | 'mois'>('jour')
   const donnees = useRequete<{ periode: string; nb: number; chiffreAffaires: number; marge: number }[]>(
     'rapports.ventes',
@@ -114,6 +189,23 @@ function RapportVentes({ depuis, jusqua }: { depuis: string; jusqua: string }) {
   const totalMarge = lignes.reduce((s, l) => s + l.marge, 0)
   const totalNb = lignes.reduce((s, l) => s + l.nb, 0)
   const maximum = Math.max(1, ...lignes.map((l) => l.chiffreAffaires))
+
+  // Ce que l'écran publie pour l'impression et l'export : les mêmes chiffres
+  // que ceux affichés, jamais une seconde requête qui pourrait diverger.
+  useEffect(() => {
+    onSortie({
+      titre: 'Rapport des ventes',
+      colonnes: [
+        { entete: 'Période' },
+        { entete: 'Ventes', droite: true },
+        { entete: 'Chiffre d affaires', droite: true },
+        { entete: 'Marge', droite: true }
+      ],
+      lignes: lignes.map((l) => [l.periode, l.nb, montant(l.chiffreAffaires, false), montant(l.marge, false)]),
+      totaux: ['Total', totalNb, montant(totalCa, false), montant(totalMarge, false)]
+    })
+    return () => onSortie(null)
+  }, [donnees.donnees, onSortie])
 
   return (
     <>
@@ -184,7 +276,15 @@ function RapportVentes({ depuis, jusqua }: { depuis: string; jusqua: string }) {
   )
 }
 
-function RapportProduits({ depuis, jusqua }: { depuis: string; jusqua: string }) {
+function RapportProduits({
+  depuis,
+  jusqua,
+  onSortie
+}: {
+  depuis: string
+  jusqua: string
+  onSortie: (s: SortieRapport | null) => void
+}) {
   const [sens, setSens] = useState<'meilleures' | 'faibles'>('meilleures')
   const donnees = useRequete<
     {
@@ -199,6 +299,34 @@ function RapportProduits({ depuis, jusqua }: { depuis: string; jusqua: string })
 
   const lignes = donnees.donnees ?? []
   const maximum = Math.max(1, ...lignes.map((l) => l.quantite))
+
+  useEffect(() => {
+    onSortie({
+      titre: sens === 'meilleures' ? 'Meilleures ventes' : 'Produits peu vendus',
+      colonnes: [
+        { entete: 'Produit' },
+        { entete: 'Quantité vendue', droite: true },
+        { entete: 'Chiffre d affaires', droite: true },
+        { entete: 'Marge', droite: true },
+        { entete: 'Stock actuel', droite: true }
+      ],
+      lignes: lignes.map((l) => [
+        l.nom_commercial,
+        l.quantite,
+        montant(l.chiffreAffaires, false),
+        montant(l.marge, false),
+        l.stock_disponible
+      ]),
+      totaux: [
+        'Total',
+        lignes.reduce((s, l) => s + l.quantite, 0),
+        montant(lignes.reduce((s, l) => s + l.chiffreAffaires, 0), false),
+        montant(lignes.reduce((s, l) => s + l.marge, 0), false),
+        ''
+      ]
+    })
+    return () => onSortie(null)
+  }, [donnees.donnees, sens, onSortie])
 
   return (
     <Tableau
@@ -272,7 +400,7 @@ function RapportProduits({ depuis, jusqua }: { depuis: string; jusqua: string })
   )
 }
 
-function RapportStock() {
+function RapportStock({ onSortie }: { onSortie: (s: SortieRapport | null) => void }) {
   const donnees = useRequete<{
     valeurTotale: number
     nbReferences: number
@@ -282,6 +410,20 @@ function RapportStock() {
 
   const d = donnees.donnees
   const maximum = Math.max(1, ...(d?.parCategorie ?? []).map((c) => c.valeur))
+
+  useEffect(() => {
+    onSortie({
+      titre: 'Valeur du stock',
+      colonnes: [
+        { entete: 'Catégorie' },
+        { entete: 'Références', droite: true },
+        { entete: 'Valeur au prix d achat', droite: true }
+      ],
+      lignes: (d?.parCategorie ?? []).map((c) => [c.categorie, c.references, montant(c.valeur, false)]),
+      totaux: ['Total', d?.nbReferences ?? 0, montant(d?.valeurTotale ?? 0, false)]
+    })
+    return () => onSortie(null)
+  }, [d, onSortie])
 
   return (
     <>

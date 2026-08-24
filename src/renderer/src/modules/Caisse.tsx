@@ -2,7 +2,9 @@ import { Fragment, useState } from 'react'
 import type { CaisseSession, EtatCaisse } from '@shared/types'
 import { useAction, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
+import { useFonctions } from '../app/fonctions'
 import { useNotifications } from '../ui/Notifications'
+import { signalerCaisseModifiee } from '../lib/evenements'
 import {
   Bandeau,
   Bouton,
@@ -29,10 +31,35 @@ export default function Caisse() {
   const [dialogue, setDialogue] = useState<'ouvrir' | 'cloturer' | 'mouvement' | null>(null)
 
   const etat = useRequete<EtatCaisse>('caisse.etat')
+  const caisseOuverte = etat.donnees?.session != null
+
+  useFonctions('caisse', [
+    {
+      touche: 'F2',
+      libelle: caisseOuverte ? 'Clôturer la caisse' : 'Ouvrir la caisse',
+      action: () => setDialogue(caisseOuverte ? 'cloturer' : 'ouvrir'),
+      disponible: session.peut(caisseOuverte ? 'caisse.cloturer' : 'caisse.ouvrir'),
+      saillante: true
+    },
+    {
+      touche: 'F3',
+      libelle: 'Mouvement de caisse',
+      action: () => setDialogue('mouvement'),
+      disponible: caisseOuverte && session.peut('caisse.mouvement')
+    },
+    { touche: 'F5', libelle: 'Actualiser', action: () => etat.recharger() },
+    {
+      touche: 'F7',
+      libelle: 'Historique des sessions',
+      action: () => setOnglet((o) => (o === 'historique' ? 'courante' : 'historique')),
+      disponible: session.peut('caisse.ecarts')
+    }
+  ])
 
   function apres(message: string): void {
     setDialogue(null)
     etat.recharger()
+    signalerCaisseModifiee()
     notifications.succes(message)
   }
 

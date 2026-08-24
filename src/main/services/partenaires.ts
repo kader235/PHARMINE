@@ -1,7 +1,7 @@
 import type { SQLInputValue } from 'node:sqlite'
 import { base, transaction } from '../db'
-import type { Client, Fournisseur } from '@shared/types'
-import { ErreurMetier, journaliser, maintenant, prochaineReference } from './commun'
+import type { ApercuCompte, Client, Fournisseur, LigneReleve } from '@shared/types'
+import { ErreurMetier, debutDeJournee, journaliser, maintenant, prochaineReference } from './commun'
 
 // ---------------------------------------------------------------------------
 // Fournisseurs
@@ -309,5 +309,104 @@ export function archiverClient(id: number, archiver: boolean, utilisateurId: num
       entiteId: id,
       resume: ''
     })
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Compte client
+// ---------------------------------------------------------------------------
+
+/**
+ * Situation d'un compte client, telle qu'affichee au comptoir avant une vente
+ * a credit. `disponible` vaut null lorsqu'aucun plafond n'est fixe.
+ */
+export function apercuCompte(clientId: number): ApercuCompte | null {
+  const c = base()
+    .prepare(
+      `SELECT c.id, c.nom, c.telephone, c.plafond_credit,
+              COALESCE(v.solde_du, 0) AS encours,
+              COALESCE(v.total_achats, 0) AS total_achats,
+              v.derniere_visite,
+              (SELECT COUNT(*) FROM ventes WHERE client_id = c.id AND statut = 'finalisee') AS nb_ventes,
+              (SELECT MAX(at) FROM client_reglements WHERE client_id = c.id) AS dernier_reglement
+       FROM clients c LEFT JOIN v_creance_client v ON v.client_id = c.id
+       WHERE c.id = ?`
+    )
+    .get(clientId) as unknown as
+    | {
+        id: number
+        nom: string
+        telephone: string | null
+        plafond_credit: number
+        encours: number
+        total_achats: number
+        derniere_visite: string | null
+        nb_ventes: number
+        dernier_reglement: string | null
+      }
+    | undefined
+
+  if (!c) return null
+
+  const encours = Math.max(0, c.encours)
+  return {
+    clientId: c.id,
+    nom: c.nom,
+    telephone: c.telephone,
+    plafond: c.plafond_credit,
+    encours,
+    disponible: c.plafond_credit > 0 ? Math.max(0, c.plafond_credit - encours) : null,
+    nbVentes: c.nb_ventes,
+    totalAchats: c.total_achats,
+    derniereVisite: c.derniere_visite,
+    dernierReglement: c.dernier_reglement
+  }
+}
+
+/**
+ * Releve de compte : mouvements chronologiques et solde courant.
+ *
+ * Le solde est recalcule ligne a ligne plutot que stocke, afin qu'il reste
+ * exact meme apres une annulation de vente ou un regroupement de reglements.
+ */
+export function releveCompte(clientId: number, depuis?: string): LigneReleve[] {
+  const conditions = depuis ? 'AND at >= :depuis' : ''
+  const params: Record<string, SQLInputValue> = { clientId }
+  if (depuis) params.depuis = debutDeJournee(depuis)
+
+  const lignes = base()
+    .prepare(
+      `SELECT * FROM (
+         SELECT v.at, 'vente' AS type, v.reference,
+                'Vente à crédit' AS libelle,
+                v.reste_a_payer AS debit, 0 AS credit,
+                u.nom_complet AS utilisateur
+         FROM ventes v JOIN utilisateurs u ON u.id = v.utilisateur_id
+         WHERE v.client_id = :clientId AND v.statut = 'finalisee' AND v.reste_a_payer > 0
+         UNION ALL
+         SELECT r.at, 'reglement', COALESCE(v.reference, '—'),
+                'Règlement en ' || CASE r.mode
+                  WHEN 'especes' THEN 'espèces'
+                  WHEN 'mobile_money' THEN 'Mobile Money'
+                  WHEN 'carte' THEN 'carte bancaire'
+                  WHEN 'virement' THEN 'virement'
+                  WHEN 'cheque' THEN 'chèque'
+                  ELSE r.mode
+                END,
+                0, r.montant, u.nom_complet
+         FROM client_reglements r
+         LEFT JOIN ventes v ON v.id = r.vente_id
+         LEFT JOIN utilisateurs u ON u.id = r.created_by
+         WHERE r.client_id = :clientId
+       )
+       WHERE 1 = 1 ${conditions}
+       ORDER BY at, type DESC`
+    )
+    .all(params) as unknown as Omit<LigneReleve, 'solde'>[]
+
+  let solde = 0
+  return lignes.map((l) => {
+    solde += l.debit - l.credit
+    return { ...l, solde }
   })
 }

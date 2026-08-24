@@ -1632,15 +1632,16 @@ table.tableau tbody tr.selectionnee td {
 .panier {
   position: sticky;
   top: 0;
-  display: flex;
-  flex-direction: column;
-  max-height: calc(100vh - 92px);
+  /* En-tête, barre de fonctions et barre d'état sont retranchées : le bloc de
+     règlement doit rester visible sans faire défiler la page entière. */
+  max-height: calc(100vh - 205px);
+  overflow-y: auto;
 }
 
 .panier-lignes {
-  flex: 1;
+  max-height: 240px;
   overflow-y: auto;
-  min-height: 140px;
+  min-height: 120px;
 }
 
 .panier-ligne {

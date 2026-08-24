@@ -1,0 +1,56 @@
+appId: ci.pharmina.gestion
+productName: PHARMINA
+copyright: PHARMINA
+
+directories:
+  output: release
+  buildResources: build
+
+# Seuls le bundle et le manifeste sont embarqués : les sources et les tests
+# ne partent pas chez le client.
+files:
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+
+asar: true
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.ico
+  artifactName: ${productName}-Setup-${version}.${ext}
+  # Sans certificat de signature, Windows affichera un avertissement
+  # SmartScreen à la première installation. C'est attendu tant qu'aucun
+  # certificat de signature de code n'a été acquis.
+  signAndEditExecutable: true
+
+nsis:
+  # Assistant classique plutôt qu'installation en un clic : le pharmacien
+  # choisit l'emplacement et voit ce qui se passe.
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: PHARMINA
+  menuCategory: false
+
+  language: '1036'
+  installerLanguages:
+    - fr_FR
+  displayLanguageSelector: false
+
+  # La base de données et les sauvegardes vivent dans le dossier utilisateur.
+  # Une désinstallation ne doit jamais emporter les données d'une officine :
+  # on réinstalle parfois pour réparer, et les ventes de l'année ne peuvent
+  # pas disparaître dans l'opération.
+  deleteAppDataOnUninstall: false
+
+  runAfterFinish: true
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  uninstallDisplayName: PHARMINA — Gestion de pharmacie

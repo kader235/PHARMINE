@@ -12,3 +12,7 @@ tsconfig.*.tsbuildinfo
 # Sorties du banc d'aperçu
 apercu/
 *.log
+
+# Sorties de construction
+release/
+build/icon.ico

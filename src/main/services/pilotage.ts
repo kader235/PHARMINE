@@ -1,7 +1,7 @@
 import type { SQLInputValue } from 'node:sqlite'
 import { base } from '../db'
 import type { Indicateur, ResultatRecherche, TableauDeBord } from '@shared/types'
-import { aujourdhui, decalerJours, parametreEntier } from './commun'
+import { aujourdhui, debutDeJournee, decalerJours, finDeJournee, parametreEntier } from './commun'
 import { etatCaisse } from './caisse'
 
 function indicateur(valeur: number, precedent: number | null): Indicateur {
@@ -11,7 +11,7 @@ function indicateur(valeur: number, precedent: number | null): Indicateur {
 }
 
 function bornes(jour: string): [string, string] {
-  return [`${jour}T00:00:00.000Z`, `${jour}T23:59:59.999Z`]
+  return [debutDeJournee(jour), finDeJournee(jour)]
 }
 
 /**
@@ -266,7 +266,7 @@ export function rapportVentes(
        WHERE statut = 'finalisee' AND at BETWEEN ? AND ?
        GROUP BY periode ORDER BY periode`
     )
-    .all(depuis + 'T00:00:00.000Z', jusqua + 'T23:59:59.999Z') as unknown as never
+    .all(debutDeJournee(depuis), finDeJournee(jusqua)) as unknown as never
 }
 
 export function rapportProduits(
@@ -297,7 +297,7 @@ export function rapportProduits(
        ORDER BY quantite ${sens === 'meilleures' ? 'DESC' : 'ASC'}
        LIMIT 30`
     )
-    .all(depuis + 'T00:00:00.000Z', jusqua + 'T23:59:59.999Z') as unknown as never
+    .all(debutDeJournee(depuis), finDeJournee(jusqua)) as unknown as never
 }
 
 export function rapportStock(): {
