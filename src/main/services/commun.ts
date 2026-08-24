@@ -32,7 +32,7 @@ export class ErreurMetier extends Error {
 }
 
 export function parametre(cle: string): string | null {
-  const ligne = base().prepare('SELECT valeur FROM parametres WHERE cle = ?').get(cle) as
+  const ligne = base().prepare('SELECT valeur FROM parametres WHERE cle = ?').get(cle) as unknown as
     | { valeur: string | null }
     | undefined
   return ligne?.valeur ?? null
@@ -70,7 +70,7 @@ export function prochaineReference(prefixe: string, table: string, colonne = 're
       `SELECT ${colonne} AS r FROM ${table}
        WHERE ${colonne} LIKE ? ORDER BY LENGTH(${colonne}) DESC, ${colonne} DESC LIMIT 1`
     )
-    .get(`${prefixe}-%`) as { r: string } | undefined
+    .get(`${prefixe}-%`) as unknown as { r: string } | undefined
 
   const dernier = ligne ? Number(ligne.r.slice(prefixe.length + 1)) : 0
   const suivant = (Number.isFinite(dernier) ? dernier : 0) + 1

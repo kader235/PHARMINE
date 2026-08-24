@@ -16,7 +16,8 @@ export default defineConfig({
           index: resolve(__dirname, 'src/main/index.ts'),
           // Le scénario de bout en bout est compilé par la même chaîne que
           // l'application : il exerce exactement le code qui sera livré.
-          e2e: resolve(__dirname, 'tests/e2e.ts')
+          e2e: resolve(__dirname, 'tests/e2e.ts'),
+          apercu: resolve(__dirname, 'tests/apercu.ts')
         }
       }
     }

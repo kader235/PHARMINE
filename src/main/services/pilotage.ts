@@ -1,3 +1,4 @@
+import type { SQLInputValue } from 'node:sqlite'
 import { base } from '../db'
 import type { Indicateur, ResultatRecherche, TableauDeBord } from '@shared/types'
 import { aujourdhui, decalerJours, parametreEntier } from './commun'
@@ -33,7 +34,7 @@ export function tableauDeBord(): TableauDeBord {
         `SELECT COUNT(*) n, COALESCE(SUM(total), 0) ca, COALESCE(SUM(cout_total), 0) cout
          FROM ventes WHERE statut = 'finalisee' AND at BETWEEN ? AND ?`
       )
-      .get(d, f) as { n: number; ca: number; cout: number }
+      .get(d, f) as unknown as { n: number; ca: number; cout: number }
 
   const ceJour = ventesDu(debut, fin)
   const laVeille = ventesDu(debutHier, finHier)
@@ -44,7 +45,7 @@ export function tableauDeBord(): TableauDeBord {
         .prepare(
           `SELECT COALESCE(SUM(montant), 0) s FROM depenses WHERE archived_at IS NULL AND date = ?`
         )
-        .get(d) as { s: number }
+        .get(d) as unknown as { s: number }
     ).s
 
   const caisse = etatCaisse()
@@ -57,7 +58,7 @@ export function tableauDeBord(): TableauDeBord {
          COUNT(CASE WHEN etat_stock = 'faible'  THEN 1 END) faibles
        FROM v_produit_etat WHERE archived_at IS NULL AND vente_autorisee = 1`
     )
-    .get() as { ruptures: number; faibles: number }
+    .get() as unknown as { ruptures: number; faibles: number }
 
   const peremption = db
     .prepare(
@@ -67,11 +68,11 @@ export function tableauDeBord(): TableauDeBord {
          COUNT(CASE WHEN palier IN ('j7','j30','j90') AND jours_restants <= ? THEN 1 END) proches
        FROM v_peremptions`
     )
-    .get(seuil) as { expires: number; valeurExpiree: number; proches: number }
+    .get(seuil) as unknown as { expires: number; valeurExpiree: number; proches: number }
 
-  const dettes = (db.prepare('SELECT COALESCE(SUM(solde_du), 0) s FROM v_dette_fournisseur').get() as { s: number }).s
+  const dettes = (db.prepare('SELECT COALESCE(SUM(solde_du), 0) s FROM v_dette_fournisseur').get() as unknown as { s: number }).s
   const creances = (
-    db.prepare('SELECT COALESCE(SUM(solde_du), 0) s FROM v_creance_client WHERE solde_du > 0').get() as { s: number }
+    db.prepare('SELECT COALESCE(SUM(solde_du), 0) s FROM v_creance_client WHERE solde_du > 0').get() as unknown as { s: number }
   ).s
 
   // L'activité récente est un assemblage des opérations réellement enregistrées.
@@ -103,12 +104,12 @@ export function tableauDeBord(): TableauDeBord {
        WHERE at IS NOT NULL
        ORDER BY at DESC LIMIT 12`
     )
-    .all() as TableauDeBord['activite']
+    .all() as unknown as TableauDeBord['activite']
 
   const nbProduits = (
-    db.prepare('SELECT COUNT(*) n FROM produits WHERE archived_at IS NULL').get() as { n: number }
+    db.prepare('SELECT COUNT(*) n FROM produits WHERE archived_at IS NULL').get() as unknown as { n: number }
   ).n
-  const nbVentesTotal = (db.prepare('SELECT COUNT(*) n FROM ventes').get() as { n: number }).n
+  const nbVentesTotal = (db.prepare('SELECT COUNT(*) n FROM ventes').get() as unknown as { n: number }).n
 
   return {
     date: jour,
@@ -154,7 +155,7 @@ export function rechercheGlobale(saisie: string, limiteParType = 5): ResultatRec
               OR id IN (SELECT produit_id FROM produit_codes_barres WHERE code = ?))
        ORDER BY nom_commercial LIMIT ?`
     )
-    .all(flou, flou, terme, terme, limiteParType) as {
+    .all(flou, flou, terme, terme, limiteParType) as unknown as {
     id: number
     nom_commercial: string
     dosage: string | null
@@ -179,7 +180,7 @@ export function rechercheGlobale(saisie: string, limiteParType = 5): ResultatRec
        FROM ventes v LEFT JOIN clients c ON c.id = v.client_id
        WHERE v.reference LIKE ? ORDER BY v.at DESC LIMIT ?`
     )
-    .all(flou, limiteParType) as { id: number; reference: string; at: string; total: number; nom: string | null }[]
+    .all(flou, limiteParType) as unknown as { id: number; reference: string; at: string; total: number; nom: string | null }[]
 
   for (const v of ventes) {
     resultats.push({
@@ -197,7 +198,7 @@ export function rechercheGlobale(saisie: string, limiteParType = 5): ResultatRec
        WHERE archived_at IS NULL AND (nom LIKE ? OR telephone LIKE ? OR code = ?)
        ORDER BY nom LIMIT ?`
     )
-    .all(flou, flou, terme, limiteParType) as {
+    .all(flou, flou, terme, limiteParType) as unknown as {
     id: number
     nom: string
     telephone: string | null
@@ -213,7 +214,7 @@ export function rechercheGlobale(saisie: string, limiteParType = 5): ResultatRec
       `SELECT id, nom, telephone FROM fournisseurs
        WHERE archived_at IS NULL AND (nom LIKE ? OR telephone LIKE ?) ORDER BY nom LIMIT ?`
     )
-    .all(flou, flou, limiteParType) as { id: number; nom: string; telephone: string | null }[]
+    .all(flou, flou, limiteParType) as unknown as { id: number; nom: string; telephone: string | null }[]
 
   for (const f of fournisseurs) {
     resultats.push({ categorie: 'fournisseur', id: f.id, titre: f.nom, sousTitre: f.telephone ?? '—' })
@@ -225,7 +226,7 @@ export function rechercheGlobale(saisie: string, limiteParType = 5): ResultatRec
        JOIN fournisseurs f ON f.id = a.fournisseur_id
        WHERE a.reference LIKE ? ORDER BY a.date_reception DESC LIMIT ?`
     )
-    .all(flou, limiteParType) as { id: number; reference: string; total: number; nom: string }[]
+    .all(flou, limiteParType) as unknown as { id: number; reference: string; total: number; nom: string }[]
 
   for (const a of achats) {
     resultats.push({
@@ -265,7 +266,7 @@ export function rapportVentes(
        WHERE statut = 'finalisee' AND at BETWEEN ? AND ?
        GROUP BY periode ORDER BY periode`
     )
-    .all(depuis + 'T00:00:00.000Z', jusqua + 'T23:59:59.999Z') as never
+    .all(depuis + 'T00:00:00.000Z', jusqua + 'T23:59:59.999Z') as unknown as never
 }
 
 export function rapportProduits(
@@ -296,7 +297,7 @@ export function rapportProduits(
        ORDER BY quantite ${sens === 'meilleures' ? 'DESC' : 'ASC'}
        LIMIT 30`
     )
-    .all(depuis + 'T00:00:00.000Z', jusqua + 'T23:59:59.999Z') as never
+    .all(depuis + 'T00:00:00.000Z', jusqua + 'T23:59:59.999Z') as unknown as never
 }
 
 export function rapportStock(): {
@@ -314,7 +315,7 @@ export function rapportStock(): {
        FROM produits p JOIN v_stock_produit s ON s.produit_id = p.id
        WHERE p.archived_at IS NULL`
     )
-    .get() as { valeur: number; refs: number; lots: number }
+    .get() as unknown as { valeur: number; refs: number; lots: number }
 
   const parCategorie = db
     .prepare(
@@ -324,7 +325,7 @@ export function rapportStock(): {
        WHERE e.archived_at IS NULL
        GROUP BY c.nom ORDER BY valeur DESC`
     )
-    .all() as { categorie: string; references_: number; valeur: number }[]
+    .all() as unknown as { categorie: string; references_: number; valeur: number }[]
 
   return {
     valeurTotale: global.valeur,
@@ -345,7 +346,7 @@ export function journal(filtre: { depuis?: string; utilisateurId?: number; entit
   utilisateur: string | null
 }[] {
   const conditions: string[] = []
-  const params: Record<string, unknown> = { limite: filtre.limite ?? 200 }
+  const params: Record<string, SQLInputValue> = { limite: filtre.limite ?? 200 }
 
   if (filtre.depuis) (conditions.push('j.at >= :depuis'), (params.depuis = filtre.depuis))
   if (filtre.utilisateurId) (conditions.push('j.utilisateur_id = :uid'), (params.uid = filtre.utilisateurId))
@@ -359,5 +360,5 @@ export function journal(filtre: { depuis?: string; utilisateurId?: number; entit
        ${conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''}
        ORDER BY j.at DESC, j.id DESC LIMIT :limite`
     )
-    .all(params) as never
+    .all(params) as unknown as never
 }

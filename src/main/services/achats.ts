@@ -1,3 +1,4 @@
+import type { SQLInputValue } from 'node:sqlite'
 import { base, transaction } from '../db'
 import type { Achat, LigneReception } from '@shared/types'
 import { ErreurMetier, aujourdhui, journaliser, maintenant, prochaineReference } from './commun'
@@ -27,7 +28,7 @@ export function enregistrerReception(demande: DemandeAchat, utilisateurId: numbe
 
   const fournisseur = base()
     .prepare('SELECT nom FROM fournisseurs WHERE id = ? AND archived_at IS NULL')
-    .get(demande.fournisseurId) as { nom: string } | undefined
+    .get(demande.fournisseurId) as unknown as { nom: string } | undefined
   if (!fournisseur) throw new ErreurMetier('Fournisseur introuvable.', 'fournisseurId')
 
   for (const ligne of demande.lignes) {
@@ -36,7 +37,7 @@ export function enregistrerReception(demande: DemandeAchat, utilisateurId: numbe
 
     const produit = base()
       .prepare('SELECT nom_commercial, suivi_peremption FROM produits WHERE id = ? AND archived_at IS NULL')
-      .get(ligne.produitId) as { nom_commercial: string; suivi_peremption: number } | undefined
+      .get(ligne.produitId) as unknown as { nom_commercial: string; suivi_peremption: number } | undefined
     if (!produit) throw new ErreurMetier(`Produit introuvable (#${ligne.produitId}).`)
 
     if (ligne.datePeremption && ligne.datePeremption < aujourdhui()) {
@@ -157,7 +158,7 @@ export function payerAchat(
 ): void {
   if (montant <= 0) throw new ErreurMetier('Le montant doit être supérieur à zéro.')
 
-  const a = base().prepare('SELECT reference, total, montant_paye FROM achats WHERE id = ?').get(achatId) as
+  const a = base().prepare('SELECT reference, total, montant_paye FROM achats WHERE id = ?').get(achatId) as unknown as
     | { reference: string; total: number; montant_paye: number }
     | undefined
   if (!a) throw new ErreurMetier('Achat introuvable.')
@@ -197,7 +198,7 @@ export interface FiltreAchats {
 
 export function listerAchats(filtre: FiltreAchats = {}): Achat[] {
   const conditions: string[] = []
-  const params: Record<string, unknown> = { limite: filtre.limite ?? 100 }
+  const params: Record<string, SQLInputValue> = { limite: filtre.limite ?? 100 }
 
   if (filtre.fournisseurId) (conditions.push('a.fournisseur_id = :fournisseurId'), (params.fournisseurId = filtre.fournisseurId))
   if (filtre.statut) (conditions.push('a.statut = :statut'), (params.statut = filtre.statut))
@@ -213,7 +214,7 @@ export function listerAchats(filtre: FiltreAchats = {}): Achat[] {
        ${conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''}
        ORDER BY a.date_reception DESC, a.id DESC LIMIT :limite`
     )
-    .all(params) as Achat[]
+    .all(params) as unknown as Achat[]
 }
 
 export function achat(id: number): (Achat & {
@@ -234,7 +235,7 @@ export function achat(id: number): (Achat & {
       `SELECT a.*, f.nom AS fournisseur FROM achats a
        JOIN fournisseurs f ON f.id = a.fournisseur_id WHERE a.id = ?`
     )
-    .get(id) as Achat | undefined
+    .get(id) as unknown as Achat | undefined
   if (!a) return null
 
   const lignes = base()
@@ -244,11 +245,11 @@ export function achat(id: number): (Achat & {
        FROM achat_lignes al JOIN produits p ON p.id = al.produit_id
        WHERE al.achat_id = ? ORDER BY al.id`
     )
-    .all(id) as never
+    .all(id) as unknown as never
 
   const paiements = base()
     .prepare('SELECT at, montant, mode, reference FROM achat_paiements WHERE achat_id = ? ORDER BY at')
-    .all(id) as never
+    .all(id) as unknown as never
 
   return { ...a, lignes, paiements }
 }
@@ -285,5 +286,5 @@ export function suggestionsReapprovisionnement(): {
        GROUP BY e.id
        ORDER BY e.etat_stock = 'rupture' DESC, e.nom_commercial`
     )
-    .all() as never
+    .all() as unknown as never
 }

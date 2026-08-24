@@ -10,7 +10,7 @@ export function sessionOuverte(): CaisseSession | null {
          FROM caisse_sessions c JOIN utilisateurs u ON u.id = c.utilisateur_id
          WHERE c.statut = 'ouverte'`
       )
-      .get() as CaisseSession | undefined) ?? null
+      .get() as unknown as CaisseSession | undefined) ?? null
   )
 }
 
@@ -34,7 +34,7 @@ export function etatCaisse(): EtatCaisse {
   if (!session) return vide
 
   const somme = (sql: string, params: unknown[] = []): number => {
-    const l = base().prepare(sql).get(...(params as never[])) as { s: number | null }
+    const l = base().prepare(sql).get(...(params as never[])) as unknown as { s: number | null }
     return l?.s ?? 0
   }
 
@@ -63,14 +63,14 @@ export function etatCaisse(): EtatCaisse {
        WHERE session_id = ? AND type = 'vente' AND mode <> 'especes'
        GROUP BY mode ORDER BY mode`
     )
-    .all(session.id) as { mode: ModePaiement; montant: number }[]
+    .all(session.id) as unknown as { mode: ModePaiement; montant: number }[]
 
   const ventes = base()
     .prepare(
       `SELECT COUNT(*) n, COALESCE(SUM(total), 0) t FROM ventes
        WHERE caisse_session_id = ? AND statut = 'finalisee'`
     )
-    .get(session.id) as { n: number; t: number }
+    .get(session.id) as unknown as { n: number; t: number }
 
   return {
     session,
@@ -174,7 +174,7 @@ export function cloturerCaisse(
         `SELECT c.*, u.nom_complet AS utilisateur
          FROM caisse_sessions c JOIN utilisateurs u ON u.id = c.utilisateur_id WHERE c.id = ?`
       )
-      .get(etat.session!.id) as CaisseSession
+      .get(etat.session!.id) as unknown as CaisseSession
 
     return { session, theorique: etat.theoriqueEspeces, compte: totalCompte, ecart }
   })
@@ -236,7 +236,7 @@ export function historiqueSessions(limite = 50): CaisseSession[] {
        FROM caisse_sessions c JOIN utilisateurs u ON u.id = c.utilisateur_id
        ORDER BY c.ouverte_at DESC LIMIT ?`
     )
-    .all(limite) as CaisseSession[]
+    .all(limite) as unknown as CaisseSession[]
 }
 
 export function mouvementsSession(sessionId: number): {
@@ -259,5 +259,5 @@ export function mouvementsSession(sessionId: number): {
        WHERE m.session_id = ?
        ORDER BY m.at DESC, m.id DESC`
     )
-    .all(sessionId) as never
+    .all(sessionId) as unknown as never
 }

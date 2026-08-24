@@ -30,7 +30,7 @@ export function calculerAlertes(): AlerteCalculee[] {
        WHERE archived_at IS NULL AND etat_stock = 'rupture' AND vente_autorisee = 1
        ORDER BY nom_commercial`
     )
-    .all() as { id: number; nom_commercial: string }[]
+    .all() as unknown as { id: number; nom_commercial: string }[]
 
   for (const p of ruptures) {
     alertes.push({
@@ -50,7 +50,7 @@ export function calculerAlertes(): AlerteCalculee[] {
        WHERE archived_at IS NULL AND etat_stock = 'faible' AND vente_autorisee = 1
        ORDER BY nom_commercial`
     )
-    .all() as { id: number; nom_commercial: string; stock_disponible: number; stock_min: number }[]
+    .all() as unknown as { id: number; nom_commercial: string; stock_disponible: number; stock_min: number }[]
 
   for (const p of faibles) {
     alertes.push({
@@ -69,7 +69,7 @@ export function calculerAlertes(): AlerteCalculee[] {
       `SELECT lot_id, numero, nom_commercial, quantite_restante, date_peremption, produit_id
        FROM v_peremptions WHERE palier = 'expire' ORDER BY date_peremption`
     )
-    .all() as {
+    .all() as unknown as {
     lot_id: number
     numero: string | null
     nom_commercial: string
@@ -95,7 +95,7 @@ export function calculerAlertes(): AlerteCalculee[] {
       `SELECT COUNT(*) n, COALESCE(SUM(valeur), 0) v FROM v_peremptions
        WHERE palier IN ('j7','j30','j90') AND jours_restants <= ?`
     )
-    .get(seuilPeremption) as { n: number; v: number }
+    .get(seuilPeremption) as unknown as { n: number; v: number }
 
   if (proches.n > 0) {
     alertes.push({
@@ -116,7 +116,7 @@ export function calculerAlertes(): AlerteCalculee[] {
        FROM caisse_sessions c JOIN utilisateurs u ON u.id = c.utilisateur_id
        WHERE c.statut = 'ouverte' AND substr(c.ouverte_at, 1, 10) < ?`
     )
-    .get(aujourdhui()) as
+    .get(aujourdhui()) as unknown as
     | { id: number; reference: string; ouverte_at: string; nom_complet: string }
     | undefined
 
@@ -134,7 +134,7 @@ export function calculerAlertes(): AlerteCalculee[] {
 
   const dettes = base()
     .prepare('SELECT fournisseur_id, nom, solde_du FROM v_dette_fournisseur WHERE solde_du > 0 ORDER BY solde_du DESC')
-    .all() as { fournisseur_id: number; nom: string; solde_du: number }[]
+    .all() as unknown as { fournisseur_id: number; nom: string; solde_du: number }[]
 
   for (const d of dettes) {
     alertes.push({
@@ -150,7 +150,7 @@ export function calculerAlertes(): AlerteCalculee[] {
 
   const creances = base()
     .prepare('SELECT client_id, nom, solde_du FROM v_creance_client WHERE solde_du > 0 ORDER BY solde_du DESC')
-    .all() as { client_id: number; nom: string; solde_du: number }[]
+    .all() as unknown as { client_id: number; nom: string; solde_du: number }[]
 
   for (const c of creances) {
     alertes.push({
@@ -169,7 +169,7 @@ export function calculerAlertes(): AlerteCalculee[] {
       `SELECT id, reference, ouvert_at FROM inventaires
        WHERE statut = 'en_cours' AND substr(ouvert_at, 1, 10) < ?`
     )
-    .get(decalerJours(aujourdhui(), -1)) as { id: number; reference: string } | undefined
+    .get(decalerJours(aujourdhui(), -1)) as unknown as { id: number; reference: string } | undefined
 
   if (inventaire) {
     alertes.push({
@@ -185,7 +185,7 @@ export function calculerAlertes(): AlerteCalculee[] {
 
   const derniere = base()
     .prepare("SELECT MAX(at) a FROM sauvegardes WHERE statut = 'ok'")
-    .get() as { a: string | null }
+    .get() as unknown as { a: string | null }
 
   if (derniere.a === null || derniere.a.slice(0, 10) < decalerJours(aujourdhui(), -7)) {
     alertes.push({
@@ -228,7 +228,7 @@ export function rafraichirAlertes(): void {
     // plutôt que de le supprimer, pour garder la trace dans l'historique.
     const existantes = base()
       .prepare('SELECT cle FROM alertes WHERE resolue_at IS NULL')
-      .all() as { cle: string }[]
+      .all() as unknown as { cle: string }[]
 
     for (const e of existantes) {
       if (!cles.has(e.cle)) {
@@ -246,13 +246,13 @@ export function listerAlertes(inclureResolues = false): Alerte[] {
        ORDER BY CASE priorite WHEN 'urgent' THEN 0 WHEN 'important' THEN 1 ELSE 2 END,
                 created_at DESC`
     )
-    .all() as Alerte[]
+    .all() as unknown as Alerte[]
 }
 
 export function compterAlertes(): { urgent: number; important: number; information: number; total: number } {
   const lignes = base()
     .prepare('SELECT priorite, COUNT(*) n FROM alertes WHERE resolue_at IS NULL GROUP BY priorite')
-    .all() as { priorite: PrioriteAlerte; n: number }[]
+    .all() as unknown as { priorite: PrioriteAlerte; n: number }[]
 
   const compte = { urgent: 0, important: 0, information: 0, total: 0 }
   for (const l of lignes) {

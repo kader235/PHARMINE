@@ -1,3 +1,4 @@
+import type { SQLInputValue } from 'node:sqlite'
 import { base, transaction } from '../db'
 import type {
   Allocation,
@@ -106,8 +107,8 @@ function preparer(demande: DemandeVente, permissions: Set<string>): Preparation 
                 vente_autorisee, archived_at
          FROM produits WHERE id = ?`
       )
-      .get(produitId) as
-      | {
+      .get(produitId) as unknown as
+    | {
           id: number
           nom_commercial: string
           dosage: string | null
@@ -151,7 +152,7 @@ function preparer(demande: DemandeVente, permissions: Set<string>): Preparation 
          WHERE produit_id = ? AND quantite_restante > 0 AND bloque = 0
            AND date_peremption IS NOT NULL AND date_peremption < ?`
       )
-      .get(produitId, aujourdhui()) as { n: number; q: number }
+      .get(produitId, aujourdhui()) as unknown as { n: number; q: number }
 
     if (expires.n > 0) {
       avertissements.push({
@@ -205,7 +206,7 @@ function preparer(demande: DemandeVente, permissions: Set<string>): Preparation 
            JOIN ventes v ON v.id = vl.vente_id
            WHERE vl.produit_id = ? AND v.statut = 'finalisee' AND v.at >= ?`
         )
-        .get(produitId, decalerJours(aujourdhui(), -90) + 'T00:00:00.000Z') as { m: number | null }
+        .get(produitId, decalerJours(aujourdhui(), -90) + 'T00:00:00.000Z') as unknown as { m: number | null }
 
       if (habituelle.m !== null && demandee.quantite > habituelle.m * 5) {
         avertissements.push({
@@ -291,11 +292,11 @@ function preparer(demande: DemandeVente, permissions: Set<string>): Preparation 
     } else {
       const client = base()
         .prepare('SELECT nom, plafond_credit FROM clients WHERE id = ?')
-        .get(demande.clientId) as { nom: string; plafond_credit: number } | undefined
+        .get(demande.clientId) as unknown as { nom: string; plafond_credit: number } | undefined
       const solde = (
         base()
           .prepare('SELECT COALESCE(solde_du, 0) s FROM v_creance_client WHERE client_id = ?')
-          .get(demande.clientId) as { s: number } | undefined
+          .get(demande.clientId) as unknown as { s: number } | undefined
       )?.s ?? 0
 
       if (client && client.plafond_credit > 0 && solde + resteAPayer > client.plafond_credit) {
@@ -467,14 +468,14 @@ export function enregistrerVente(
 export function annulerVente(venteId: number, motif: string, utilisateurId: number): void {
   if (!motif?.trim()) throw new ErreurMetier('Un motif d’annulation est obligatoire.')
 
-  const vente = base().prepare('SELECT * FROM ventes WHERE id = ?').get(venteId) as Vente | undefined
+  const vente = base().prepare('SELECT * FROM ventes WHERE id = ?').get(venteId) as unknown as Vente | undefined
   if (!vente) throw new ErreurMetier('Vente introuvable.')
   if (vente.statut !== 'finalisee') throw new ErreurMetier('Cette vente est déjà annulée.')
 
   transaction(() => {
     const lignes = base()
       .prepare('SELECT * FROM vente_lignes WHERE vente_id = ?')
-      .all(venteId) as VenteLigne[]
+      .all(venteId) as unknown as VenteLigne[]
 
     // Le stock retourne dans son lot d'origine : après annulation, la
     // traçabilité des lots reste exacte.
@@ -509,7 +510,7 @@ export function annulerVente(venteId: number, motif: string, utilisateurId: numb
             `SELECT COALESCE(SUM(montant), 0) s FROM caisse_mouvements
              WHERE reference_type = 'vente' AND reference_id = ?`
           )
-          .get(venteId) as { s: number }
+          .get(venteId) as unknown as { s: number }
       ).s
       if (especes > 0) {
         base()
@@ -553,7 +554,7 @@ export interface FiltreVentes {
 
 export function listerVentes(filtre: FiltreVentes = {}): Vente[] {
   const conditions: string[] = []
-  const params: Record<string, unknown> = { limite: filtre.limite ?? 100 }
+  const params: Record<string, SQLInputValue> = { limite: filtre.limite ?? 100 }
 
   if (filtre.depuis) (conditions.push('v.at >= :depuis'), (params.depuis = filtre.depuis))
   if (filtre.jusqua) (conditions.push('v.at <= :jusqua'), (params.jusqua = filtre.jusqua))
@@ -576,7 +577,7 @@ export function listerVentes(filtre: FiltreVentes = {}): Vente[] {
        ORDER BY v.at DESC, v.id DESC
        LIMIT :limite`
     )
-    .all(params) as Vente[]
+    .all(params) as unknown as Vente[]
 }
 
 export function detailVente(venteId: number): VenteDetail | null {
@@ -588,7 +589,7 @@ export function detailVente(venteId: number): VenteDetail | null {
        JOIN utilisateurs u ON u.id = v.utilisateur_id
        WHERE v.id = ?`
     )
-    .get(venteId) as Vente | undefined
+    .get(venteId) as unknown as Vente | undefined
 
   if (!vente) return null
 
@@ -598,11 +599,11 @@ export function detailVente(venteId: number): VenteDetail | null {
        FROM vente_lignes vl LEFT JOIN lots l ON l.id = vl.lot_id
        WHERE vl.vente_id = ? ORDER BY vl.id`
     )
-    .all(venteId) as VenteLigne[]
+    .all(venteId) as unknown as VenteLigne[]
 
   const paiements = base()
     .prepare('SELECT mode, montant, reference FROM vente_paiements WHERE vente_id = ? ORDER BY id')
-    .all(venteId) as VenteDetail['paiements']
+    .all(venteId) as unknown as VenteDetail['paiements']
 
   return { ...vente, lignes, paiements }
 }

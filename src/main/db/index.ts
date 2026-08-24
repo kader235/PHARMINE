@@ -153,11 +153,11 @@ export function verifierSauvegarde(fichier: string): { valide: boolean; version?
   let controle: DatabaseSync | null = null
   try {
     controle = new DatabaseSync(fichier, { readOnly: true })
-    const integrite = controle.prepare('PRAGMA integrity_check').get() as { integrity_check: string }
+    const integrite = controle.prepare('PRAGMA integrity_check').get() as unknown as { integrity_check: string }
     if (integrite.integrity_check !== 'ok') {
       return { valide: false, motif: 'Le fichier est endommagé.' }
     }
-    const version = controle.prepare('SELECT MAX(version) v FROM schema_migrations').get() as { v: number | null }
+    const version = controle.prepare('SELECT MAX(version) v FROM schema_migrations').get() as unknown as { v: number | null }
     if (version.v === null) return { valide: false, motif: "Ce fichier n'est pas une base PHARMINA." }
     return { valide: true, version: version.v }
   } catch (erreur) {

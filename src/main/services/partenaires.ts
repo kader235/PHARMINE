@@ -1,3 +1,4 @@
+import type { SQLInputValue } from 'node:sqlite'
 import { base, transaction } from '../db'
 import type { Client, Fournisseur } from '@shared/types'
 import { ErreurMetier, journaliser, maintenant, prochaineReference } from './commun'
@@ -8,7 +9,7 @@ import { ErreurMetier, journaliser, maintenant, prochaineReference } from './com
 
 export function listerFournisseurs(recherche?: string, inclureArchives = false): Fournisseur[] {
   const conditions: string[] = []
-  const params: Record<string, unknown> = {}
+  const params: Record<string, SQLInputValue> = {}
   if (!inclureArchives) conditions.push('f.archived_at IS NULL')
   if (recherche?.trim()) {
     conditions.push('(f.nom LIKE :q OR f.telephone LIKE :q OR f.contact_principal LIKE :q)')
@@ -23,7 +24,7 @@ export function listerFournisseurs(recherche?: string, inclureArchives = false):
        ${conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''}
        ORDER BY f.nom`
     )
-    .all(params) as Fournisseur[]
+    .all(params) as unknown as Fournisseur[]
 }
 
 export function fournisseur(id: number): (Fournisseur & { produits: { id: number; nom: string; dernier_prix: number }[] }) | null {
@@ -33,7 +34,7 @@ export function fournisseur(id: number): (Fournisseur & { produits: { id: number
        FROM fournisseurs f LEFT JOIN v_dette_fournisseur d ON d.fournisseur_id = f.id
        WHERE f.id = ?`
     )
-    .get(id) as Fournisseur | undefined
+    .get(id) as unknown as Fournisseur | undefined
   if (!f) return null
 
   const produits = base()
@@ -42,7 +43,7 @@ export function fournisseur(id: number): (Fournisseur & { produits: { id: number
        FROM lots l JOIN produits p ON p.id = l.produit_id
        WHERE l.fournisseur_id = ? GROUP BY p.id ORDER BY p.nom_commercial LIMIT 50`
     )
-    .all(id) as { id: number; nom: string; dernier_prix: number }[]
+    .all(id) as unknown as { id: number; nom: string; dernier_prix: number }[]
 
   return { ...f, produits }
 }
@@ -123,8 +124,8 @@ export function enregistrerFournisseur(
 
 export function archiverFournisseur(id: number, archiver: boolean, utilisateurId: number): void {
   const solde = (
-    base().prepare('SELECT solde_du s FROM v_dette_fournisseur WHERE fournisseur_id = ?').get(id) as
-      | { s: number }
+    base().prepare('SELECT solde_du s FROM v_dette_fournisseur WHERE fournisseur_id = ?').get(id) as unknown as
+    | { s: number }
       | undefined
   )?.s ?? 0
 
@@ -153,7 +154,7 @@ export function archiverFournisseur(id: number, archiver: boolean, utilisateurId
 
 export function listerClients(recherche?: string, inclureArchives = false): Client[] {
   const conditions: string[] = []
-  const params: Record<string, unknown> = {}
+  const params: Record<string, SQLInputValue> = {}
   if (!inclureArchives) conditions.push('c.archived_at IS NULL')
   if (recherche?.trim()) {
     conditions.push('(c.nom LIKE :q OR c.telephone LIKE :q OR c.code = :exact)')
@@ -168,7 +169,7 @@ export function listerClients(recherche?: string, inclureArchives = false): Clie
        ${conditions.length ? 'WHERE ' + conditions.join(' AND ') : ''}
        ORDER BY c.nom`
     )
-    .all(params) as Client[]
+    .all(params) as unknown as Client[]
 }
 
 export function client(id: number): (Client & { ventes: { id: number; reference: string; at: string; total: number; reste_a_payer: number }[] }) | null {
@@ -177,7 +178,7 @@ export function client(id: number): (Client & { ventes: { id: number; reference:
       `SELECT c.*, v.total_achats, v.solde_du, v.derniere_visite
        FROM clients c LEFT JOIN v_creance_client v ON v.client_id = c.id WHERE c.id = ?`
     )
-    .get(id) as Client | undefined
+    .get(id) as unknown as Client | undefined
   if (!c) return null
 
   const ventes = base()
@@ -185,7 +186,7 @@ export function client(id: number): (Client & { ventes: { id: number; reference:
       `SELECT id, reference, at, total, reste_a_payer FROM ventes
        WHERE client_id = ? ORDER BY at DESC LIMIT 50`
     )
-    .all(id) as { id: number; reference: string; at: string; total: number; reste_a_payer: number }[]
+    .all(id) as unknown as { id: number; reference: string; at: string; total: number; reste_a_payer: number }[]
 
   return { ...c, ventes }
 }
@@ -259,8 +260,8 @@ export function encaisserCreance(
   if (montant <= 0) throw new ErreurMetier('Le montant doit être supérieur à zéro.')
 
   const solde = (
-    base().prepare('SELECT solde_du s FROM v_creance_client WHERE client_id = ?').get(clientId) as
-      | { s: number }
+    base().prepare('SELECT solde_du s FROM v_creance_client WHERE client_id = ?').get(clientId) as unknown as
+    | { s: number }
       | undefined
   )?.s ?? 0
 
@@ -278,7 +279,7 @@ export function encaisserCreance(
       )
       .run(clientId, venteId, montant, mode, utilisateurId)
 
-    const nom = (base().prepare('SELECT nom FROM clients WHERE id = ?').get(clientId) as { nom: string } | undefined)?.nom
+    const nom = (base().prepare('SELECT nom FROM clients WHERE id = ?').get(clientId) as unknown as { nom: string } | undefined)?.nom
 
     journaliser({
       utilisateurId,
@@ -292,7 +293,7 @@ export function encaisserCreance(
 
 export function archiverClient(id: number, archiver: boolean, utilisateurId: number): void {
   const solde = (
-    base().prepare('SELECT solde_du s FROM v_creance_client WHERE client_id = ?').get(id) as { s: number } | undefined
+    base().prepare('SELECT solde_du s FROM v_creance_client WHERE client_id = ?').get(id) as unknown as { s: number } | undefined
   )?.s ?? 0
 
   if (archiver && solde > 0) {

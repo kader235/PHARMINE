@@ -13,7 +13,8 @@
     "start": "electron-vite preview",
     "dist:win": "electron-vite build && electron-builder --win",
     "test": "electron tests/schema.test.js && electron tests/seed.test.js && npm run test:e2e",
-    "test:e2e": "electron-vite build && electron out/main/e2e.js"
+    "test:e2e": "electron-vite build && electron out/main/e2e.js",
+    "apercu": "bash scripts/apercu.sh"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

@@ -1,3 +1,4 @@
+import type { SQLInputValue } from 'node:sqlite'
 import { base, transaction } from '../db'
 import type { Page, Produit, ProduitEtat } from '@shared/types'
 import { ErreurMetier, journaliser, maintenant, prochaineReference } from './commun'
@@ -26,7 +27,7 @@ export interface FiltreProduits {
 
 export function listerProduits(filtre: FiltreProduits = {}): Page<ProduitEtat> {
   const conditions: string[] = []
-  const params: Record<string, unknown> = {}
+  const params: Record<string, SQLInputValue> = {}
 
   if (!filtre.inclureArchives) conditions.push('p.archived_at IS NULL')
   if (filtre.categorieId) (conditions.push('p.categorie_id = :categorieId'), (params.categorieId = filtre.categorieId))
@@ -62,16 +63,20 @@ export function listerProduits(filtre: FiltreProduits = {}): Page<ProduitEtat> {
 
   const parPage = Math.min(filtre.parPage ?? 50, 500)
   const page = Math.max(filtre.page ?? 1, 1)
-  params.limite = parPage
-  params.decalage = (page - 1) * parPage
 
+  // Deux jeux de paramètres distincts : node:sqlite refuse un paramètre nommé
+  // qui n'apparaît pas dans la requête, et le comptage ignore la pagination.
   const total = (
-    base().prepare(`SELECT COUNT(*) n FROM v_produit_etat p ${where}`).get(params) as { n: number }
+    base().prepare(`SELECT COUNT(*) n FROM v_produit_etat p ${where}`).get(params) as unknown as { n: number }
   ).n
 
   const lignes = base()
-    .prepare(`SELECT p.* FROM v_produit_etat p ${where} ORDER BY ${tri} ${sens}, p.nom_commercial LIMIT :limite OFFSET :decalage`)
-    .all(params) as ProduitEtat[]
+    .prepare(
+      `SELECT p.* FROM v_produit_etat p ${where}
+       ORDER BY ${tri} ${sens}, p.nom_commercial
+       LIMIT :limite OFFSET :decalage`
+    )
+    .all({ ...params, limite: parPage, decalage: (page - 1) * parPage }) as unknown as ProduitEtat[]
 
   return { lignes, total, page, parPage }
 }
@@ -87,7 +92,7 @@ export function rechercheRapide(saisie: string, limite = 20): ProduitEtat[] {
        WHERE p.archived_at IS NULL AND p.vente_autorisee = 1
          AND (p.code_interne = ? OR p.id IN (SELECT produit_id FROM produit_codes_barres WHERE code = ?))`
     )
-    .all(terme, terme) as ProduitEtat[]
+    .all(terme, terme) as unknown as ProduitEtat[]
 
   if (parCode.length) return parCode
 
@@ -99,7 +104,7 @@ export function rechercheRapide(saisie: string, limite = 20): ProduitEtat[] {
          WHERE p.archived_at IS NULL AND p.vente_autorisee = 1 AND p.nom_commercial LIKE ?
          ORDER BY p.nom_commercial LIMIT ?`
       )
-      .all(`%${terme}%`, limite) as ProduitEtat[]
+      .all(`%${terme}%`, limite) as unknown as ProduitEtat[]
   }
 
   // Classement : le stock disponible d'abord, pour que le comptoir propose
@@ -112,14 +117,14 @@ export function rechercheRapide(saisie: string, limite = 20): ProduitEtat[] {
        ORDER BY (p.stock_disponible > 0) DESC, rank, p.nom_commercial
        LIMIT ?`
     )
-    .all(fts, limite) as ProduitEtat[]
+    .all(fts, limite) as unknown as ProduitEtat[]
 }
 
 export function produit(id: number): ProduitEtat | null {
-  const p = base().prepare('SELECT * FROM v_produit_etat WHERE id = ?').get(id) as ProduitEtat | undefined
+  const p = base().prepare('SELECT * FROM v_produit_etat WHERE id = ?').get(id) as unknown as ProduitEtat | undefined
   if (!p) return null
   p.codes_barres = (
-    base().prepare('SELECT code FROM produit_codes_barres WHERE produit_id = ? ORDER BY principal DESC').all(id) as {
+    base().prepare('SELECT code FROM produit_codes_barres WHERE produit_id = ? ORDER BY principal DESC').all(id) as unknown as {
       code: string
     }[]
   ).map((c) => c.code)
@@ -223,7 +228,7 @@ function ecrireCodesBarres(produitId: number, codes: string[]): void {
     .forEach((code, index) => {
       const proprietaire = base()
         .prepare('SELECT produit_id FROM produit_codes_barres WHERE code = ?')
-        .get(code) as { produit_id: number } | undefined
+        .get(code) as unknown as { produit_id: number } | undefined
       if (proprietaire && proprietaire.produit_id !== produitId) {
         throw new ErreurMetier(`Le code-barres ${code} est déjà attribué à un autre produit.`, 'codesBarres')
       }
@@ -236,7 +241,7 @@ function ecrireCodesBarres(produitId: number, codes: string[]): void {
 export function modifierProduit(id: number, demande: DemandeProduit, utilisateurId: number): void {
   valider(demande)
 
-  const avant = base().prepare('SELECT * FROM produits WHERE id = ?').get(id) as Produit | undefined
+  const avant = base().prepare('SELECT * FROM produits WHERE id = ?').get(id) as unknown as Produit | undefined
   if (!avant) throw new ErreurMetier('Produit introuvable.')
 
   transaction(() => {
@@ -300,15 +305,15 @@ export function modifierProduit(id: number, demande: DemandeProduit, utilisateur
 }
 
 export function archiverProduit(id: number, archiver: boolean, utilisateurId: number): void {
-  const p = base().prepare('SELECT nom_commercial FROM produits WHERE id = ?').get(id) as
+  const p = base().prepare('SELECT nom_commercial FROM produits WHERE id = ?').get(id) as unknown as
     | { nom_commercial: string }
     | undefined
   if (!p) throw new ErreurMetier('Produit introuvable.')
 
   if (archiver) {
     const stock = (
-      base().prepare('SELECT stock_disponible s FROM v_stock_produit WHERE produit_id = ?').get(id) as
-        | { s: number }
+      base().prepare('SELECT stock_disponible s FROM v_stock_produit WHERE produit_id = ?').get(id) as unknown as
+    | { s: number }
         | undefined
     )?.s ?? 0
     if (stock > 0) {
@@ -339,15 +344,15 @@ export function referentiels(): {
 } {
   const db = base()
   return {
-    categories: db.prepare('SELECT id, nom FROM categories WHERE archived_at IS NULL ORDER BY ordre, nom').all() as never,
-    formes: db.prepare('SELECT id, nom, abbreviation FROM formes ORDER BY ordre, nom').all() as never,
-    unites: db.prepare('SELECT id, nom, abbreviation FROM unites ORDER BY ordre, nom').all() as never,
-    laboratoires: db.prepare('SELECT id, nom FROM laboratoires WHERE archived_at IS NULL ORDER BY nom').all() as never
+    categories: db.prepare('SELECT id, nom FROM categories WHERE archived_at IS NULL ORDER BY ordre, nom').all() as unknown as never,
+    formes: db.prepare('SELECT id, nom, abbreviation FROM formes ORDER BY ordre, nom').all() as unknown as never,
+    unites: db.prepare('SELECT id, nom, abbreviation FROM unites ORDER BY ordre, nom').all() as unknown as never,
+    laboratoires: db.prepare('SELECT id, nom FROM laboratoires WHERE archived_at IS NULL ORDER BY nom').all() as unknown as never
   }
 }
 
 export function creerLaboratoire(nom: string): number {
-  const existe = base().prepare('SELECT id FROM laboratoires WHERE nom = ? COLLATE NOCASE').get(nom.trim()) as
+  const existe = base().prepare('SELECT id FROM laboratoires WHERE nom = ? COLLATE NOCASE').get(nom.trim()) as unknown as
     | { id: number }
     | undefined
   if (existe) return existe.id
@@ -363,7 +368,7 @@ export function statistiquesProduit(id: number): {
   tauxMarge: number
 } {
   const db = base()
-  const p = db.prepare('SELECT prix_achat, prix_vente FROM produits WHERE id = ?').get(id) as
+  const p = db.prepare('SELECT prix_achat, prix_vente FROM produits WHERE id = ?').get(id) as unknown as
     | { prix_achat: number; prix_vente: number }
     | undefined
 
@@ -373,7 +378,7 @@ export function statistiquesProduit(id: number): {
        FROM vente_lignes vl JOIN ventes v ON v.id = vl.vente_id
        WHERE vl.produit_id = ? AND v.statut = 'finalisee' AND v.at >= datetime('now', '-30 day')`
     )
-    .get(id) as { n: number; q: number }
+    .get(id) as unknown as { n: number; q: number }
 
   const parMois = db
     .prepare(
@@ -382,7 +387,7 @@ export function statistiquesProduit(id: number): {
        WHERE vl.produit_id = ? AND v.statut = 'finalisee' AND v.at >= datetime('now', '-12 month')
        GROUP BY mois ORDER BY mois`
     )
-    .all(id) as { mois: string; quantite: number; montant: number }[]
+    .all(id) as unknown as { mois: string; quantite: number; montant: number }[]
 
   const marge = (p?.prix_vente ?? 0) - (p?.prix_achat ?? 0)
   return {

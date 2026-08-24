@@ -28,7 +28,7 @@ export interface DemandeConfiguration {
  * configuré.
  */
 export function configurerPharmacie(demande: DemandeConfiguration): { utilisateurId: number } {
-  const deja = base().prepare('SELECT configure_at FROM pharmacie WHERE id = 1').get() as
+  const deja = base().prepare('SELECT configure_at FROM pharmacie WHERE id = 1').get() as unknown as
     | { configure_at: string | null }
     | undefined
   if (deja?.configure_at) {
@@ -129,15 +129,15 @@ export function listerParametres(): {
 }[] {
   return base()
     .prepare('SELECT cle, valeur, type, categorie, libelle, description FROM parametres ORDER BY categorie, cle')
-    .all() as never
+    .all() as unknown as never
 }
 
 export function definirParametres(valeurs: Record<string, string>, utilisateurId: number): void {
   transaction(() => {
     const at = maintenant()
     for (const [cle, valeur] of Object.entries(valeurs)) {
-      const existe = base().prepare('SELECT libelle FROM parametres WHERE cle = ?').get(cle) as
-        | { libelle: string }
+      const existe = base().prepare('SELECT libelle FROM parametres WHERE cle = ?').get(cle) as unknown as
+    | { libelle: string }
         | undefined
       if (!existe) continue
       base()
@@ -226,7 +226,7 @@ export function listerSauvegardes(): {
 }[] {
   return base()
     .prepare('SELECT id, fichier, taille, at, declencheur, statut, message FROM sauvegardes ORDER BY at DESC LIMIT 100')
-    .all() as never
+    .all() as unknown as never
 }
 
 export function controlerSauvegarde(fichier: string): { valide: boolean; version?: number; motif?: string } {
@@ -242,9 +242,9 @@ export function statistiquesBase(): {
   version: number
 } {
   const db = base()
-  const compte = (t: string) => (db.prepare(`SELECT COUNT(*) n FROM ${t}`).get() as { n: number }).n
-  const premiere = db.prepare('SELECT MIN(at) a FROM ventes').get() as { a: string | null }
-  const version = db.prepare('SELECT MAX(version) v FROM schema_migrations').get() as { v: number }
+  const compte = (t: string) => (db.prepare(`SELECT COUNT(*) n FROM ${t}`).get() as unknown as { n: number }).n
+  const premiere = db.prepare('SELECT MIN(at) a FROM ventes').get() as unknown as { a: string | null }
+  const version = db.prepare('SELECT MAX(version) v FROM schema_migrations').get() as unknown as { v: number }
 
   return {
     produits: compte('produits'),

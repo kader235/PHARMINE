@@ -1,3 +1,4 @@
+import type { SQLInputValue } from 'node:sqlite'
 import { base, transaction } from '../db'
 import type { Depense } from '@shared/types'
 import { ErreurMetier, aujourdhui, journaliser, prochaineReference } from './commun'
@@ -83,7 +84,7 @@ export interface FiltreDepenses {
 
 export function listerDepenses(filtre: FiltreDepenses = {}): Depense[] {
   const conditions = ['d.archived_at IS NULL']
-  const params: Record<string, unknown> = { limite: filtre.limite ?? 200 }
+  const params: Record<string, SQLInputValue> = { limite: filtre.limite ?? 200 }
 
   if (filtre.depuis) (conditions.push('d.date >= :depuis'), (params.depuis = filtre.depuis))
   if (filtre.jusqua) (conditions.push('d.date <= :jusqua'), (params.jusqua = filtre.jusqua))
@@ -98,19 +99,19 @@ export function listerDepenses(filtre: FiltreDepenses = {}): Depense[] {
        WHERE ${conditions.join(' AND ')}
        ORDER BY d.date DESC, d.id DESC LIMIT :limite`
     )
-    .all(params) as Depense[]
+    .all(params) as unknown as Depense[]
 }
 
 export function categoriesDepenses(): { id: number; nom: string }[] {
   return base()
     .prepare('SELECT id, nom FROM depense_categories WHERE archived_at IS NULL ORDER BY ordre, nom')
-    .all() as { id: number; nom: string }[]
+    .all() as unknown as { id: number; nom: string }[]
 }
 
 export function archiverDepense(id: number, utilisateurId: number): void {
   transaction(() => {
-    const d = base().prepare('SELECT reference, libelle FROM depenses WHERE id = ?').get(id) as
-      | { reference: string; libelle: string }
+    const d = base().prepare('SELECT reference, libelle FROM depenses WHERE id = ?').get(id) as unknown as
+    | { reference: string; libelle: string }
       | undefined
     if (!d) throw new ErreurMetier('Dépense introuvable.')
 
@@ -154,7 +155,7 @@ export function synthese(depuis: string, jusqua: string): SyntheseFinanciere {
       `SELECT COUNT(*) n, COALESCE(SUM(total), 0) ca, COALESCE(SUM(cout_total), 0) cout
        FROM ventes WHERE statut = 'finalisee' AND at BETWEEN ? AND ?`
     )
-    .get(bornes.d, bornes.f) as { n: number; ca: number; cout: number }
+    .get(bornes.d, bornes.f) as unknown as { n: number; ca: number; cout: number }
 
   const depenses = (
     db
@@ -162,7 +163,7 @@ export function synthese(depuis: string, jusqua: string): SyntheseFinanciere {
         `SELECT COALESCE(SUM(montant), 0) s FROM depenses
          WHERE archived_at IS NULL AND date BETWEEN ? AND ?`
       )
-      .get(depuis, jusqua) as { s: number }
+      .get(depuis, jusqua) as unknown as { s: number }
   ).s
 
   const achats = (
@@ -171,17 +172,17 @@ export function synthese(depuis: string, jusqua: string): SyntheseFinanciere {
         `SELECT COALESCE(SUM(total), 0) s FROM achats
          WHERE statut IN ('recu','recu_partiel') AND date_reception BETWEEN ? AND ?`
       )
-      .get(depuis, jusqua) as { s: number }
+      .get(depuis, jusqua) as unknown as { s: number }
   ).s
 
   const dettes = (
-    db.prepare('SELECT COALESCE(SUM(solde_du), 0) s FROM v_dette_fournisseur').get() as { s: number }
+    db.prepare('SELECT COALESCE(SUM(solde_du), 0) s FROM v_dette_fournisseur').get() as unknown as { s: number }
   ).s
   const creances = (
-    db.prepare('SELECT COALESCE(SUM(solde_du), 0) s FROM v_creance_client WHERE solde_du > 0').get() as { s: number }
+    db.prepare('SELECT COALESCE(SUM(solde_du), 0) s FROM v_creance_client WHERE solde_du > 0').get() as unknown as { s: number }
   ).s
   const stock = (
-    db.prepare('SELECT COALESCE(SUM(valeur_achat), 0) s FROM v_stock_produit').get() as { s: number }
+    db.prepare('SELECT COALESCE(SUM(valeur_achat), 0) s FROM v_stock_produit').get() as unknown as { s: number }
   ).s
 
   const parCategorie = db
@@ -191,7 +192,7 @@ export function synthese(depuis: string, jusqua: string): SyntheseFinanciere {
        WHERE d.archived_at IS NULL AND d.date BETWEEN ? AND ?
        GROUP BY c.id ORDER BY montant DESC`
     )
-    .all(depuis, jusqua) as { categorie: string; montant: number }[]
+    .all(depuis, jusqua) as unknown as { categorie: string; montant: number }[]
 
   const parMode = db
     .prepare(
@@ -200,7 +201,7 @@ export function synthese(depuis: string, jusqua: string): SyntheseFinanciere {
        WHERE v.statut = 'finalisee' AND v.at BETWEEN ? AND ?
        GROUP BY vp.mode ORDER BY montant DESC`
     )
-    .all(bornes.d, bornes.f) as { mode: string; montant: number; nb: number }[]
+    .all(bornes.d, bornes.f) as unknown as { mode: string; montant: number; nb: number }[]
 
   const margeBrute = ventes.ca - ventes.cout
 

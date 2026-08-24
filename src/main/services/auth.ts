@@ -64,7 +64,7 @@ export function permissionsDe(utilisateurId: number): string[] {
 }
 
 export function pharmacie(): Pharmacie | null {
-  return (base().prepare('SELECT * FROM pharmacie WHERE id = 1').get() as Pharmacie | undefined) ?? null
+  return (base().prepare('SELECT * FROM pharmacie WHERE id = 1').get() as unknown as Pharmacie | undefined) ?? null
 }
 
 /** Vrai tant que l'assistant de première configuration n'a pas été terminé. */
@@ -73,7 +73,7 @@ export function besoinConfiguration(): boolean {
   const nbAdmins = (
     base()
       .prepare('SELECT COUNT(*) n FROM utilisateurs WHERE archived_at IS NULL AND actif = 1')
-      .get() as { n: number }
+      .get() as unknown as { n: number }
   ).n
   return !fiche?.configure_at || nbAdmins === 0
 }
@@ -85,7 +85,7 @@ export function connecter(identifiant: string, motDePasse: string): SessionActiv
        FROM utilisateurs u JOIN roles r ON r.id = u.role_id
        WHERE u.identifiant = ? COLLATE NOCASE`
     )
-    .get(identifiant.trim()) as
+    .get(identifiant.trim()) as unknown as
     | (Utilisateur & {
         mot_de_passe_hash: string
         mot_de_passe_sel: string
@@ -185,7 +185,7 @@ export function connecter(identifiant: string, motDePasse: string): SessionActiv
 
     const utilisateur = base()
       .prepare(`${SELECT_UTILISATEUR} WHERE u.id = ?`)
-      .get(ligne.id) as Utilisateur
+      .get(ligne.id) as unknown as Utilisateur
 
     return {
       utilisateur,
@@ -217,7 +217,7 @@ export function changerMotDePasse(
 ): void {
   const ligne = base()
     .prepare('SELECT * FROM utilisateurs WHERE id = ?')
-    .get(utilisateurId) as
+    .get(utilisateurId) as unknown as
     | { mot_de_passe_hash: string; mot_de_passe_sel: string; mot_de_passe_iter: number; nom_complet: string }
     | undefined
 
@@ -310,7 +310,7 @@ export function creerUtilisateur(demande: DemandeUtilisateur, parUtilisateurId: 
 export function listerUtilisateurs(): Utilisateur[] {
   return base()
     .prepare(`${SELECT_UTILISATEUR} WHERE u.archived_at IS NULL ORDER BY u.nom_complet`)
-    .all() as Utilisateur[]
+    .all() as unknown as Utilisateur[]
 }
 
 export function listerRoles(): { id: number; code: string; nom: string; description: string | null; nb: number }[] {
@@ -320,7 +320,7 @@ export function listerRoles(): { id: number; code: string; nom: string; descript
        FROM roles r LEFT JOIN role_permissions rp ON rp.role_id = r.id
        GROUP BY r.id ORDER BY r.id`
     )
-    .all() as { id: number; code: string; nom: string; description: string | null; nb: number }[]
+    .all() as unknown as { id: number; code: string; nom: string; description: string | null; nb: number }[]
 }
 
 export function modifierUtilisateur(
@@ -338,10 +338,10 @@ export function modifierUtilisateur(
           `SELECT COUNT(*) n FROM utilisateurs
            WHERE actif = 1 AND archived_at IS NULL AND role_id = 1 AND id <> ?`
         )
-        .get(id) as { n: number }
+        .get(id) as unknown as { n: number }
     ).n
-    const cible = base().prepare('SELECT role_id FROM utilisateurs WHERE id = ?').get(id) as
-      | { role_id: number }
+    const cible = base().prepare('SELECT role_id FROM utilisateurs WHERE id = ?').get(id) as unknown as
+    | { role_id: number }
       | undefined
     if (cible?.role_id === 1 && admins === 0) {
       throw new ErreurMetier(
@@ -414,5 +414,5 @@ export function catalogePermissions(): {
 }[] {
   return base()
     .prepare('SELECT code, module, libelle, description FROM permissions ORDER BY ordre')
-    .all() as { code: string; module: string; libelle: string; description: string | null }[]
+    .all() as unknown as { code: string; module: string; libelle: string; description: string | null }[]
 }

@@ -1,3 +1,4 @@
+import type { SQLInputValue } from 'node:sqlite'
 import { base, transaction } from '../db'
 import type { Allocation, Lot, LotPeremption, MouvementStock, PalierPeremption } from '@shared/types'
 import {
@@ -44,7 +45,7 @@ export function allouerFEFO(
          AND (? = 0 OR date_peremption IS NULL OR date_peremption >= ?)
        ORDER BY date_peremption IS NULL, date_peremption, id`
     )
-    .all(produitId, refuserExpires ? 1 : 0, aujourdhui()) as {
+    .all(produitId, refuserExpires ? 1 : 0, aujourdhui()) as unknown as {
     id: number
     numero: string | null
     quantite_restante: number
@@ -82,7 +83,7 @@ export function allouerFEFO(
 }
 
 function nomProduit(produitId: number): string {
-  const p = base().prepare('SELECT nom_commercial FROM produits WHERE id = ?').get(produitId) as
+  const p = base().prepare('SELECT nom_commercial FROM produits WHERE id = ?').get(produitId) as unknown as
     | { nom_commercial: string }
     | undefined
   return p?.nom_commercial ?? `produit #${produitId}`
@@ -91,7 +92,7 @@ function nomProduit(produitId: number): string {
 export function stockDisponible(produitId: number): number {
   const l = base()
     .prepare('SELECT stock_disponible FROM v_stock_produit WHERE produit_id = ?')
-    .get(produitId) as { stock_disponible: number } | undefined
+    .get(produitId) as unknown as { stock_disponible: number } | undefined
   return l?.stock_disponible ?? 0
 }
 
@@ -246,7 +247,7 @@ export function ajusterLot(
   if (!motif?.trim()) throw new ErreurMetier('Un motif est obligatoire pour ajuster le stock.')
   if (nouvelleQuantite < 0) throw new ErreurMetier('La quantité ne peut pas être négative.')
 
-  const lot = base().prepare('SELECT * FROM lots WHERE id = ?').get(lotId) as Lot | undefined
+  const lot = base().prepare('SELECT * FROM lots WHERE id = ?').get(lotId) as unknown as Lot | undefined
   if (!lot) throw new ErreurMetier('Lot introuvable.')
 
   const ecart = nouvelleQuantite - lot.quantite_restante
@@ -286,8 +287,8 @@ export function bloquerLot(lotId: number, bloque: boolean, motif: string | null,
       .prepare('UPDATE lots SET bloque = ?, motif_blocage = ? WHERE id = ?')
       .run(bloque ? 1 : 0, bloque ? motif : null, lotId)
 
-    const lot = base().prepare('SELECT produit_id, numero FROM lots WHERE id = ?').get(lotId) as
-      | { produit_id: number; numero: string | null }
+    const lot = base().prepare('SELECT produit_id, numero FROM lots WHERE id = ?').get(lotId) as unknown as
+    | { produit_id: number; numero: string | null }
       | undefined
 
     journaliser({
@@ -308,7 +309,7 @@ export function lotsDe(produitId: number, inclureVides = false): Lot[] {
        WHERE l.produit_id = ? ${inclureVides ? '' : 'AND l.quantite_restante > 0'}
        ORDER BY l.date_peremption IS NULL, l.date_peremption, l.id`
     )
-    .all(produitId) as Lot[]
+    .all(produitId) as unknown as Lot[]
 }
 
 export function peremptions(palier?: PalierPeremption): LotPeremption[] {
@@ -319,7 +320,7 @@ export function peremptions(palier?: PalierPeremption): LotPeremption[] {
        WHERE jours_restants <= ?
        ORDER BY date_peremption, nom_commercial`
     )
-    .all(seuil) as LotPeremption[]
+    .all(seuil) as unknown as LotPeremption[]
 
   return palier ? lignes.filter((l) => l.palier === palier) : lignes
 }
@@ -333,7 +334,7 @@ export function resumePeremptions(): Record<PalierPeremption, { lots: number; va
     j90: vide(),
     ok: vide()
   }
-  for (const l of base().prepare('SELECT palier, COUNT(*) n, SUM(valeur) v FROM v_peremptions GROUP BY palier').all() as {
+  for (const l of base().prepare('SELECT palier, COUNT(*) n, SUM(valeur) v FROM v_peremptions GROUP BY palier').all() as unknown as {
     palier: PalierPeremption
     n: number
     v: number
@@ -353,7 +354,7 @@ export interface FiltreMouvements {
 
 export function mouvements(filtre: FiltreMouvements = {}): MouvementStock[] {
   const conditions: string[] = []
-  const params: Record<string, unknown> = {}
+  const params: Record<string, SQLInputValue> = {}
 
   if (filtre.produitId) (conditions.push('m.produit_id = :produitId'), (params.produitId = filtre.produitId))
   if (filtre.type) (conditions.push('m.type = :type'), (params.type = filtre.type))
@@ -372,7 +373,7 @@ export function mouvements(filtre: FiltreMouvements = {}): MouvementStock[] {
        ORDER BY m.at DESC, m.id DESC
        LIMIT :limite`
     )
-    .all(params) as MouvementStock[]
+    .all(params) as unknown as MouvementStock[]
 }
 
 /** Sortie de stock hors vente : perte, casse, don, retour fournisseur. */

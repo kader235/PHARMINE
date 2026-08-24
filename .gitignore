@@ -8,3 +8,7 @@ release
 .vscode/*
 !.vscode/extensions.json
 tsconfig.*.tsbuildinfo
+
+# Sorties du banc d'aperçu
+apercu/
+*.log
