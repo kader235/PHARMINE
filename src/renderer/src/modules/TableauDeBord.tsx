@@ -6,7 +6,6 @@ import { useNavigation } from '../app/navigation'
 import Icone, { type NomIcone } from '../ui/Icone'
 import { Classement, Evolution, Repartition } from '../ui/Graphiques'
 import {
-  BandeauModule,
   Bouton,
   Chargement,
   EntetePage,
@@ -17,7 +16,7 @@ import {
   Panneau,
   type Ton
 } from '../ui/Composants'
-import { dateCourte, dateLongue, depuis, modePaiement, montant, nombre } from '../lib/format'
+import { dateCourte, depuis, modePaiement, montant, nombre } from '../lib/format'
 
 export default function TableauDeBord() {
   const session = useSession()
@@ -50,15 +49,12 @@ export default function TableauDeBord() {
   if (erreur) return <ErreurEcran erreur={erreur} onReessayer={recharger} />
   if (!donnees) return <Chargement libelle="Préparation du tableau de bord…" />
 
-  const jour = dateLongue(donnees.date)
-  const premiereMajuscule = jour.charAt(0).toUpperCase() + jour.slice(1)
-
   // Base vide : on accompagne au lieu d'afficher des indicateurs à zéro sans
   // explication. C'est le premier écran que verra un nouveau client.
   if (donnees.aucuneDonnee) {
     return (
       <>
-        <EntetePage titre="Tableau de bord" description={premiereMajuscule} />
+        <EntetePage titre="Tableau de bord" />
         <Panneau>
           <EtatVide icone="produit" titre="Votre pharmacie est prête à être renseignée">
             Aucun produit n’est encore enregistré. Commencez par constituer votre catalogue, puis
@@ -151,11 +147,11 @@ export default function TableauDeBord() {
 
   const aSurveiller = surveillance.filter((e) => e.visible)
 
+
   return (
     <>
-      <BandeauModule
-        titre={session.pharmacie.nom}
-        description={premiereMajuscule}
+      <EntetePage
+        titre="Tableau de bord"
         actions={
           session.peut('ventes.creer') ? (
             <Bouton
@@ -170,27 +166,23 @@ export default function TableauDeBord() {
         }
       />
 
-      <div className="indicateurs">
+      <div className="indicateurs bande">
         <Indicateur
           libelle="Chiffre d’affaires"
           valeur={montant(donnees.chiffreAffaires.valeur)}
-          variation={donnees.chiffreAffaires.variation}
         />
         <Indicateur
           libelle="Ventes"
           valeur={nombre(donnees.nbVentes.valeur)}
           unite={donnees.nbVentes.valeur > 1 ? 'ventes' : 'vente'}
-          variation={donnees.nbVentes.variation}
         />
         <Indicateur
           libelle="Bénéfice estimé"
           valeur={montant(donnees.beneficeEstime.valeur)}
-          variation={donnees.beneficeEstime.variation}
         />
         <Indicateur
           libelle="Dépenses"
           valeur={montant(donnees.depenses.valeur)}
-          variation={donnees.depenses.variation}
         />
         <Indicateur
           libelle="Caisse"
@@ -220,7 +212,7 @@ export default function TableauDeBord() {
       </div>
 
       <div className="grille-pilotage">
-        <Panneau titre="À surveiller" sansCorps>
+        <Panneau titre="À traiter" sansCorps>
           {aSurveiller.length === 0 ? (
             <EtatVide icone="coche" titre="Rien à signaler">
               Aucune rupture, aucun lot périmé, aucune dette en cours. Votre pharmacie est à jour.
@@ -234,7 +226,6 @@ export default function TableauDeBord() {
                   </span>
                   <span className="alerte-texte">
                     <strong>{element.titre}</strong>
-                    <span>{element.detail}</span>
                   </span>
                   <Etiquette ton={element.ton} sansPoint>
                     {element.valeur}
@@ -251,8 +242,7 @@ export default function TableauDeBord() {
             <Classement
               donnees={donnees.meilleuresVentes.map((v) => ({
                 libelle: v.nom,
-                valeur: v.quantite,
-                complement: montant(v.montant)
+                valeur: v.quantite
               }))}
               formatValeur={(v) => `${nombre(v)}`}
             />

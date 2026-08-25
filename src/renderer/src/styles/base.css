@@ -12,13 +12,13 @@
 :root {
   /* Surfaces — gris neutre, sans teinte : la couleur est réservée à
      l'information, elle n'habille pas le fond. */
-  --fond: #eef0f2;
+  --fond: #f6f7f9;
   --surface: #ffffff;
-  --surface-attenuee: #f5f6f8;
+  --surface-attenuee: #f7f8fa;
   --surface-active: #eaf1ee;
-  --bordure: #d4d8dd;
-  --bordure-nette: #b9bfc6;
-  --bordure-legere: #e5e8ec;
+  --bordure: #e5e7ee;
+  --bordure-nette: #c9cdd8;
+  --bordure-legere: #eef0f4;
   --zebre: #fafbfc;
 
   /* Texte */
@@ -33,16 +33,17 @@
   --accent-clair: #e9f1ee;
   --accent-bordure: #a4c3b6;
 
-  /* Barre latérale sombre : elle ancre la fenêtre et laisse toute la
-     luminosité à la zone de travail. Chaque thème la recolore. */
-  --nav-fond: #16302a;
-  --nav-texte: #9db3ac;
-  --nav-texte-fort: #f2f7f5;
-  --nav-survol: #1f3f37;
-  --nav-actif: #244a41;
-  --nav-actif-texte: #ffffff;
-  --nav-bordure: #23413a;
-  --nav-marque: #7fb5a2;
+  /* Barre latérale claire : chaque module porte sa pastille de couleur, qui
+     sert de repère — au bout de quelques jours, on vise la couleur avant de
+     lire le libellé. Le thème ne recolore que l'accent et l'élément actif. */
+  --nav-fond: #ffffff;
+  --nav-texte: #4a5261;
+  --nav-texte-fort: #131820;
+  --nav-survol: #f2f4f8;
+  --nav-actif: #eef2fd;
+  --nav-actif-texte: #15654e;
+  --nav-bordure: #e8eaf0;
+  --nav-marque: #8b94a5;
 
   /* États sémantiques */
   --succes: #16794a;
@@ -81,15 +82,15 @@
   --police-tableau: 12px;
   --marge-cellule-v: 5px;
   --marge-cellule-h: 10px;
-  --hauteur-ligne-nav: 31px;
+  --hauteur-ligne-nav: 46px;
 
-  --rayon: 4px;
-  --rayon-panneau: 6px;
+  --rayon: 8px;
+  --rayon-panneau: 11px;
   --ombre-panneau: none;
   --ombre-flottante: 0 10px 32px rgba(17, 23, 28, 0.22);
-  --largeur-nav: 214px;
+  --largeur-nav: 236px;
   --largeur-nav-reduite: 46px;
-  --hauteur-barre: 52px;
+  --hauteur-barre: 62px;
 }
 
 * {
@@ -216,9 +217,9 @@ a {
 .nav-entete {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 58px;
-  padding: 12px 14px;
+  gap: 11px;
+  min-height: var(--hauteur-barre);
+  padding: 14px 16px;
   flex: 0 0 auto;
 }
 
@@ -228,7 +229,7 @@ a {
   width: 32px;
   height: 32px;
   flex: 0 0 32px;
-  border-radius: 7px;
+  border-radius: 50%;
   background: var(--accent);
   color: #fff;
 }
@@ -241,7 +242,7 @@ a {
 
 .nav-marque strong {
   display: block;
-  font-size: 15px;
+  font-size: 14.5px;
   font-weight: 700;
   letter-spacing: 0.01em;
   color: var(--nav-texte-fort);
@@ -251,10 +252,10 @@ a {
 .nav-marque span {
   display: block;
   margin-top: 1px;
-  font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
+  font-size: 11.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--nav-marque);
   white-space: nowrap;
 }
@@ -280,16 +281,16 @@ a {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px 8px 12px;
+  padding: 4px 12px 14px;
 }
 
 .nav-groupe {
-  margin-top: 14px;
-  padding: 0 10px 5px;
+  margin-top: 16px;
+  padding: 0 12px 8px;
   color: var(--nav-marque);
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.13em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
@@ -298,15 +299,17 @@ a {
 .nav-lien {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 11px;
   width: 100%;
   height: var(--hauteur-ligne-nav);
   padding: 0 10px;
+  margin-bottom: 2px;
   border: 0;
-  border-radius: var(--rayon);
+  border-radius: 10px;
   background: transparent;
   color: var(--nav-texte);
-  font-size: 12.5px;
+  font-size: 13.5px;
+  font-weight: 500;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -319,12 +322,28 @@ a {
 
 .nav-lien.actif {
   background: var(--nav-actif);
-  color: var(--nav-actif-texte);
+  color: var(--accent-fonce);
   font-weight: 600;
 }
 
+.nav-lien.actif .nav-pastille-module {
+  background: color-mix(in srgb, var(--couleur-module) 20%, transparent);
+}
+
+/* Pastille d'icône : un carré arrondi teinté de la couleur du module. */
+.nav-pastille-module {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--couleur-module) 13%, transparent);
+  color: var(--couleur-module);
+}
+
 .nav-lien svg {
-  flex: 0 0 16px;
+  flex: 0 0 18px;
 }
 
 .nav-lien-libelle {
@@ -1995,5 +2014,61 @@ table.tableau tbody tr.selectionnee td {
   }
   .grille.trois {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* =============================================================================
+   Tableau de bord : bandeau d'indicateurs
+
+   Un seul cadre partagé plutôt que cinq cartes séparées : les chiffres se
+   comparent mieux alignés sur une même ligne de base, et l'écran s'ouvre sur
+   une bande calme au lieu d'une rangée de vignettes.
+   ============================================================================= */
+
+.indicateurs.bande {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 0;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-panneau);
+  overflow: hidden;
+}
+
+.indicateurs.bande .indicateur {
+  border: 0;
+  border-right: 1px solid var(--bordure-legere);
+  border-radius: 0;
+  padding: 16px 20px 18px;
+}
+
+.indicateurs.bande .indicateur:last-child {
+  border-right: 0;
+}
+
+/* Sur le bandeau, le libellé revient en casse normale : les petites
+   capitales conviennent à une étiquette isolée, pas à cinq côte à côte. */
+.indicateurs.bande .indicateur-libelle {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--texte-attenue);
+}
+
+.indicateurs.bande .indicateur-valeur {
+  margin-top: 8px;
+  font-size: 24px;
+}
+
+@media (max-width: 1180px) {
+  .indicateurs.bande {
+    grid-auto-flow: row;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .indicateurs.bande .indicateur {
+    border-bottom: 1px solid var(--bordure-legere);
   }
 }

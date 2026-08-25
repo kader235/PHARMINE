@@ -338,7 +338,7 @@ app.whenReady().then(async () => {
   }
 
   const anomalies: string[] = []
-  if (!coque.barre || coque.barre.hauteur > 60) {
+  if (!coque.barre || coque.barre.hauteur > 72) {
     anomalies.push(`barre superieure anormale : ${coque.barre?.hauteur ?? 'absente'} px`)
   }
   if (coque.barre && coque.barre.direction !== 'row') {

@@ -258,44 +258,31 @@ export function BandeauModule({
 }
 
 /**
- * Indicateur chiffré. La comparaison n'est affichée que si une valeur de
- * référence existe réellement — pas de « +12,5 % » inventé.
+ * Indicateur chiffré : un libellé, un chiffre. Rien d'autre.
+ *
+ * Ni comparaison, ni commentaire sous la valeur — ces lignes n'apportaient
+ * qu'une répétition de ce que les écrans détaillés montrent déjà.
  */
 export function Indicateur({
   libelle,
   valeur,
   unite,
-  variation,
-  comparaison = 'vs hier',
-  detail,
   ton
 }: {
   libelle: string
   valeur: string
   unite?: string
-  variation?: number | null
-  comparaison?: string
-  detail?: ReactNode
   ton?: Ton
 }) {
-  const sens = variation === null || variation === undefined ? null : variation > 0 ? 'hausse' : variation < 0 ? 'baisse' : 'stable'
-
   return (
     <article className="indicateur">
       <div className="indicateur-libelle">{libelle}</div>
-      <div className="indicateur-valeur chiffres" style={ton === 'danger' ? { color: 'var(--danger)' } : undefined}>
+      <div
+        className="indicateur-valeur chiffres"
+        style={ton === 'danger' ? { color: 'var(--danger)' } : undefined}
+      >
         {valeur}
         {unite ? <span className="unite">{unite}</span> : null}
-      </div>
-      <div className="indicateur-pied">
-        {!sens && !detail ? null : sens ? (
-          <span className={`variation ${sens}`}>
-            {sens !== 'stable' ? <Icone nom={sens === 'hausse' ? 'fleche-haut' : 'fleche-bas'} taille={12} /> : null}
-            {variation! > 0 ? '+' : ''}
-            {variation!.toFixed(1).replace('.', ',')} %
-          </span>
-        ) : null}
-        {sens ? <span>{comparaison}</span> : detail}
       </div>
     </article>
   )

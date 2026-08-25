@@ -23,6 +23,11 @@ export interface DefinitionModule {
   cle: CleModule
   libelle: string
   icone: NomIcone
+  /**
+   * Couleur de la pastille d'icône. Elle sert de repère : au bout de quelques
+   * jours, l'utilisateur vise la couleur avant de lire le libellé.
+   */
+  couleur: string
   /** L'accès est accordé si l'utilisateur détient l'une de ces permissions. */
   permissions: string[]
   groupe: 'exploitation' | 'gestion' | 'administration'
@@ -35,6 +40,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'tableau-bord',
     libelle: 'Tableau de bord',
     icone: 'tableau-bord',
+    couleur: '#4f6bed',
     permissions: ['tableau_bord.voir'],
     groupe: 'exploitation',
     fil: 'Accueil',
@@ -44,6 +50,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'ventes',
     libelle: 'Ventes',
     icone: 'vente',
+    couleur: '#1f9d63',
     permissions: ['ventes.creer', 'ventes.historique'],
     groupe: 'exploitation',
     fil: 'Comptoir',
@@ -53,6 +60,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'caisse',
     libelle: 'Caisse',
     icone: 'caisse',
+    couleur: '#b8792a',
     permissions: ['caisse.ouvrir', 'caisse.cloturer', 'caisse.ecarts'],
     groupe: 'exploitation',
     fil: 'Comptoir',
@@ -62,6 +70,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'produits',
     libelle: 'Produits',
     icone: 'produit',
+    couleur: '#2f7fd4',
     permissions: ['produits.voir'],
     groupe: 'gestion',
     fil: 'Catalogue',
@@ -71,6 +80,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'stock',
     libelle: 'Stock',
     icone: 'stock',
+    couleur: '#c78a1e',
     permissions: ['stock.voir'],
     groupe: 'gestion',
     fil: 'Catalogue',
@@ -80,6 +90,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'peremptions',
     libelle: 'Péremptions',
     icone: 'peremption',
+    couleur: '#c0562f',
     permissions: ['stock.voir'],
     groupe: 'gestion',
     fil: 'Catalogue',
@@ -89,6 +100,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'achats',
     libelle: 'Achats',
     icone: 'achat',
+    couleur: '#d4762a',
     permissions: ['achats.voir'],
     groupe: 'gestion',
     fil: 'Approvisionnement',
@@ -98,6 +110,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'fournisseurs',
     libelle: 'Fournisseurs',
     icone: 'fournisseur',
+    couleur: '#7a5cd6',
     permissions: ['fournisseurs.voir'],
     groupe: 'gestion',
     fil: 'Approvisionnement',
@@ -107,6 +120,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'clients',
     libelle: 'Clients',
     icone: 'client',
+    couleur: '#8a53c4',
     permissions: ['clients.voir'],
     groupe: 'gestion',
     fil: 'Relation',
@@ -116,6 +130,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'inventaire',
     libelle: 'Inventaire',
     icone: 'inventaire',
+    couleur: '#2b9aa8',
     permissions: ['inventaire.voir'],
     groupe: 'gestion',
     fil: 'Contrôle',
@@ -125,6 +140,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'finances',
     libelle: 'Finances',
     icone: 'finance',
+    couleur: '#1f9d63',
     permissions: ['finances.voir', 'depenses.voir'],
     groupe: 'gestion',
     fil: 'Pilotage',
@@ -134,6 +150,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'rapports',
     libelle: 'Rapports',
     icone: 'rapport',
+    couleur: '#4f6bed',
     permissions: ['rapports.voir'],
     groupe: 'gestion',
     fil: 'Pilotage',
@@ -143,6 +160,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'alertes',
     libelle: 'Alertes',
     icone: 'alerte',
+    couleur: '#cf4a4a',
     permissions: ['alertes.voir'],
     groupe: 'gestion',
     fil: 'Pilotage',
@@ -152,6 +170,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'utilisateurs',
     libelle: 'Utilisateurs',
     icone: 'utilisateur',
+    couleur: '#2b9aa8',
     permissions: ['utilisateurs.voir'],
     groupe: 'administration',
     fil: 'Administration',
@@ -161,6 +180,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'journal',
     libelle: 'Journal d’activité',
     icone: 'journal',
+    couleur: '#5f6b78',
     permissions: ['journal.voir'],
     groupe: 'administration',
     fil: 'Administration',
@@ -170,6 +190,7 @@ export const MODULES: DefinitionModule[] = [
     cle: 'parametres',
     libelle: 'Paramètres',
     icone: 'parametres',
+    couleur: '#5f6b78',
     permissions: ['parametres.voir'],
     groupe: 'administration',
     fil: 'Administration',

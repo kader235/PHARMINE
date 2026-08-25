@@ -180,8 +180,11 @@ export default function Coque() {
                         onClick={() => naviguer({ module: m.cle })}
                         title={reduite ? m.libelle : undefined}
                         aria-current={m.cle === moduleCourant.cle ? 'page' : undefined}
+                        style={{ ['--couleur-module' as string]: m.couleur }}
                       >
-                        <Icone nom={m.icone} />
+                        <span className="nav-pastille-module" aria-hidden="true">
+                          <Icone nom={m.icone} taille={18} />
+                        </span>
                         {!reduite ? (
                           <>
                             <span className="nav-lien-libelle">{m.libelle}</span>
