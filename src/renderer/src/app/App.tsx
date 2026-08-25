@@ -3,6 +3,7 @@ import type { Pharmacie, SessionActive } from '@shared/types'
 import { appeler } from '../lib/api'
 import { FournisseurNotifications } from '../ui/Notifications'
 import { FournisseurImpression } from '../ui/Impression'
+import { appliquerApparence, dispositionDuPoste, themeDuPoste } from './themes'
 import { Chargement, ErreurEcran } from '../ui/Composants'
 import { FournisseurSession } from './Session'
 import Connexion from './Connexion'
@@ -10,6 +11,7 @@ import Configuration from './Configuration'
 import Coque from './Coque'
 
 interface EtatApplication {
+  themeDefaut?: string
   besoinConfiguration: boolean
   pharmacie: Pharmacie | null
   dateDuJour: string
@@ -28,7 +30,12 @@ export default function App() {
   const charger = useCallback(() => {
     setErreur(null)
     appeler<EtatApplication>('app.etat')
-      .then(setEtat)
+      .then((recu) => {
+        // Le thème s'applique avant le premier rendu utile : l'écran ne
+        // change pas de couleur sous les yeux de l'utilisateur.
+        appliquerApparence(themeDuPoste(recu.themeDefaut), dispositionDuPoste())
+        setEtat(recu)
+      })
       .catch(() =>
         setErreur({
           message: 'Impossible de démarrer PHARMINA.',

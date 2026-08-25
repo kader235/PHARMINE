@@ -33,15 +33,16 @@
   --accent-clair: #e9f1ee;
   --accent-bordure: #a4c3b6;
 
-  /* Barre latérale claire : le chrome d'un logiciel de gestion, pas d'un
-     tableau de bord en ligne. */
-  --nav-fond: #e6e9ec;
-  --nav-texte: #3d464e;
-  --nav-texte-fort: #11171c;
-  --nav-survol: #dbdfe4;
-  --nav-actif: #ffffff;
-  --nav-actif-texte: #0f4b3a;
-  --nav-bordure: #cfd4d9;
+  /* Barre latérale sombre : elle ancre la fenêtre et laisse toute la
+     luminosité à la zone de travail. Chaque thème la recolore. */
+  --nav-fond: #16302a;
+  --nav-texte: #9db3ac;
+  --nav-texte-fort: #f2f7f5;
+  --nav-survol: #1f3f37;
+  --nav-actif: #244a41;
+  --nav-actif-texte: #ffffff;
+  --nav-bordure: #23413a;
+  --nav-marque: #7fb5a2;
 
   /* États sémantiques */
   --succes: #16794a;
@@ -61,13 +62,34 @@
   /* Rythme */
   /* Angles quasi droits et bordures franches : la structure vient du trait,
      pas de l'ombre portée. */
-  --rayon: 2px;
-  --rayon-panneau: 3px;
+  /* Séries de graphiques : nuances d'une même famille, redéfinies par thème. */
+  --serie-1: #15654e;
+  --serie-2: #2c7d63;
+  --serie-3: #4a9781;
+  --serie-4: #72b09d;
+  --serie-5: #9ec8ba;
+  --serie-6: #c6ded5;
+
+  /* Barres basses : elles prolongent le chrome de la barre latérale, sans
+     quoi la fenêtre se retrouve prise en sandwich entre deux tons. */
+  --etat-fond: var(--nav-fond);
+  --etat-bordure: var(--nav-bordure);
+
+  /* Métriques de densité, redéfinies par disposition. */
+  --hauteur-controle: 28px;
+  --police-base: 12.5px;
+  --police-tableau: 12px;
+  --marge-cellule-v: 5px;
+  --marge-cellule-h: 10px;
+  --hauteur-ligne-nav: 31px;
+
+  --rayon: 4px;
+  --rayon-panneau: 6px;
   --ombre-panneau: none;
   --ombre-flottante: 0 10px 32px rgba(17, 23, 28, 0.22);
-  --largeur-nav: 206px;
+  --largeur-nav: 214px;
   --largeur-nav-reduite: 46px;
-  --hauteur-barre: 42px;
+  --hauteur-barre: 52px;
 }
 
 * {
@@ -83,7 +105,7 @@ body,
 body {
   margin: 0;
   font-family: var(--police);
-  font-size: 12.5px;
+  font-size: var(--police-base);
   line-height: 1.4;
   color: var(--texte);
   background: var(--fond);
@@ -194,36 +216,51 @@ a {
 .nav-entete {
   display: flex;
   align-items: center;
-  gap: 9px;
-  height: var(--hauteur-barre);
-  padding: 0 14px;
-  border-bottom: 1px solid var(--nav-bordure);
+  gap: 10px;
+  min-height: 58px;
+  padding: 12px 14px;
   flex: 0 0 auto;
 }
 
 .nav-logo {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
-  border-radius: var(--rayon);
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  border-radius: 7px;
   background: var(--accent);
   color: #fff;
 }
 
+/* Marque sur deux lignes : le nom, puis ce que fait le logiciel. */
 .nav-marque {
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--nav-texte-fort);
-  white-space: nowrap;
+  min-width: 0;
   overflow: hidden;
 }
 
+.nav-marque strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--nav-texte-fort);
+  white-space: nowrap;
+}
+
+.nav-marque span {
+  display: block;
+  margin-top: 1px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+  color: var(--nav-marque);
+  white-space: nowrap;
+}
+
 .nav-officine {
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--nav-bordure);
+  padding: 0 14px 12px;
   color: var(--nav-texte);
   font-size: 11px;
   white-space: nowrap;
@@ -233,7 +270,7 @@ a {
 .nav-officine strong {
   display: block;
   color: var(--nav-texte-fort);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -247,12 +284,12 @@ a {
 }
 
 .nav-groupe {
-  margin-top: 10px;
-  padding: 0 8px 4px;
-  color: var(--texte-faible);
-  font-size: 10px;
+  margin-top: 14px;
+  padding: 0 10px 5px;
+  color: var(--nav-marque);
+  font-size: 9.5px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.13em;
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
@@ -261,16 +298,15 @@ a {
 .nav-lien {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   width: 100%;
-  height: 27px;
-  padding: 0 8px 0 7px;
+  height: var(--hauteur-ligne-nav);
+  padding: 0 10px;
   border: 0;
-  border-left: 2px solid transparent;
-  border-radius: 0;
+  border-radius: var(--rayon);
   background: transparent;
   color: var(--nav-texte);
-  font-size: 12px;
+  font-size: 12.5px;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -283,7 +319,6 @@ a {
 
 .nav-lien.actif {
   background: var(--nav-actif);
-  border-left-color: var(--accent);
   color: var(--nav-actif-texte);
   font-weight: 600;
 }
@@ -345,7 +380,7 @@ a {
   width: 26px;
   height: 26px;
   flex: 0 0 26px;
-  border-radius: 2px;
+  border-radius: 5px;
   background: var(--accent);
   color: #fff;
   font-size: 10px;
@@ -578,15 +613,16 @@ a {
 
 .page-entete {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 10px;
+  margin-bottom: 14px;
 }
 
 .page-entete h1 {
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
   color: var(--texte-fort);
 }
 
@@ -594,9 +630,46 @@ a {
    l'interface : on ne l'affiche que lorsqu'elle apprend vraiment quelque
    chose, et toujours en retrait. */
 .page-entete p {
-  margin-top: 1px;
+  margin-top: 2px;
+  color: var(--texte-attenue);
+  font-size: 12.5px;
+}
+
+/* Sur-titre : petites capitales espacées. Il nomme la nature de ce qui suit
+   sans voler la vedette au titre lui-même. C'est la signature typographique
+   de l'interface, reprise sur les indicateurs et les panneaux. */
+.sur-titre {
+  display: block;
+  margin-bottom: 3px;
   color: var(--texte-faible);
-  font-size: 11.5px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+/* Contrôles en pilule, à droite de l'en-tête : période, exercice, filtres. */
+.pilule {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--bordure);
+  border-radius: 16px;
+  background: var(--surface);
+  font-size: 12.5px;
+  color: var(--texte);
+  white-space: nowrap;
+}
+
+.pilule .sur-titre {
+  margin-bottom: 0;
+  font-size: 9px;
+}
+
+.pilule strong {
+  font-weight: 600;
 }
 
 .page-actions {
@@ -617,7 +690,7 @@ a {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 28px;
+  height: var(--hauteur-controle);
   padding: 0 10px;
   border: 1px solid var(--bordure-nette);
   border-radius: var(--rayon);
@@ -694,16 +767,16 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 34px;
-  padding: 7px 11px;
-  border-bottom: 1px solid var(--bordure);
-  background: var(--surface-attenuee);
+  min-height: 40px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--bordure-legere);
+  background: var(--surface);
 }
 
 .panneau-entete h2 {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.005em;
   color: var(--texte-fort);
 }
 
@@ -728,59 +801,58 @@ a {
    Indicateurs
    ============================================================================= */
 
-/* Bandeau de synthèse plutôt qu'une rangée de cartes : les chiffres sont
-   alignés dans une seule bande, séparés par un filet. Un logiciel de gestion
-   n'ouvre pas chaque écran sur des vignettes colorées. */
+/* Cartes d'indicateur : un sur-titre discret, puis le chiffre en grand.
+   Rien d'autre — pas d'icône décorative, pas d'aplat de couleur. */
 .indicateurs {
   display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: 1fr;
-  margin-bottom: 10px;
-  background: var(--surface);
-  border: 1px solid var(--bordure);
-  border-radius: var(--rayon-panneau);
-  overflow: hidden;
+  grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
 }
 
 .indicateur {
-  padding: 8px 12px;
-  border-right: 1px solid var(--bordure-legere);
+  padding: 13px 15px 14px;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon-panneau);
   position: relative;
   overflow: hidden;
-}
-
-.indicateur:last-child {
-  border-right: 0;
 }
 
 .indicateur-libelle {
   display: flex;
   align-items: center;
   gap: 5px;
-  color: var(--texte-attenue);
-  font-size: 11px;
+  color: var(--texte-faible);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
 }
 
 .indicateur-valeur {
-  margin-top: 3px;
-  font-size: 16px;
-  font-weight: 600;
+  margin-top: 7px;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.05;
   color: var(--texte-fort);
 }
 
 .indicateur-valeur .unite {
-  margin-left: 3px;
-  font-size: 11.5px;
+  margin-left: 4px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--texte-attenue);
+  color: var(--texte-faible);
+  letter-spacing: 0;
 }
 
 .indicateur-pied {
-  margin-top: 2px;
+  margin-top: 6px;
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 10.5px;
+  gap: 5px;
+  font-size: 11px;
   color: var(--texte-faible);
 }
 
@@ -822,11 +894,11 @@ a {
 table.tableau {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--police-tableau);
 }
 
 table.tableau th {
-  padding: 5px 10px;
+  padding: var(--marge-cellule-v) var(--marge-cellule-h);
   background: var(--surface-attenuee);
   border-bottom: 1px solid var(--bordure);
   border-right: 1px solid var(--bordure-legere);
@@ -863,7 +935,7 @@ table.tableau th .indicateur-tri {
 }
 
 table.tableau td {
-  padding: 5px 10px;
+  padding: var(--marge-cellule-v) var(--marge-cellule-h);
   border-bottom: 1px solid var(--bordure-legere);
   color: var(--texte);
   vertical-align: middle;

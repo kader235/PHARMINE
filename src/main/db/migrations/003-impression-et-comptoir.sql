@@ -27,6 +27,10 @@ INSERT OR IGNORE INTO parametres (cle, valeur, type, categorie, libelle, descrip
    'Ajouter au panier dès la lecture du code-barres',
    'Décochez pour que le code lu remplisse seulement la recherche, sans ajouter le produit.'),
 
+  ('interface.theme', 'sauge', 'texte', 'general',
+   'Thème par défaut du logiciel',
+   'Valeur de départ des postes. Chaque poste peut ensuite choisir le sien.'),
+
   ('comptoir.avertir_scan_inconnu', '1', 'booleen', 'ventes',
    'Signaler un code-barres inconnu',
    'Affiche un avertissement lorsque le code lu ne correspond à aucun produit du catalogue.');

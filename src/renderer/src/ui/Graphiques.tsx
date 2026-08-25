@@ -12,8 +12,20 @@ import { useId, type ReactNode } from 'react'
  * dans l'ordre, ce qui est exactement ce qu'on demande à une répartition.
  */
 
-/** Nuances du vert d'officine, de la plus soutenue à la plus pâle. */
-export const NUANCES = ['#15654e', '#2c7d63', '#4a9781', '#72b09d', '#9ec8ba', '#c6ded5']
+/**
+ * Nuances des séries, de la plus soutenue à la plus pâle.
+ *
+ * Déclarées en variables CSS : les graphiques suivent ainsi le thème choisi
+ * sans qu'aucun composant n'ait à connaître la palette courante.
+ */
+export const NUANCES = [
+  'var(--serie-1)',
+  'var(--serie-2)',
+  'var(--serie-3)',
+  'var(--serie-4)',
+  'var(--serie-5)',
+  'var(--serie-6)'
+]
 
 function nuance(index: number): string {
   return NUANCES[index % NUANCES.length]!

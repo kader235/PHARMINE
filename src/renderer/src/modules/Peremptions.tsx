@@ -100,22 +100,18 @@ export default function Peremptions({ destination }: { destination: Destination 
           libelle="Lots déjà périmés"
           valeur={nombre(r?.expire.lots ?? 0)}
           ton={(r?.expire.lots ?? 0) > 0 ? 'danger' : undefined}
-          detail={<span>{montant(r?.expire.valeur ?? 0)} de valeur immobilisée</span>}
         />
         <Indicateur
           libelle="Expire sous 7 jours"
           valeur={nombre(r?.j7.lots ?? 0)}
-          detail={<span>{montant(r?.j7.valeur ?? 0)} concernés</span>}
         />
         <Indicateur
           libelle="Expire sous 30 jours"
           valeur={nombre(r?.j30.lots ?? 0)}
-          detail={<span>{montant(r?.j30.valeur ?? 0)} concernés</span>}
         />
         <Indicateur
           libelle="Expire sous 90 jours"
           valeur={nombre(r?.j90.lots ?? 0)}
-          detail={<span>{montant(r?.j90.valeur ?? 0)} concernés</span>}
         />
       </div>
 

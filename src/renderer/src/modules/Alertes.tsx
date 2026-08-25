@@ -109,17 +109,14 @@ export default function Alertes() {
           libelle="Urgent"
           valeur={String(compte('urgent'))}
           ton={compte('urgent') > 0 ? 'danger' : undefined}
-          detail={<span>Action requise aujourd’hui</span>}
         />
         <Indicateur
           libelle="Important"
           valeur={String(compte('important'))}
-          detail={<span>À traiter cette semaine</span>}
         />
         <Indicateur
           libelle="Information"
           valeur={String(compte('information'))}
-          detail={<span>Pour votre suivi</span>}
         />
       </div>
 

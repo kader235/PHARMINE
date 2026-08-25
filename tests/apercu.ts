@@ -368,6 +368,35 @@ app.whenReady().then(async () => {
   const anormaux = diagnostic.filter((b) => b.deborde || (b.hauteurReelle as number) > 34)
   console.log(`    -> ${anormaux.length} bouton(s) anormaux`)
 
+  // --- Apparences ------------------------------------------------------------
+  // Les cinq themes sur le tableau de bord, puis les deux autres dispositions :
+  // c'est l'ecran ou une palette et une densite se jugent le mieux.
+  await fenetre.webContents.executeJavaScript(`document.querySelectorAll('.nav-lien')[0].click()`)
+  await new Promise((r) => setTimeout(r, 900))
+
+  const apparence = (theme: string, disposition: string) =>
+    `(() => {
+      const r = document.documentElement
+      const t = ${JSON.stringify(theme)}
+      const d = ${JSON.stringify(disposition)}
+      t === 'sauge' ? r.removeAttribute('data-theme') : r.setAttribute('data-theme', t)
+      d === 'confort' ? r.removeAttribute('data-disposition') : r.setAttribute('data-disposition', d)
+      return true
+    })()`
+
+  for (const theme of ['sauge', 'ocean', 'cobalt', 'ardoise', 'brique']) {
+    await fenetre.webContents.executeJavaScript(apparence(theme, 'confort'))
+    await photographier(fenetre, `theme-${theme}`, 650)
+  }
+
+  for (const disposition of ['compacte', 'tactile']) {
+    await fenetre.webContents.executeJavaScript(apparence('ocean', disposition))
+    await photographier(fenetre, `disposition-${disposition}`, 700)
+  }
+
+  await fenetre.webContents.executeJavaScript(apparence('sauge', 'confort'))
+  await new Promise((r) => setTimeout(r, 400))
+
   // Parcours de tous les modules de la barre latérale.
   const modules = (await fenetre.webContents.executeJavaScript(
     `Array.from(document.querySelectorAll('.nav-lien')).map(b => b.textContent.trim())`

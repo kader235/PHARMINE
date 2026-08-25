@@ -331,43 +331,26 @@ function Comptage({
     }
   }
 
-  const progression = detail.donnees?.nb_lignes
-    ? (comptees.length / detail.donnees.nb_lignes) * 100
-    : 0
-
   return (
     <>
       <div className="indicateurs">
         <Indicateur
           libelle="Lots à compter"
           valeur={nombre(detail.donnees?.nb_lignes ?? 0)}
-          detail={<span>{inventaire.libelle}</span>}
         />
         <Indicateur
           libelle="Lots comptés"
           valeur={`${nombre(comptees.length)}`}
-          detail={
-            <span style={{ width: '100%' }}>
-              <span className="jauge" style={{ display: 'block', marginTop: 4 }}>
-                <span
-                  className="jauge-remplissage"
-                  style={{ display: 'block', width: `${progression}%` }}
-                />
-              </span>
-            </span>
-          }
         />
         <Indicateur
           libelle="Écarts constatés"
           valeur={nombre(ecarts.length)}
           ton={ecarts.length > 0 ? 'danger' : undefined}
-          detail={<span>Lots dont le comptage diffère</span>}
         />
         <Indicateur
           libelle="Écart valorisé"
           valeur={montant(ecartValeur)}
           ton={ecartValeur < 0 ? 'danger' : undefined}
-          detail={<span>Au prix d’achat des lots</span>}
         />
       </div>
 

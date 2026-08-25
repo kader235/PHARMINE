@@ -21,7 +21,10 @@ export default defineConfig({
             ? {}
             : {
                 e2e: resolve(__dirname, 'tests/e2e.ts'),
-                apercu: resolve(__dirname, 'tests/apercu.ts')
+                apercu: resolve(__dirname, 'tests/apercu.ts'),
+                // Outil de démonstration : utile au vendeur, inutile dans le
+                // logiciel livré au client.
+                demonstration: resolve(__dirname, 'scripts/demonstration.ts')
               })
         }
       }

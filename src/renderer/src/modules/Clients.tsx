@@ -78,18 +78,15 @@ export default function Clients({ destination }: { destination: Destination }) {
         <Indicateur
           libelle="Comptes clients"
           valeur={nombre(tous.length)}
-          detail={<span>Clients enregistrés</span>}
         />
         <Indicateur
           libelle="Créances en cours"
           valeur={montant(creances)}
           ton={creances > 0 ? 'danger' : undefined}
-          detail={<span>Ventes à crédit non réglées</span>}
         />
         <Indicateur
           libelle="Clients débiteurs"
           valeur={nombre(debiteurs)}
-          detail={<span>Comptes avec un solde dû</span>}
         />
       </div>
 
@@ -430,30 +427,18 @@ function FicheClient({
               libelle="Solde dû"
               valeur={montant(solde)}
               ton={solde > 0 ? 'danger' : undefined}
-              detail={<span>Ventes à crédit non réglées</span>}
             />
             <Indicateur
               libelle="Crédit disponible"
               valeur={compteur.disponible === null ? 'Non plafonné' : montant(compteur.disponible)}
-              detail={
-                <span>
-                  {compteur.plafond > 0 ? `Plafond ${montant(compteur.plafond)}` : 'Aucun plafond fixé'}
-                </span>
-              }
             />
             <Indicateur
               libelle="Total acheté"
               valeur={montant(compteur.totalAchats)}
-              detail={<span>{nombre(compteur.nbVentes)} vente(s)</span>}
             />
             <Indicateur
               libelle="Dernier règlement"
               valeur={compteur.dernierReglement ? dateCourte(compteur.dernierReglement) : 'Aucun'}
-              detail={
-                <span>
-                  {compteur.derniereVisite ? `Dernière visite ${depuis(compteur.derniereVisite)}` : '—'}
-                </span>
-              }
             />
           </div>
 

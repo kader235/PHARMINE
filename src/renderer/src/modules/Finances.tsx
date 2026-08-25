@@ -22,7 +22,7 @@ import {
   ZoneTexte
 } from '../ui/Composants'
 import Tableau, { CellulePrincipale } from '../ui/Tableau'
-import { aujourdhui, dateCourte, debutDuMois, decalerJours, modePaiement, montant, nombre } from '../lib/format'
+import { aujourdhui, dateCourte, debutDuMois, decalerJours, modePaiement, montant } from '../lib/format'
 
 interface Synthese {
   periode: { depuis: string; jusqua: string }
@@ -172,28 +172,23 @@ export default function Finances() {
             <Indicateur
               libelle="Chiffre d’affaires"
               valeur={montant(s?.chiffreAffaires ?? 0)}
-              detail={<span>{nombre(s?.nbVentes ?? 0)} vente(s) sur la période</span>}
             />
             <Indicateur
               libelle="Marge brute"
               valeur={montant(s?.margeBrute ?? 0)}
-              detail={<span>Après {montant(s?.coutMarchandises ?? 0)} de coût marchandises</span>}
             />
             <Indicateur
               libelle="Dépenses"
               valeur={montant(s?.depenses ?? 0)}
-              detail={<span>Charges d’exploitation</span>}
             />
             <Indicateur
               libelle="Résultat"
               valeur={montant(s?.resultat ?? 0)}
               ton={(s?.resultat ?? 0) < 0 ? 'danger' : undefined}
-              detail={<span>Marge brute moins dépenses</span>}
             />
             <Indicateur
               libelle="Panier moyen"
               valeur={montant(s?.panierMoyen ?? 0)}
-              detail={<span>Par vente</span>}
             />
           </div>
 

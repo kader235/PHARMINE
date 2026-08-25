@@ -1,0 +1,318 @@
+/* =============================================================================
+   PHARMINA — Thèmes et dispositions
+
+   Un thème recolore la barre latérale et l'accent. Une disposition change la
+   place de la navigation et la densité d'affichage. Les deux axes sont
+   indépendants : une officine peut vouloir le thème Brique aussi bien sur un
+   poste tactile que sur un poste dense.
+
+   Tout passe par les variables déclarées dans base.css. Aucune règle ici ne
+   refait une mise en page : seulement des valeurs.
+   ============================================================================= */
+
+/* =============================================================================
+   1. SAUGE — vert d'officine. Thème par défaut, défini dans base.css.
+   ============================================================================= */
+
+/* =============================================================================
+   2. OCÉAN — bleu profond
+   ============================================================================= */
+
+[data-theme='ocean'] {
+  --surface-active: #e9f0f7;
+  --accent: #1d5c96;
+  --accent-fonce: #14456f;
+  --accent-clair: #e9f0f7;
+  --accent-bordure: #a7c4de;
+
+  --nav-fond: #16283d;
+  --nav-texte: #a2b5c9;
+  --nav-texte-fort: #f3f7fb;
+  --nav-survol: #1f3651;
+  --nav-actif: #26456b;
+  --nav-actif-texte: #ffffff;
+  --nav-bordure: #22374f;
+  --nav-marque: #7ea3c6;
+
+  --serie-1: #1d5c96;
+  --serie-2: #3576ac;
+  --serie-3: #5691c2;
+  --serie-4: #7dabd3;
+  --serie-5: #a6c5e2;
+  --serie-6: #cddff0;
+}
+
+/* =============================================================================
+   3. COBALT — bleu-violet, plus contrasté
+   ============================================================================= */
+
+[data-theme='cobalt'] {
+  --surface-active: #ecedf9;
+  --accent: #3a44a8;
+  --accent-fonce: #2b3382;
+  --accent-clair: #ecedf9;
+  --accent-bordure: #b3b8e0;
+
+  --nav-fond: #1a1e3c;
+  --nav-texte: #a8adcb;
+  --nav-texte-fort: #f4f5fb;
+  --nav-survol: #252a52;
+  --nav-actif: #303670;
+  --nav-actif-texte: #ffffff;
+  --nav-bordure: #262b4f;
+  --nav-marque: #8b93c8;
+
+  --serie-1: #3a44a8;
+  --serie-2: #525cbb;
+  --serie-3: #6f78cb;
+  --serie-4: #9199da;
+  --serie-5: #b4bae8;
+  --serie-6: #d6daf4;
+}
+
+/* =============================================================================
+   4. ARDOISE — gris neutre, sans couleur d'appoint
+      Pour qui trouve toute teinte de marque déplacée dans un outil de travail.
+   ============================================================================= */
+
+[data-theme='ardoise'] {
+  --surface-active: #eceef0;
+  --accent: #46545f;
+  --accent-fonce: #333e47;
+  --accent-clair: #ecedef;
+  --accent-bordure: #b6bec5;
+
+  --nav-fond: #242b31;
+  --nav-texte: #a8b1b9;
+  --nav-texte-fort: #f4f6f7;
+  --nav-survol: #2f383f;
+  --nav-actif: #3b464f;
+  --nav-actif-texte: #ffffff;
+  --nav-bordure: #2e363d;
+  --nav-marque: #8c979f;
+
+  --serie-1: #46545f;
+  --serie-2: #5e6d79;
+  --serie-3: #7a8894;
+  --serie-4: #99a5ae;
+  --serie-5: #b8c1c8;
+  --serie-6: #d6dce0;
+}
+
+/* =============================================================================
+   5. BRIQUE — terre cuite, chaleureux
+   ============================================================================= */
+
+[data-theme='brique'] {
+  --surface-active: #f7ece8;
+  --accent: #a4462b;
+  --accent-fonce: #833520;
+  --accent-clair: #f7ece8;
+  --accent-bordure: #dcb3a4;
+
+  --nav-fond: #2e211d;
+  --nav-texte: #c0aaa2;
+  --nav-texte-fort: #faf4f2;
+  --nav-survol: #3d2c26;
+  --nav-actif: #4f382f;
+  --nav-actif-texte: #ffffff;
+  --nav-bordure: #3a2a24;
+  --nav-marque: #a9887b;
+
+  --serie-1: #a4462b;
+  --serie-2: #b85f43;
+  --serie-3: #c87c63;
+  --serie-4: #d69b87;
+  --serie-5: #e3bbad;
+  --serie-6: #f0dbd2;
+}
+
+/* =============================================================================
+   DISPOSITIONS
+   ============================================================================= */
+
+/* --- Compacte : le maximum de lignes à l'écran ------------------------------- */
+
+[data-disposition='compacte'] {
+  --police-base: 12px;
+  --police-tableau: 11.5px;
+  --marge-cellule-v: 3px;
+  --marge-cellule-h: 8px;
+  --hauteur-controle: 26px;
+  --hauteur-ligne-nav: 27px;
+  --hauteur-barre: 44px;
+  --largeur-nav: 196px;
+}
+
+[data-disposition='compacte'] .contenu {
+  padding: 10px 12px 20px;
+}
+
+[data-disposition='compacte'] .page-entete {
+  margin-bottom: 10px;
+}
+
+[data-disposition='compacte'] .page-entete h1 {
+  font-size: 17px;
+}
+
+[data-disposition='compacte'] .indicateurs {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+[data-disposition='compacte'] .indicateur {
+  padding: 9px 11px 10px;
+}
+
+[data-disposition='compacte'] .indicateur-valeur {
+  margin-top: 5px;
+  font-size: 20px;
+}
+
+[data-disposition='compacte'] .panneau-entete {
+  min-height: 33px;
+  padding: 7px 11px;
+}
+
+/* --- Tactile : navigation en onglets, cibles larges -------------------------- */
+
+[data-disposition='tactile'] {
+  --police-base: 13.5px;
+  --police-tableau: 13px;
+  --marge-cellule-v: 9px;
+  --marge-cellule-h: 13px;
+  --hauteur-controle: 38px;
+  --hauteur-barre: 54px;
+}
+
+[data-disposition='tactile'] .contenu {
+  padding: 16px 18px 30px;
+}
+
+[data-disposition='tactile'] .bouton {
+  padding: 0 15px;
+  font-size: 13px;
+}
+
+[data-disposition='tactile'] .barre-fonctions {
+  height: 42px;
+}
+
+[data-disposition='tactile'] .touche-fonction {
+  padding: 0 14px;
+  font-size: 12.5px;
+}
+
+[data-disposition='tactile'] .panneau-entete {
+  min-height: 46px;
+  padding: 12px 16px;
+}
+
+/* La navigation passe en haut : les modules deviennent des onglets, comme sur
+   les postes de vente tactiles. */
+[data-disposition='tactile'] .application {
+  flex-direction: column;
+}
+
+[data-disposition='tactile'] .nav {
+  width: 100%;
+  flex: 0 0 auto;
+  flex-direction: row;
+  align-items: stretch;
+  border-right: 0;
+  border-bottom: 1px solid var(--nav-bordure);
+  overflow-x: auto;
+}
+
+[data-disposition='tactile'] .nav-entete {
+  min-height: 0;
+  padding: 0 18px 0 14px;
+  border-right: 1px solid var(--nav-bordure);
+  flex: 0 0 auto;
+}
+
+/* L'officine et le compte reviennent dans la barre supérieure et la barre
+   d'état : les répéter ici gaspillerait la largeur. */
+[data-disposition='tactile'] .nav-officine,
+[data-disposition='tactile'] .nav-groupe,
+[data-disposition='tactile'] .nav-pied {
+  display: none;
+}
+
+[data-disposition='tactile'] .nav-liste {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+  padding: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+[data-disposition='tactile'] .nav-liste > div {
+  display: flex;
+  align-items: stretch;
+}
+
+[data-disposition='tactile'] .nav-lien {
+  width: auto;
+  height: auto;
+  min-height: 52px;
+  padding: 0 17px;
+  gap: 9px;
+  border-radius: 0;
+  border-bottom: 3px solid transparent;
+  font-size: 13px;
+}
+
+[data-disposition='tactile'] .nav-lien.actif {
+  background: var(--nav-survol);
+  border-bottom-color: var(--nav-marque);
+}
+
+/* =============================================================================
+   Sélecteur de thème
+   ============================================================================= */
+
+.choix-themes,
+.choix-dispositions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.choix-theme {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 12px 0 9px;
+  border: 1px solid var(--bordure);
+  border-radius: 16px;
+  background: var(--surface);
+  font-size: 12.5px;
+  color: var(--texte);
+}
+
+.choix-theme:hover {
+  border-color: var(--accent-bordure);
+  background: var(--surface-attenuee);
+}
+
+.choix-theme.actif {
+  border-color: var(--accent);
+  background: var(--accent-clair);
+  color: var(--accent-fonce);
+  font-weight: 600;
+}
+
+/* Pastille bicolore : le fond de la barre latérale et la couleur d'accent.
+   C'est exactement ce qui distingue un thème d'un autre. */
+.choix-pastille {
+  display: block;
+  width: 14px;
+  height: 14px;
+  flex: 0 0 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+}

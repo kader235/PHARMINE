@@ -61,7 +61,11 @@ const CANAUX: Record<string, Canal> = {
   'app.etat': c(null, () => ({
     besoinConfiguration: auth.besoinConfiguration(),
     pharmacie: auth.pharmacie(),
-    dateDuJour: configuration.dateDuJour()
+    dateDuJour: configuration.dateDuJour(),
+    // Lu avant toute connexion : l'écran d'accueil doit déjà porter le thème
+    // de l'officine, sans quoi l'interface changerait de couleur au moment de
+    // la connexion.
+    themeDefaut: configuration.themeParDefaut()
   })),
   'app.configurer': c(null, (p) => configuration.configurerPharmacie(p)),
   'auth.connecter': c(null, (p: { identifiant: string; motDePasse: string }) => {

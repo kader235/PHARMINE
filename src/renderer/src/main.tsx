@@ -5,6 +5,7 @@ import './styles/base.css'
 import './styles/comptoir.css'
 import './styles/graphiques.css'
 import './styles/impression.css'
+import './styles/themes.css'
 
 createRoot(document.getElementById('racine')!).render(
   <StrictMode>

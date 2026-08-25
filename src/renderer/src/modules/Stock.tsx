@@ -110,24 +110,20 @@ export default function Stock({ destination }: { destination: Destination }) {
             <Indicateur
               libelle="Références suivies"
               valeur={nombre(produits.length)}
-              detail={<span>Produits actifs au catalogue</span>}
             />
             <Indicateur
               libelle="Valeur du stock"
               valeur={montant(valeur)}
-              detail={<span>Au prix d’achat des lots</span>}
             />
             <Indicateur
               libelle="Stock faible"
               valeur={nombre(faibles)}
               ton={faibles > 0 ? 'danger' : undefined}
-              detail={<span>Sous le seuil minimum</span>}
             />
             <Indicateur
               libelle="Ruptures"
               valeur={nombre(ruptures)}
               ton={ruptures > 0 ? 'danger' : undefined}
-              detail={<span>Action requise aujourd’hui</span>}
             />
           </div>
 

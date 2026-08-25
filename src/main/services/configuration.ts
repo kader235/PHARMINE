@@ -265,6 +265,7 @@ export function statistiquesBase(): {
 }
 
 export interface ReglagesInterface {
+  themeDefaut: string
   formatImpressionDefaut: string
   ticketAutomatique: boolean
   piedTicket: string
@@ -283,6 +284,7 @@ export interface ReglagesInterface {
  */
 export function reglagesInterface(): ReglagesInterface {
   return {
+    themeDefaut: parametre('interface.theme') ?? 'sauge',
     formatImpressionDefaut: parametre('impression.format_defaut') ?? 'ticket',
     ticketAutomatique: parametreBooleen('impression.ticket_automatique', false),
     piedTicket: parametre('impression.pied_ticket') ?? 'Merci de votre visite',
@@ -291,6 +293,16 @@ export function reglagesInterface(): ReglagesInterface {
     avertirScanInconnu: parametreBooleen('comptoir.avertir_scan_inconnu', true),
     remiseMaxPourcent: parametreEntier('ventes.remise_max_pourcent', 10),
     exigerCaisseOuverte: parametreBooleen('caisse.exiger_ouverture', true)
+  }
+}
+
+/** Thème de l'officine, lisible avant même la connexion. */
+export function themeParDefaut(): string {
+  try {
+    return parametre('interface.theme') ?? 'sauge'
+  } catch {
+    // Base pas encore migrée : le thème par défaut fera l'affaire.
+    return 'officine'
   }
 }
 

@@ -22,7 +22,7 @@ import {
   ZoneTexte
 } from '../ui/Composants'
 import Tableau, { CellulePrincipale } from '../ui/Tableau'
-import { dateCourte, heure, modePaiement, montant, nombre } from '../lib/format'
+import { dateCourte, heure, modePaiement, montant } from '../lib/format'
 
 export default function Caisse() {
   const session = useSession()
@@ -125,17 +125,14 @@ export default function Caisse() {
             <Indicateur
               libelle="Encaissé en espèces"
               valeur={montant(c.encaisseEspeces)}
-              detail={<span>{nombre(c.nbVentes)} vente(s) sur la session</span>}
             />
             <Indicateur
               libelle="Sorties et dépenses"
               valeur={montant(c.sorties + c.depenses)}
-              detail={<span>Retraits et dépenses imputées</span>}
             />
             <Indicateur
               libelle="Théorique en caisse"
               valeur={montant(c.theoriqueEspeces)}
-              detail={<span>Ce que la caisse doit contenir</span>}
             />
           </div>
 

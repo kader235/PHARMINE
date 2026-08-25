@@ -18,6 +18,7 @@ import {
 } from '../ui/Composants'
 import Tableau, { CellulePrincipale } from '../ui/Tableau'
 import { FORMATS } from '../ui/Impression'
+import { THEMES } from '../app/themes'
 import { dateCourte, depuis, nombre } from '../lib/format'
 
 interface Parametre {
@@ -47,7 +48,8 @@ const CHOIX: Record<string, { valeur: string; libelle: string }[]> = {
   'impression.format_defaut': FORMATS.map((f) => ({
     valeur: f.valeur,
     libelle: `${f.libelle} — ${f.description}`
-  }))
+  })),
+  'interface.theme': THEMES.map((t) => ({ valeur: t.cle, libelle: t.nom }))
 }
 
 const CATEGORIES: Record<string, string> = {
@@ -334,12 +336,10 @@ function Sauvegardes({ onMessage }: { onMessage: (titre: string, message?: strin
           libelle="Dernière sauvegarde"
           valeur={derniere ? depuis(derniere.at) : 'Aucune'}
           ton={derniere ? undefined : 'danger'}
-          detail={<span>{derniere ? `${Math.round((derniere.taille ?? 0) / 1024)} Ko` : 'Sauvegardez dès maintenant'}</span>}
         />
         <Indicateur
           libelle="Sauvegardes conservées"
           valeur={nombre(liste.donnees?.filter((s) => s.statut === 'ok').length ?? 0)}
-          detail={<span>Les plus anciennes sont supprimées automatiquement</span>}
         />
       </div>
 

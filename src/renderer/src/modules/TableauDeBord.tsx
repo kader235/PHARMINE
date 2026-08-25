@@ -17,7 +17,7 @@ import {
   Panneau,
   type Ton
 } from '../ui/Composants'
-import { dateCourte, dateLongue, depuis, heure, modePaiement, montant, nombre } from '../lib/format'
+import { dateCourte, dateLongue, depuis, modePaiement, montant, nombre } from '../lib/format'
 
 export default function TableauDeBord() {
   const session = useSession()
@@ -196,15 +196,6 @@ export default function TableauDeBord() {
           libelle="Caisse"
           valeur={donnees.caisse.ouverte ? montant(donnees.caisse.theorique) : 'Fermée'}
           ton={donnees.caisse.ouverte ? undefined : 'danger'}
-          detail={
-            donnees.caisse.ouverte ? (
-              <span>
-                Ouverte depuis {heure(donnees.caisse.depuis)} · {donnees.caisse.responsable}
-              </span>
-            ) : (
-              <span>Aucune caisse ouverte</span>
-            )
-          }
         />
       </div>
 

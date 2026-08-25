@@ -17,6 +17,16 @@ import { useNotifications } from '../ui/Notifications'
 import { useRequete, useAction, useRaccourci } from '../lib/hooks'
 import { heure, initiales } from '../lib/format'
 import { ecouterCaisseModifiee } from '../lib/evenements'
+import {
+  DISPOSITIONS,
+  THEMES,
+  appliquerApparence,
+  dispositionDuPoste,
+  retenirApparence,
+  themeDuPoste,
+  type CleDisposition,
+  type CleTheme
+} from './themes'
 import type { EtatCaisse } from '@shared/types'
 
 import TableauDeBord from '../modules/TableauDeBord'
@@ -74,6 +84,17 @@ export default function Coque() {
   const [reduite, setReduite] = useState(false)
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [changementMdp, setChangementMdp] = useState(false)
+  const [themeCourant, setThemeCourant] = useState<CleTheme>(() => themeDuPoste())
+  const [dispositionCourante, setDispositionCourante] = useState<CleDisposition>(() =>
+    dispositionDuPoste()
+  )
+
+  function changerApparence(cleTheme: CleTheme, cleDisposition: CleDisposition): void {
+    appliquerApparence(cleTheme, cleDisposition)
+    retenirApparence(cleTheme, cleDisposition)
+    setThemeCourant(cleTheme)
+    setDispositionCourante(cleDisposition)
+  }
 
   const naviguer = useCallback((cible: Destination) => {
     setDestination(cible)
@@ -128,7 +149,12 @@ export default function Coque() {
             <span className="nav-logo">
               <Icone nom="produit" taille={15} />
             </span>
-            {!reduite ? <span className="nav-marque">PHARMINA</span> : null}
+            {!reduite ? (
+              <span className="nav-marque">
+                <strong>PHARMINA</strong>
+                <span>Gestion de pharmacie</span>
+              </span>
+            ) : null}
           </div>
 
           {!reduite ? (
@@ -230,6 +256,9 @@ export default function Coque() {
 
       {menuOuvert ? (
         <MenuUtilisateur
+          themeCourant={themeCourant}
+          dispositionCourante={dispositionCourante}
+          onChangerApparence={changerApparence}
           onFermer={() => setMenuOuvert(false)}
           onChangerMotDePasse={() => {
             setMenuOuvert(false)
@@ -253,9 +282,15 @@ export default function Coque() {
 }
 
 function MenuUtilisateur({
+  themeCourant,
+  dispositionCourante,
+  onChangerApparence,
   onFermer,
   onChangerMotDePasse
 }: {
+  themeCourant: CleTheme
+  dispositionCourante: CleDisposition
+  onChangerApparence: (theme: CleTheme, disposition: CleDisposition) => void
   onFermer: () => void
   onChangerMotDePasse: () => void
 }) {
@@ -287,6 +322,50 @@ function MenuUtilisateur({
         <Bouton icone="verrou" onClick={onChangerMotDePasse}>
           Changer mon mot de passe
         </Bouton>
+
+        <div>
+          <div className="formulaire-titre">Thème</div>
+          <div className="choix-themes">
+            {THEMES.map((t) => (
+              <button
+                key={t.cle}
+                type="button"
+                className={`choix-theme${t.cle === themeCourant ? ' actif' : ''}`}
+                onClick={() => onChangerApparence(t.cle, dispositionCourante)}
+                aria-pressed={t.cle === themeCourant}
+              >
+                <span
+                  className="choix-pastille"
+                  aria-hidden="true"
+                  style={{ background: `linear-gradient(135deg, ${t.pastille[0]} 50%, ${t.pastille[1]} 50%)` }}
+                />
+                {t.nom}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <div className="formulaire-titre">Disposition</div>
+          <div className="choix-dispositions">
+            {DISPOSITIONS.map((d) => (
+              <button
+                key={d.cle}
+                type="button"
+                className={`choix-theme${d.cle === dispositionCourante ? ' actif' : ''}`}
+                onClick={() => onChangerApparence(themeCourant, d.cle)}
+                aria-pressed={d.cle === dispositionCourante}
+                title={d.description}
+              >
+                {d.nom}
+              </button>
+            ))}
+          </div>
+          <p style={{ marginTop: 8, fontSize: 11, color: 'var(--texte-faible)' }}>
+            Ce choix ne vaut que pour cet ordinateur. Le thème appliqué par défaut aux
+            nouveaux postes se règle dans Paramètres.
+          </p>
+        </div>
       </div>
     </Modale>
   )
