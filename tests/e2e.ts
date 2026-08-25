@@ -9,7 +9,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { base, fermerBase, ouvrirBase } from '../src/main/db'
+import { VERSION_SCHEMA, base, fermerBase, ouvrirBase } from '../src/main/db'
 import * as auth from '../src/main/services/auth'
 import * as configuration from '../src/main/services/configuration'
 import * as produits from '../src/main/services/produits'
@@ -271,9 +271,15 @@ try {
   )
   verifier(reglages.piedTicket.length > 0, 'le pied de ticket a une valeur par defaut')
   verifier(reglages.scanAjouteDirectement === true, 'le scan ajoute au panier par defaut')
+  // La version attendue vient de la source, pas d'un nombre ecrit ici :
+  // ajouter une migration ne doit pas casser ce test.
+  const versionBase = (
+    base().prepare('SELECT MAX(version) v FROM schema_migrations').get() as unknown as { v: number }
+  ).v
   verifier(
-    base().prepare('SELECT MAX(version) v FROM schema_migrations').get()!.v === 3,
-    'la base est a la derniere version du schema'
+    versionBase === VERSION_SCHEMA,
+    `la base est a la derniere version du schema (${VERSION_SCHEMA})`,
+    versionBase
   )
 
   titre('Réception fournisseur et création des lots')

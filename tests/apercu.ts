@@ -379,22 +379,58 @@ app.whenReady().then(async () => {
       const r = document.documentElement
       const t = ${JSON.stringify(theme)}
       const d = ${JSON.stringify(disposition)}
-      t === 'sauge' ? r.removeAttribute('data-theme') : r.setAttribute('data-theme', t)
+      t === 'clair' ? r.removeAttribute('data-theme') : r.setAttribute('data-theme', t)
       d === 'confort' ? r.removeAttribute('data-disposition') : r.setAttribute('data-disposition', d)
       return true
     })()`
 
-  for (const theme of ['sauge', 'ocean', 'cobalt', 'ardoise', 'brique']) {
+  // Mesure a chaque capture : une apparence qui ne s'applique pas se verrait
+  // sinon seulement a l'oeil, sur une image.
+  const etatVisuel = `
+    (() => {
+      const nav = document.querySelector('.nav')
+      const r = document.documentElement
+      return {
+        theme: r.getAttribute('data-theme') || 'clair',
+        disposition: r.getAttribute('data-disposition') || 'confort',
+        navFond: getComputedStyle(nav).backgroundColor,
+        navLargeur: Math.round(nav.getBoundingClientRect().width)
+      }
+    })()`
+
+  for (const theme of ['clair', 'ocean', 'cobalt', 'ardoise', 'brique']) {
     await fenetre.webContents.executeJavaScript(apparence(theme, 'confort'))
-    await photographier(fenetre, `theme-${theme}`, 650)
+    await new Promise((r) => setTimeout(r, 350))
+    console.log('    ' + JSON.stringify(await fenetre.webContents.executeJavaScript(etatVisuel)))
+    await photographier(fenetre, `theme-${theme}`, 400)
   }
 
   for (const disposition of ['compacte', 'tactile']) {
     await fenetre.webContents.executeJavaScript(apparence('ocean', disposition))
-    await photographier(fenetre, `disposition-${disposition}`, 700)
+    await new Promise((r) => setTimeout(r, 350))
+    console.log('    ' + JSON.stringify(await fenetre.webContents.executeJavaScript(etatVisuel)))
+    await photographier(fenetre, `disposition-${disposition}`, 400)
   }
 
-  await fenetre.webContents.executeJavaScript(apparence('sauge', 'confort'))
+  // Aucune disposition ne doit enfermer l'utilisateur : le bouton du compte
+  // ouvre le selecteur d'apparence, il doit rester atteignable partout. Le
+  // masquer en tactile rendait le retour a la navigation laterale impossible.
+  for (const disposition of ['confort', 'compacte', 'tactile']) {
+    await fenetre.webContents.executeJavaScript(apparence('clair', disposition))
+    await new Promise((r) => setTimeout(r, 350))
+    const atteignable = await fenetre.webContents.executeJavaScript(`
+      (() => {
+        const b = document.querySelector('.barre-utilisateur')
+        if (!b) return false
+        const r = b.getBoundingClientRect()
+        const s = getComputedStyle(b)
+        return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none'
+      })()`)
+    console.log(`  compte atteignable en ${disposition} : ${atteignable ? 'oui' : 'NON'}`)
+    if (!atteignable) erreurs.push(`Compte inatteignable en disposition ${disposition}`)
+  }
+
+  await fenetre.webContents.executeJavaScript(apparence('clair', 'confort'))
   await new Promise((r) => setTimeout(r, 400))
 
   // Parcours de tous les modules de la barre latérale.

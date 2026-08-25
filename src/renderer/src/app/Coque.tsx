@@ -199,17 +199,6 @@ export default function Coque() {
             })}
           </div>
 
-          <div className="nav-pied">
-            <button className="nav-utilisateur" onClick={() => setMenuOuvert(true)}>
-              <span className="nav-avatar">{initiales(session.utilisateur.nom_complet)}</span>
-              {!reduite ? (
-                <span className="nav-utilisateur-texte">
-                  <strong>{session.utilisateur.nom_complet}</strong>
-                  <span>{session.utilisateur.role}</span>
-                </span>
-              ) : null}
-            </button>
-          </div>
         </nav>
 
         <div className="zone-travail">
@@ -243,6 +232,19 @@ export default function Coque() {
                 />
               ) : null}
               <BoutonIcone icone="sortie" titre="Se déconnecter" onClick={() => session.deconnecter()} />
+
+              <button
+                className="barre-utilisateur"
+                onClick={() => setMenuOuvert(true)}
+                title="Mon compte et apparence"
+              >
+                <span className="nav-avatar">{initiales(session.utilisateur.nom_complet)}</span>
+                <span className="barre-utilisateur-texte">
+                  <strong>{session.utilisateur.nom_complet}</strong>
+                  <span>{session.utilisateur.role}</span>
+                </span>
+                <Icone nom="chevron-bas" taille={13} />
+              </button>
             </div>
           </header>
 

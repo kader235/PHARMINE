@@ -284,7 +284,7 @@ export interface ReglagesInterface {
  */
 export function reglagesInterface(): ReglagesInterface {
   return {
-    themeDefaut: parametre('interface.theme') ?? 'sauge',
+    themeDefaut: parametre('interface.theme') ?? 'clair',
     formatImpressionDefaut: parametre('impression.format_defaut') ?? 'ticket',
     ticketAutomatique: parametreBooleen('impression.ticket_automatique', false),
     piedTicket: parametre('impression.pied_ticket') ?? 'Merci de votre visite',
@@ -299,7 +299,7 @@ export function reglagesInterface(): ReglagesInterface {
 /** Thème de l'officine, lisible avant même la connexion. */
 export function themeParDefaut(): string {
   try {
-    return parametre('interface.theme') ?? 'sauge'
+    return parametre('interface.theme') ?? 'clair'
   } catch {
     // Base pas encore migrée : le thème par défaut fera l'affaire.
     return 'officine'

@@ -27,7 +27,7 @@ INSERT OR IGNORE INTO parametres (cle, valeur, type, categorie, libelle, descrip
    'Ajouter au panier dès la lecture du code-barres',
    'Décochez pour que le code lu remplisse seulement la recherche, sans ajouter le produit.'),
 
-  ('interface.theme', 'sauge', 'texte', 'general',
+  ('interface.theme', 'clair', 'texte', 'general',
    'Thème par défaut du logiciel',
    'Valeur de départ des postes. Chaque poste peut ensuite choisir le sien.'),
 

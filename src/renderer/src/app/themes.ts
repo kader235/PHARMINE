@@ -11,7 +11,7 @@
  * responsable n'ont pas les mêmes besoins, même dans une seule officine.
  */
 
-export type CleTheme = 'sauge' | 'ocean' | 'cobalt' | 'ardoise' | 'brique'
+export type CleTheme = 'clair' | 'ocean' | 'cobalt' | 'ardoise' | 'brique'
 export type CleDisposition = 'confort' | 'compacte' | 'tactile'
 
 export interface DefinitionTheme {
@@ -22,7 +22,9 @@ export interface DefinitionTheme {
 }
 
 export const THEMES: DefinitionTheme[] = [
-  { cle: 'sauge', nom: 'Sauge', pastille: ['#16302a', '#15654e'] },
+  // Le clair d'abord : c'est le thème par défaut, et le seul dont la barre
+  // latérale reste blanche. Les quatre autres l'assombrissent.
+  { cle: 'clair', nom: 'Clair', pastille: ['#ffffff', '#15654e'] },
   { cle: 'ocean', nom: 'Océan', pastille: ['#16283d', '#1d5c96'] },
   { cle: 'cobalt', nom: 'Cobalt', pastille: ['#1a1e3c', '#3a44a8'] },
   { cle: 'ardoise', nom: 'Ardoise', pastille: ['#242b31', '#46545f'] },
@@ -57,7 +59,7 @@ export function theme(cle: string | undefined): DefinitionTheme {
 export function appliquerApparence(cleTheme: CleTheme, cleDisposition: CleDisposition): void {
   const racine = document.documentElement
 
-  if (cleTheme === 'sauge') racine.removeAttribute('data-theme')
+  if (cleTheme === 'clair') racine.removeAttribute('data-theme')
   else racine.setAttribute('data-theme', cleTheme)
 
   if (cleDisposition === 'confort') racine.removeAttribute('data-disposition')
@@ -74,7 +76,7 @@ function lire<T extends string>(cle: string, valides: readonly T[], defaut: T): 
   return defaut
 }
 
-export function themeDuPoste(defaut = 'sauge'): CleTheme {
+export function themeDuPoste(defaut = 'clair'): CleTheme {
   return lire(
     CLE_THEME,
     THEMES.map((t) => t.cle),

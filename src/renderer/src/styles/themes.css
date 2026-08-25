@@ -11,7 +11,8 @@
    ============================================================================= */
 
 /* =============================================================================
-   1. SAUGE — vert d'officine. Thème par défaut, défini dans base.css.
+   1. CLAIR — barre latérale blanche, accent vert. Thème par défaut : ses
+      valeurs vivent dans base.css.
    ============================================================================= */
 
 /* =============================================================================
@@ -19,6 +20,8 @@
    ============================================================================= */
 
 [data-theme='ocean'] {
+  /* Fond sombre : la pastille a besoin de plus de matière pour se voir. */
+  --teinte-pastille: 24%;
   --surface-active: #e9f0f7;
   --accent: #1d5c96;
   --accent-fonce: #14456f;
@@ -47,6 +50,8 @@
    ============================================================================= */
 
 [data-theme='cobalt'] {
+  /* Fond sombre : la pastille a besoin de plus de matière pour se voir. */
+  --teinte-pastille: 24%;
   --surface-active: #ecedf9;
   --accent: #3a44a8;
   --accent-fonce: #2b3382;
@@ -76,6 +81,8 @@
    ============================================================================= */
 
 [data-theme='ardoise'] {
+  /* Fond sombre : la pastille a besoin de plus de matière pour se voir. */
+  --teinte-pastille: 24%;
   --surface-active: #eceef0;
   --accent: #46545f;
   --accent-fonce: #333e47;
@@ -104,6 +111,8 @@
    ============================================================================= */
 
 [data-theme='brique'] {
+  /* Fond sombre : la pastille a besoin de plus de matière pour se voir. */
+  --teinte-pastille: 24%;
   --surface-active: #f7ece8;
   --accent: #a4462b;
   --accent-fonce: #833520;
