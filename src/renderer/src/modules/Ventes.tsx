@@ -89,11 +89,6 @@ export default function Ventes({ destination }: { destination: Destination }) {
     <>
       <EntetePage
         titre={onglet === 'comptoir' ? 'Comptoir' : 'Historique des ventes'}
-        description={
-          onglet === 'comptoir'
-            ? 'Recherchez, ajoutez au panier, encaissez. Tout se fait au clavier.'
-            : 'Toutes les ventes enregistrées, avec le détail des lots servis.'
-        }
         actions={
           onglets.length > 1 ? <Segments valeur={onglet} options={onglets} onChange={setOnglet} /> : null
         }
@@ -418,9 +413,6 @@ function Comptoir() {
               autoFocus
               aria-label="Rechercher un produit"
             />
-            <span className="raccourci" title="Le lecteur de codes-barres fonctionne sur tout l’écran">
-              Douchette active
-            </span>
             <span className="raccourci">Entrée pour ajouter</span>
           </div>
 

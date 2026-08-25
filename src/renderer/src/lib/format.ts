@@ -115,6 +115,20 @@ export function aujourdhui(): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`
 }
 
+/**
+ * Instant UTC correspondant au début d'un jour civil local.
+ *
+ * Même règle que côté métier : concaténer un « Z » sur une date locale décale
+ * la fenêtre du fuseau horaire et fait disparaître les opérations du jour.
+ */
+export function debutDeJournee(jour: string): string {
+  return new Date(`${jour}T00:00:00`).toISOString()
+}
+
+export function finDeJournee(jour: string): string {
+  return new Date(`${jour}T23:59:59.999`).toISOString()
+}
+
 export function decalerJours(jour: string, jours: number): string {
   const d = new Date(jour + 'T00:00:00')
   d.setDate(d.getDate() + jours)

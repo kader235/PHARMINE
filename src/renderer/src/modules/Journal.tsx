@@ -3,8 +3,7 @@ import type { Utilisateur } from '@shared/types'
 import { useRequete } from '../lib/hooks'
 import { EntetePage, Etiquette, EtatVide, Liste, Segments } from '../ui/Composants'
 import Tableau, { CellulePrincipale } from '../ui/Tableau'
-import { dateCourte, decalerJours, depuis, heure } from '../lib/format'
-import { aujourdhui } from '../lib/format'
+import { aujourdhui, dateCourte, debutDeJournee, decalerJours, depuis, heure } from '../lib/format'
 
 interface EntreeJournal {
   id: number
@@ -43,9 +42,9 @@ export default function Journal() {
   const depuisDate = (() => {
     if (periode === 'tout') return undefined
     const fin = aujourdhui()
-    if (periode === 'jour') return fin + 'T00:00:00.000Z'
-    if (periode === 'semaine') return decalerJours(fin, -7) + 'T00:00:00.000Z'
-    return decalerJours(fin, -30) + 'T00:00:00.000Z'
+    if (periode === 'jour') return debutDeJournee(fin)
+    if (periode === 'semaine') return debutDeJournee(decalerJours(fin, -7))
+    return debutDeJournee(decalerJours(fin, -30))
   })()
 
   const entrees = useRequete<EntreeJournal[]>('journal.lister', {
@@ -59,7 +58,6 @@ export default function Journal() {
     <>
       <EntetePage
         titre="Journal d’activité"
-        description="La trace complète des opérations importantes. Ce journal ne peut être ni modifié ni effacé."
       />
 
       <Tableau

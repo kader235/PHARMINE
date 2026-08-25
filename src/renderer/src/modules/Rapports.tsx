@@ -96,7 +96,6 @@ export default function Rapports() {
     <>
       <EntetePage
         titre="Rapports"
-        description="Transformez l’activité enregistrée en décisions concrètes."
         actions={
           <>
             <Segments

@@ -231,6 +231,33 @@ export function EntetePage({
 }
 
 /**
+ * Bandeau d'en-tête des écrans de pilotage.
+ *
+ * Réservé au tableau de bord, aux finances et aux rapports : ce sont les
+ * écrans que l'on consulte, par opposition aux écrans où l'on saisit. Sur ces
+ * derniers, un aplat de couleur ne ferait que voler l'attention aux données.
+ */
+export function BandeauModule({
+  titre,
+  description,
+  actions
+}: {
+  titre: string
+  description?: string
+  actions?: ReactNode
+}) {
+  return (
+    <header className="bandeau-module">
+      <div>
+        <h1>{titre}</h1>
+        {description ? <p>{description}</p> : null}
+      </div>
+      {actions ? <div className="bandeau-actions">{actions}</div> : null}
+    </header>
+  )
+}
+
+/**
  * Indicateur chiffré. La comparaison n'est affichée que si une valeur de
  * référence existe réellement — pas de « +12,5 % » inventé.
  */
@@ -261,14 +288,14 @@ export function Indicateur({
         {unite ? <span className="unite">{unite}</span> : null}
       </div>
       <div className="indicateur-pied">
-        {sens ? (
+        {!sens && !detail ? null : sens ? (
           <span className={`variation ${sens}`}>
             {sens !== 'stable' ? <Icone nom={sens === 'hausse' ? 'fleche-haut' : 'fleche-bas'} taille={12} /> : null}
             {variation! > 0 ? '+' : ''}
             {variation!.toFixed(1).replace('.', ',')} %
           </span>
         ) : null}
-        {sens ? <span>{comparaison}</span> : detail ?? <span>Aucune comparaison disponible</span>}
+        {sens ? <span>{comparaison}</span> : detail}
       </div>
     </article>
   )

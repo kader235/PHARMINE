@@ -112,7 +112,6 @@ export default function Finances() {
     <>
       <EntetePage
         titre="Finances"
-        description="Revenus, coûts, marge et engagements de la pharmacie."
         actions={
           <>
             <Segments

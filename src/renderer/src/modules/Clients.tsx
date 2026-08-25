@@ -65,7 +65,6 @@ export default function Clients({ destination }: { destination: Destination }) {
     <>
       <EntetePage
         titre="Clients"
-        description="Comptes clients, historique d’achat et créances en cours."
         actions={
           session.peut('clients.gerer') ? (
             <Bouton variante="principal" icone="plus" onClick={() => setEdition({ client: null })}>

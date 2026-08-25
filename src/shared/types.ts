@@ -431,6 +431,12 @@ export interface TableauDeBord {
     dettesFournisseurs: number
     creancesClients: number
   }
+  /** Quatorze derniers jours, jours creux compris. */
+  evolution: { jour: string; chiffreAffaires: number; nbVentes: number }[]
+  /** Produits les plus vendus sur sept jours. */
+  meilleuresVentes: { nom: string; quantite: number; montant: number }[]
+  /** Répartition des règlements du jour par mode. */
+  reglements: { mode: string; montant: number }[]
   activite: {
     at: string
     type: string

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import App from './app/App'
 import './styles/base.css'
 import './styles/comptoir.css'
+import './styles/graphiques.css'
 import './styles/impression.css'
 
 createRoot(document.getElementById('racine')!).render(

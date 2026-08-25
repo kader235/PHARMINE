@@ -37,7 +37,6 @@ export default function Fournisseurs({ destination }: { destination: Destination
     <>
       <EntetePage
         titre="Fournisseurs"
-        description="Vos partenaires, leurs conditions et les sommes restant dues."
         actions={
           session.peut('fournisseurs.gerer') ? (
             <Bouton variante="principal" icone="plus" onClick={() => setEdition({ fournisseur: null })}>

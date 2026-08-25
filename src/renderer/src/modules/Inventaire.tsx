@@ -58,7 +58,6 @@ export default function Inventaire() {
     <>
       <EntetePage
         titre="Inventaire"
-        description="Comparez le stock théorique au comptage physique, puis ajustez les écarts."
         actions={
           session.peut('inventaire.creer') && !enCours.donnees ? (
             <Bouton variante="principal" icone="plus" onClick={() => setOuverture(true)}>

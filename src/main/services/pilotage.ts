@@ -106,6 +106,58 @@ export function tableauDeBord(): TableauDeBord {
     )
     .all() as unknown as TableauDeBord['activite']
 
+  // --- Séries pour les graphiques -------------------------------------------
+  // `date(at, 'localtime')` regroupe par jour civil local : regrouper sur la
+  // date UTC couperait les journées au mauvais moment selon le fuseau.
+  const brut = db
+    .prepare(
+      `SELECT date(at, 'localtime') AS jour,
+              COALESCE(SUM(total), 0) AS ca,
+              COUNT(*) AS nb
+       FROM ventes
+       WHERE statut = 'finalisee' AND at >= ?
+       GROUP BY jour`
+    )
+    .all(debutDeJournee(decalerJours(jour, -13))) as unknown as {
+    jour: string
+    ca: number
+    nb: number
+  }[]
+
+  const parJour = new Map(brut.map((l) => [l.jour, l]))
+  const evolution: TableauDeBord['evolution'] = []
+  for (let i = 13; i >= 0; i--) {
+    const j = decalerJours(jour, -i)
+    const trouve = parJour.get(j)
+    // Les jours sans vente valent zéro : un trou dans la courbe se lirait
+    // comme une absence de données, pas comme une journée creuse.
+    evolution.push({ jour: j, chiffreAffaires: trouve?.ca ?? 0, nbVentes: trouve?.nb ?? 0 })
+  }
+
+  const meilleuresVentes = db
+    .prepare(
+      `SELECT p.nom_commercial AS nom, SUM(vl.quantite) AS quantite, SUM(vl.montant) AS montant
+       FROM vente_lignes vl
+       JOIN ventes v ON v.id = vl.vente_id
+       JOIN produits p ON p.id = vl.produit_id
+       WHERE v.statut = 'finalisee' AND v.at >= ?
+       GROUP BY vl.produit_id
+       ORDER BY quantite DESC
+       LIMIT 6`
+    )
+    .all(debutDeJournee(decalerJours(jour, -6))) as unknown as TableauDeBord['meilleuresVentes']
+
+  const reglements = db
+    .prepare(
+      `SELECT vp.mode, SUM(vp.montant) AS montant
+       FROM vente_paiements vp
+       JOIN ventes v ON v.id = vp.vente_id
+       WHERE v.statut = 'finalisee' AND v.at BETWEEN ? AND ?
+       GROUP BY vp.mode
+       ORDER BY montant DESC`
+    )
+    .all(debut, fin) as unknown as TableauDeBord['reglements']
+
   const nbProduits = (
     db.prepare('SELECT COUNT(*) n FROM produits WHERE archived_at IS NULL').get() as unknown as { n: number }
   ).n
@@ -132,6 +184,9 @@ export function tableauDeBord(): TableauDeBord {
       dettesFournisseurs: dettes,
       creancesClients: creances
     },
+    evolution,
+    meilleuresVentes,
+    reglements,
     activite,
     aucuneDonnee: nbProduits === 0 && nbVentesTotal === 0
   }

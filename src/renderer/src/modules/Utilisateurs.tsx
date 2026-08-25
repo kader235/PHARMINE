@@ -65,7 +65,6 @@ export default function Utilisateurs() {
     <>
       <EntetePage
         titre="Utilisateurs"
-        description="Comptes, rôles et permissions. Chaque opération est enregistrée au nom de son auteur."
         actions={
           <>
             <Segments

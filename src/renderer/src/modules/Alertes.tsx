@@ -90,7 +90,6 @@ export default function Alertes() {
     <>
       <EntetePage
         titre="Alertes"
-        description="Ce qui demande une vérification ou une décision. Chaque alerte mène directement au problème."
         actions={
           <>
             <Bouton icone="fleche-droite" enCours={action.enCours} onClick={rafraichir}>

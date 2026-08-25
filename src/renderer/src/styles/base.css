@@ -10,35 +10,38 @@
    ============================================================================= */
 
 :root {
-  /* Surfaces */
-  --fond: #eef2f3;
+  /* Surfaces — gris neutre, sans teinte : la couleur est réservée à
+     l'information, elle n'habille pas le fond. */
+  --fond: #eef0f2;
   --surface: #ffffff;
-  --surface-attenuee: #f7f9fa;
-  --surface-active: #eaf4f2;
-  --bordure: #dde4e6;
-  --bordure-nette: #c9d4d7;
-  --bordure-legere: #edf1f2;
+  --surface-attenuee: #f5f6f8;
+  --surface-active: #eaf1ee;
+  --bordure: #d4d8dd;
+  --bordure-nette: #b9bfc6;
+  --bordure-legere: #e5e8ec;
+  --zebre: #fafbfc;
 
   /* Texte */
-  --texte: #16323a;
-  --texte-fort: #0d2329;
-  --texte-attenue: #64777f;
-  --texte-faible: #8c9ba2;
+  --texte: #232a30;
+  --texte-fort: #11171c;
+  --texte-attenue: #59636c;
+  --texte-faible: #848d96;
 
-  /* Identité */
-  --accent: #0e7a72;
-  --accent-fonce: #0a5f59;
-  --accent-clair: #e3f2f0;
-  --accent-bordure: #a8d5d0;
+  /* Identité : vert d'officine, profond et peu saturé. */
+  --accent: #15654e;
+  --accent-fonce: #0f4b3a;
+  --accent-clair: #e9f1ee;
+  --accent-bordure: #a4c3b6;
 
-  /* Barre latérale */
-  --nav-fond: #14343a;
-  --nav-texte: #a3bcbd;
-  --nav-texte-fort: #eaf6f5;
-  --nav-survol: #1e474d;
-  --nav-actif: #e7f4f2;
-  --nav-actif-texte: #0d6a64;
-  --nav-bordure: #24525a;
+  /* Barre latérale claire : le chrome d'un logiciel de gestion, pas d'un
+     tableau de bord en ligne. */
+  --nav-fond: #e6e9ec;
+  --nav-texte: #3d464e;
+  --nav-texte-fort: #11171c;
+  --nav-survol: #dbdfe4;
+  --nav-actif: #ffffff;
+  --nav-actif-texte: #0f4b3a;
+  --nav-bordure: #cfd4d9;
 
   /* États sémantiques */
   --succes: #16794a;
@@ -56,13 +59,15 @@
   --police-chiffres: 'Segoe UI', system-ui, sans-serif;
 
   /* Rythme */
-  --rayon: 4px;
-  --rayon-panneau: 6px;
-  --ombre-panneau: 0 1px 2px rgba(20, 52, 58, 0.05);
-  --ombre-flottante: 0 8px 28px rgba(13, 35, 41, 0.16);
-  --largeur-nav: 232px;
-  --largeur-nav-reduite: 60px;
-  --hauteur-barre: 52px;
+  /* Angles quasi droits et bordures franches : la structure vient du trait,
+     pas de l'ombre portée. */
+  --rayon: 2px;
+  --rayon-panneau: 3px;
+  --ombre-panneau: none;
+  --ombre-flottante: 0 10px 32px rgba(17, 23, 28, 0.22);
+  --largeur-nav: 206px;
+  --largeur-nav-reduite: 46px;
+  --hauteur-barre: 42px;
 }
 
 * {
@@ -78,8 +83,8 @@ body,
 body {
   margin: 0;
   font-family: var(--police);
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: 12.5px;
+  line-height: 1.4;
   color: var(--texte);
   background: var(--fond);
   -webkit-font-smoothing: antialiased;
@@ -175,6 +180,7 @@ a {
   width: var(--largeur-nav);
   flex: 0 0 var(--largeur-nav);
   background: var(--nav-fond);
+  border-right: 1px solid var(--nav-bordure);
   display: flex;
   flex-direction: column;
   transition: width 0.16s ease, flex-basis 0.16s ease;
@@ -207,9 +213,9 @@ a {
 }
 
 .nav-marque {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
   color: var(--nav-texte-fort);
   white-space: nowrap;
   overflow: hidden;
@@ -241,12 +247,12 @@ a {
 }
 
 .nav-groupe {
-  margin-top: 12px;
-  padding: 0 8px 5px;
-  color: #6f8f92;
+  margin-top: 10px;
+  padding: 0 8px 4px;
+  color: var(--texte-faible);
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
@@ -255,15 +261,16 @@ a {
 .nav-lien {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   width: 100%;
-  height: 32px;
-  padding: 0 9px;
+  height: 27px;
+  padding: 0 8px 0 7px;
   border: 0;
-  border-radius: var(--rayon);
+  border-left: 2px solid transparent;
+  border-radius: 0;
   background: transparent;
   color: var(--nav-texte);
-  font-size: 12.5px;
+  font-size: 12px;
   text-align: left;
   white-space: nowrap;
   overflow: hidden;
@@ -276,6 +283,7 @@ a {
 
 .nav-lien.actif {
   background: var(--nav-actif);
+  border-left-color: var(--accent);
   color: var(--nav-actif-texte);
   font-weight: 600;
 }
@@ -337,9 +345,9 @@ a {
   width: 26px;
   height: 26px;
   flex: 0 0 26px;
-  border-radius: 50%;
-  background: #2c5f61;
-  color: #d7efec;
+  border-radius: 2px;
+  background: var(--accent);
+  color: #fff;
   font-size: 10px;
   font-weight: 700;
 }
@@ -389,10 +397,14 @@ a {
 .barre-fil {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   color: var(--texte-faible);
-  font-size: 11.5px;
+  font-size: 12px;
   white-space: nowrap;
+}
+
+.barre-fil strong {
+  font-size: 13px;
 }
 
 .barre-fil strong {
@@ -442,7 +454,7 @@ a {
 .contenu {
   flex: 1;
   overflow-y: auto;
-  padding: 18px 20px 32px;
+  padding: 12px 14px 24px;
 }
 
 .contenu-large {
@@ -566,23 +578,25 @@ a {
 
 .page-entete {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 10px;
 }
 
 .page-entete h1 {
-  font-size: 19px;
+  font-size: 15px;
   font-weight: 600;
-  letter-spacing: -0.01em;
   color: var(--texte-fort);
 }
 
+/* Une phrase d'explication sous chaque titre relève de la brochure, pas de
+   l'interface : on ne l'affiche que lorsqu'elle apprend vraiment quelque
+   chose, et toujours en retrait. */
 .page-entete p {
-  margin-top: 2px;
-  color: var(--texte-attenue);
-  font-size: 12.5px;
+  margin-top: 1px;
+  color: var(--texte-faible);
+  font-size: 11.5px;
 }
 
 .page-actions {
@@ -603,13 +617,13 @@ a {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 32px;
-  padding: 0 12px;
+  height: 28px;
+  padding: 0 10px;
   border: 1px solid var(--bordure-nette);
   border-radius: var(--rayon);
   background: var(--surface);
   color: var(--texte);
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -655,9 +669,9 @@ a {
 }
 
 .bouton.compact {
-  height: 27px;
-  padding: 0 9px;
-  font-size: 12px;
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11.5px;
 }
 
 .bouton.pleine {
@@ -677,27 +691,30 @@ a {
 
 .panneau-entete {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
-  gap: 14px;
-  padding: 12px 14px;
-  border-bottom: 1px solid var(--bordure-legere);
+  gap: 12px;
+  min-height: 34px;
+  padding: 7px 11px;
+  border-bottom: 1px solid var(--bordure);
+  background: var(--surface-attenuee);
 }
 
 .panneau-entete h2 {
-  font-size: 13.5px;
+  font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--texte-fort);
 }
 
 .panneau-entete p {
   margin-top: 1px;
   color: var(--texte-faible);
-  font-size: 11.5px;
+  font-size: 11px;
 }
 
 .panneau-corps {
-  padding: 14px;
+  padding: 11px;
 }
 
 .panneau-pied {
@@ -711,53 +728,59 @@ a {
    Indicateurs
    ============================================================================= */
 
+/* Bandeau de synthèse plutôt qu'une rangée de cartes : les chiffres sont
+   alignés dans une seule bande, séparés par un filet. Un logiciel de gestion
+   n'ouvre pas chaque écran sur des vignettes colorées. */
 .indicateurs {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
-
-.indicateur {
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  margin-bottom: 10px;
   background: var(--surface);
   border: 1px solid var(--bordure);
   border-radius: var(--rayon-panneau);
-  box-shadow: var(--ombre-panneau);
-  padding: 12px 13px;
+  overflow: hidden;
+}
+
+.indicateur {
+  padding: 8px 12px;
+  border-right: 1px solid var(--bordure-legere);
   position: relative;
   overflow: hidden;
+}
+
+.indicateur:last-child {
+  border-right: 0;
 }
 
 .indicateur-libelle {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   color: var(--texte-attenue);
-  font-size: 11.5px;
+  font-size: 11px;
 }
 
 .indicateur-valeur {
-  margin-top: 7px;
-  font-size: 20px;
+  margin-top: 3px;
+  font-size: 16px;
   font-weight: 600;
-  letter-spacing: -0.02em;
   color: var(--texte-fort);
 }
 
 .indicateur-valeur .unite {
   margin-left: 3px;
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   color: var(--texte-attenue);
-  letter-spacing: 0;
 }
 
 .indicateur-pied {
-  margin-top: 6px;
+  margin-top: 2px;
   display: flex;
   align-items: center;
-  gap: 5px;
-  font-size: 11.5px;
+  gap: 4px;
+  font-size: 10.5px;
   color: var(--texte-faible);
 }
 
@@ -785,9 +808,10 @@ a {
 .tableau-outils {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--bordure-legere);
+  gap: 7px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--bordure);
+  background: var(--surface-attenuee);
   flex-wrap: wrap;
 }
 
@@ -798,23 +822,28 @@ a {
 table.tableau {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 
 table.tableau th {
-  padding: 8px 12px;
+  padding: 5px 10px;
   background: var(--surface-attenuee);
   border-bottom: 1px solid var(--bordure);
+  border-right: 1px solid var(--bordure-legere);
   color: var(--texte-attenue);
   font-size: 10.5px;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.03em;
   text-transform: uppercase;
   text-align: left;
   white-space: nowrap;
   position: sticky;
   top: 0;
   z-index: 1;
+}
+
+table.tableau th:last-child {
+  border-right: 0;
 }
 
 table.tableau th.triable {
@@ -834,10 +863,16 @@ table.tableau th .indicateur-tri {
 }
 
 table.tableau td {
-  padding: 9px 12px;
+  padding: 5px 10px;
   border-bottom: 1px solid var(--bordure-legere);
   color: var(--texte);
   vertical-align: middle;
+}
+
+/* Alternance des lignes : sur un tableau dense, c'est ce qui permet de suivre
+   une ligne du regard jusqu'au bout. */
+table.tableau tbody tr:nth-child(even) td {
+  background: var(--zebre);
 }
 
 table.tableau tbody tr:last-child td {
@@ -849,7 +884,7 @@ table.tableau tbody tr.cliquable {
 }
 
 table.tableau tbody tr:hover td {
-  background: var(--surface-attenuee);
+  background: var(--surface-active);
 }
 
 table.tableau tbody tr.selectionnee td {
@@ -873,7 +908,7 @@ table.tableau tbody tr.selectionnee td {
 .cellule-principale > span {
   display: block;
   color: var(--texte-faible);
-  font-size: 11.5px;
+  font-size: 11px;
 }
 
 .cellule-principale strong .etiquette {
@@ -891,8 +926,9 @@ table.tableau tbody tr.selectionnee td {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 9px 12px;
-  border-top: 1px solid var(--bordure-legere);
+  padding: 6px 10px;
+  border-top: 1px solid var(--bordure);
+  background: var(--surface-attenuee);
   color: var(--texte-attenue);
   font-size: 11.5px;
 }
@@ -907,48 +943,42 @@ table.tableau tbody tr.selectionnee td {
    Étiquettes d'état
    ============================================================================= */
 
+/* Étiquette d'état : un aplat très pâle, un texte lisible, pas de pastille.
+   La couleur suffit à porter l'information. */
 .etiquette {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 2px 7px;
-  border-radius: 3px;
+  padding: 1px 6px;
+  border: 1px solid transparent;
+  border-radius: 2px;
   font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
 }
 
-.etiquette::before {
-  content: '';
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: currentColor;
-  flex: 0 0 5px;
-}
-
-.etiquette.sans-point::before {
-  display: none;
-}
-
 .etiquette.succes {
   background: var(--succes-fond);
+  border-color: #bfdcc9;
   color: var(--succes);
 }
 .etiquette.attention {
   background: var(--attention-fond);
+  border-color: #e6d0a4;
   color: var(--attention);
 }
 .etiquette.danger {
   background: var(--danger-fond);
+  border-color: #e6bdb6;
   color: var(--danger);
 }
 .etiquette.info {
   background: var(--info-fond);
+  border-color: #c2d4e6;
   color: var(--info);
 }
 .etiquette.neutre {
   background: var(--neutre-fond);
+  border-color: var(--bordure);
   color: var(--texte-attenue);
 }
 
@@ -1221,8 +1251,8 @@ table.tableau tbody tr.selectionnee td {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 44px 24px;
+  gap: 3px;
+  padding: 30px 20px;
   text-align: center;
 }
 
@@ -1790,9 +1820,9 @@ table.tableau tbody tr.selectionnee td {
 .alerte-ligne {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   width: 100%;
-  padding: 10px 14px;
+  padding: 7px 11px;
   border: 0;
   border-bottom: 1px solid var(--bordure-legere);
   background: var(--surface);
@@ -1810,9 +1840,9 @@ table.tableau tbody tr.selectionnee td {
 .alerte-marque {
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
   border-radius: var(--rayon);
 }
 
@@ -1836,15 +1866,15 @@ table.tableau tbody tr.selectionnee td {
 
 .alerte-texte strong {
   display: block;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--texte-fort);
 }
 
 .alerte-texte span {
   display: block;
-  color: var(--texte-attenue);
-  font-size: 11.5px;
+  color: var(--texte-faible);
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

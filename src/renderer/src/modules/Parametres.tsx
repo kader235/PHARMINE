@@ -68,7 +68,6 @@ export default function Parametres() {
     <>
       <EntetePage
         titre="Paramètres"
-        description="Configuration de la pharmacie, règles de fonctionnement et sauvegardes."
         actions={
           <Segments
             valeur={onglet}

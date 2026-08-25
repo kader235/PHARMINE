@@ -92,7 +92,6 @@ export default function Stock({ destination }: { destination: Destination }) {
     <>
       <EntetePage
         titre="État du stock"
-        description="Anticipez les ruptures et suivez chaque mouvement."
         actions={
           <Segments
             valeur={onglet}

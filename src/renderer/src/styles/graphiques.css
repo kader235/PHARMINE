@@ -1,0 +1,318 @@
+/* =============================================================================
+   PHARMINA — Graphiques et bandeau de module
+
+   Les graphiques ne sont admis que sur les écrans de pilotage : tableau de
+   bord, finances, rapports. Un écran de saisie n'en a pas besoin, et une
+   courbe posée à côté d'un formulaire ne sert qu'à décorer.
+   ============================================================================= */
+
+/* --- Bandeau d'en-tête des écrans de pilotage -------------------------------- */
+
+.bandeau-module {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  border: 1px solid var(--accent-fonce);
+  border-radius: var(--rayon-panneau);
+  background: var(--accent-fonce);
+  color: #eaf2ef;
+}
+
+.bandeau-module h1 {
+  font-size: 15px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.bandeau-module p {
+  margin-top: 1px;
+  font-size: 11.5px;
+  color: #b3cbc2;
+}
+
+.bandeau-module .bandeau-actions {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-shrink: 0;
+}
+
+/* Sur fond soutenu, les contrôles restent lisibles sans changer de forme. */
+.bandeau-module .segments {
+  border-color: #2d6a57;
+  background: #124435;
+}
+
+.bandeau-module .segments button {
+  border-right-color: #2d6a57;
+  color: #b3cbc2;
+}
+
+.bandeau-module .segments button:hover {
+  background: #1a5744;
+  color: #fff;
+}
+
+.bandeau-module .segments button.actif {
+  background: #fff;
+  color: var(--accent-fonce);
+}
+
+.bandeau-module .bouton {
+  border-color: #2d6a57;
+  background: #124435;
+  color: #eaf2ef;
+}
+
+.bandeau-module .bouton:hover:not(:disabled) {
+  background: #1a5744;
+  border-color: #3d7c67;
+}
+
+.bandeau-module .bouton.principal {
+  background: #fff;
+  border-color: #fff;
+  color: var(--accent-fonce);
+}
+
+.bandeau-module .bouton.principal:hover:not(:disabled) {
+  background: #e6efec;
+  border-color: #e6efec;
+}
+
+/* --- Courbe ------------------------------------------------------------------ */
+
+.graphique {
+  display: block;
+}
+
+.graphique-trace {
+  display: block;
+  width: 100%;
+  overflow: visible;
+}
+
+.graphique-axe {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  color: var(--texte-faible);
+  font-size: 10px;
+}
+
+.graphique-axe span {
+  flex: 1;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.graphique-vide {
+  padding: 26px 12px;
+  text-align: center;
+  color: var(--texte-faible);
+  font-size: 11.5px;
+  font-style: italic;
+}
+
+/* --- Barres verticales ------------------------------------------------------- */
+
+.graphique-barres {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+}
+
+.graphique-barre {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.graphique-barre-valeur {
+  color: var(--texte-attenue);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 3px;
+  white-space: nowrap;
+}
+
+.graphique-barre-corps {
+  display: block;
+  width: 100%;
+  max-width: 34px;
+  border-radius: 1px;
+}
+
+.graphique-barre-libelle {
+  margin-top: 4px;
+  color: var(--texte-faible);
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+/* --- Classement -------------------------------------------------------------- */
+
+.classement {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.classement li {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1.4fr) minmax(60px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.classement-rang {
+  color: var(--texte-faible);
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.classement-nom {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--texte);
+}
+
+.classement-jauge {
+  display: block;
+  height: 8px;
+  background: var(--bordure-legere);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.classement-jauge span {
+  display: block;
+  height: 100%;
+  border-radius: 1px;
+}
+
+.classement-valeur {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.classement-complement {
+  grid-column: 2 / -1;
+  color: var(--texte-faible);
+  font-size: 10.5px;
+}
+
+/* --- Répartition ------------------------------------------------------------- */
+
+.repartition-barre {
+  display: flex;
+  height: 12px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--bordure-legere);
+}
+
+.repartition-barre span {
+  display: block;
+  height: 100%;
+}
+
+.repartition-legende {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.repartition-legende li {
+  display: grid;
+  grid-template-columns: 9px minmax(0, 1fr) 38px auto;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.repartition-puce {
+  width: 9px;
+  height: 9px;
+  border-radius: 1px;
+}
+
+.repartition-nom {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.repartition-part {
+  color: var(--texte-attenue);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.repartition-valeur {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* --- Anneau ------------------------------------------------------------------ */
+
+.anneau {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.anneau-texte {
+  font: 700 9px var(--police);
+  fill: var(--texte-fort);
+}
+
+.anneau-libelle {
+  color: var(--texte-attenue);
+  font-size: 11px;
+  text-align: center;
+}
+
+/* --- Grille de pilotage ------------------------------------------------------- */
+
+.grille-pilotage {
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(280px, 1fr);
+  gap: 10px;
+  align-items: start;
+  margin-bottom: 10px;
+}
+
+.grille-pilotage.trois {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1180px) {
+  .grille-pilotage,
+  .grille-pilotage.trois {
+    grid-template-columns: 1fr;
+  }
+}

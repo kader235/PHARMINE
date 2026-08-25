@@ -75,7 +75,6 @@ export default function Produits({ destination }: { destination: Destination }) 
     <>
       <EntetePage
         titre="Produits"
-        description="Votre catalogue, vos prix et vos seuils de réapprovisionnement."
         actions={
           session.peut('produits.creer') ? (
             <Bouton variante="principal" icone="plus" onClick={() => setEdition({ produit: null })}>

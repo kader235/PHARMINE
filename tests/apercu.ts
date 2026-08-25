@@ -313,6 +313,55 @@ app.whenReady().then(async () => {
     }))()
   `)) as Record<string, unknown>[]
 
+  // Contrôle de la coque : deux collisions de classes CSS ont déjà déformé
+  // cette mise en page (« principal », puis « barre »). On mesure désormais
+  // les éléments de structure plutôt que de s'en remettre à l'œil.
+  const coque = (await fenetre.webContents.executeJavaScript(`
+    (() => {
+      const mesure = (selecteur) => {
+        const e = document.querySelector(selecteur)
+        if (!e) return null
+        const r = e.getBoundingClientRect()
+        const s = getComputedStyle(e)
+        return { hauteur: Math.round(r.height), largeur: Math.round(r.width), direction: s.flexDirection }
+      }
+      return {
+        fenetre: { largeur: window.innerWidth, hauteur: window.innerHeight },
+        nav: mesure('.nav'),
+        barre: mesure('.barre'),
+        fonctions: mesure('.barre-fonctions'),
+        etat: mesure('.barre-etat')
+      }
+    })()
+  `)) as Record<string, { hauteur: number; largeur: number; direction: string } | null> & {
+    fenetre: { largeur: number; hauteur: number }
+  }
+
+  const anomalies: string[] = []
+  if (!coque.barre || coque.barre.hauteur > 60) {
+    anomalies.push(`barre superieure anormale : ${coque.barre?.hauteur ?? 'absente'} px`)
+  }
+  if (coque.barre && coque.barre.direction !== 'row') {
+    anomalies.push(`barre superieure en ${coque.barre.direction}`)
+  }
+  if (!coque.nav || coque.nav.hauteur < coque.fenetre.hauteur * 0.8) {
+    anomalies.push('la barre laterale ne remplit pas la hauteur')
+  }
+  if (!coque.fonctions || coque.fonctions.hauteur > 44) {
+    anomalies.push(`barre de fonctions anormale : ${coque.fonctions?.hauteur ?? 'absente'} px`)
+  }
+  if (!coque.etat || coque.etat.hauteur > 36) {
+    anomalies.push(`barre d etat anormale : ${coque.etat?.hauteur ?? 'absente'} px`)
+  }
+
+  console.log('')
+  console.log('  Structure de la coque :')
+  console.log('    ' + JSON.stringify(coque))
+  console.log(
+    anomalies.length ? '    -> ANOMALIES : ' + anomalies.join(' ; ') : '    -> structure conforme'
+  )
+  if (anomalies.length) erreurs.push('Mise en page : ' + anomalies.join(' ; '))
+
   console.log('')
   console.log('  Diagnostic des boutons :')
   for (const b of diagnostic) console.log('    ' + JSON.stringify(b))

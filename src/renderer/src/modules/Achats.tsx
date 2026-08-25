@@ -73,7 +73,6 @@ export default function Achats({ destination }: { destination: Destination }) {
     <>
       <EntetePage
         titre="Achats"
-        description="Réceptions fournisseurs, coûts d’acquisition et dettes en cours."
         actions={
           <>
             <Segments

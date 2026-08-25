@@ -93,7 +93,6 @@ export default function Peremptions({ destination }: { destination: Destination 
     <>
       <EntetePage
         titre="Péremptions"
-        description="Les lots à écouler, à retirer ou à surveiller avant qu’il ne soit trop tard."
       />
 
       <div className="indicateurs">

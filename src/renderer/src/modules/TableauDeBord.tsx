@@ -4,7 +4,9 @@ import { useSession } from '../app/Session'
 import { useFonctions } from '../app/fonctions'
 import { useNavigation } from '../app/navigation'
 import Icone, { type NomIcone } from '../ui/Icone'
+import { Classement, Evolution, Repartition } from '../ui/Graphiques'
 import {
+  BandeauModule,
   Bouton,
   Chargement,
   EntetePage,
@@ -15,7 +17,7 @@ import {
   Panneau,
   type Ton
 } from '../ui/Composants'
-import { dateLongue, depuis, heure, montant, nombre } from '../lib/format'
+import { dateCourte, dateLongue, depuis, heure, modePaiement, montant, nombre } from '../lib/format'
 
 export default function TableauDeBord() {
   const session = useSession()
@@ -48,17 +50,15 @@ export default function TableauDeBord() {
   if (erreur) return <ErreurEcran erreur={erreur} onReessayer={recharger} />
   if (!donnees) return <Chargement libelle="Préparation du tableau de bord…" />
 
-  const prenom = session.utilisateur.nom_complet.split(' ')[0]
+  const jour = dateLongue(donnees.date)
+  const premiereMajuscule = jour.charAt(0).toUpperCase() + jour.slice(1)
 
   // Base vide : on accompagne au lieu d'afficher des indicateurs à zéro sans
   // explication. C'est le premier écran que verra un nouveau client.
   if (donnees.aucuneDonnee) {
     return (
       <>
-        <EntetePage
-          titre={`Bonjour, ${prenom}`}
-          description={dateLongue(donnees.date)}
-        />
+        <EntetePage titre="Tableau de bord" description={premiereMajuscule} />
         <Panneau>
           <EtatVide icone="produit" titre="Votre pharmacie est prête à être renseignée">
             Aucun produit n’est encore enregistré. Commencez par constituer votre catalogue, puis
@@ -153,9 +153,9 @@ export default function TableauDeBord() {
 
   return (
     <>
-      <EntetePage
-        titre={`Bonjour, ${prenom}`}
-        description={dateLongue(donnees.date)}
+      <BandeauModule
+        titre={session.pharmacie.nom}
+        description={premiereMajuscule}
         actions={
           session.peut('ventes.creer') ? (
             <Bouton
@@ -172,12 +172,12 @@ export default function TableauDeBord() {
 
       <div className="indicateurs">
         <Indicateur
-          libelle="Chiffre d’affaires du jour"
+          libelle="Chiffre d’affaires"
           valeur={montant(donnees.chiffreAffaires.valeur)}
           variation={donnees.chiffreAffaires.variation}
         />
         <Indicateur
-          libelle="Ventes réalisées"
+          libelle="Ventes"
           valeur={nombre(donnees.nbVentes.valeur)}
           unite={donnees.nbVentes.valeur > 1 ? 'ventes' : 'vente'}
           variation={donnees.nbVentes.variation}
@@ -186,15 +186,14 @@ export default function TableauDeBord() {
           libelle="Bénéfice estimé"
           valeur={montant(donnees.beneficeEstime.valeur)}
           variation={donnees.beneficeEstime.variation}
-          detail={<span>Prix de vente moins coût des lots sortis</span>}
         />
         <Indicateur
-          libelle="Dépenses du jour"
+          libelle="Dépenses"
           valeur={montant(donnees.depenses.valeur)}
           variation={donnees.depenses.variation}
         />
         <Indicateur
-          libelle="État de la caisse"
+          libelle="Caisse"
           valeur={donnees.caisse.ouverte ? montant(donnees.caisse.theorique) : 'Fermée'}
           ton={donnees.caisse.ouverte ? undefined : 'danger'}
           detail={
@@ -209,16 +208,28 @@ export default function TableauDeBord() {
         />
       </div>
 
-      <div className="deux-colonnes">
-        <Panneau
-          titre="À surveiller"
-          description={
-            aSurveiller.length
-              ? 'Les points qui demandent une décision aujourd’hui.'
-              : undefined
-          }
-          sansCorps
-        >
+      <div className="grille-pilotage">
+        <Panneau titre="Chiffre d’affaires — 14 derniers jours">
+          <Evolution
+            donnees={donnees.evolution.map((e) => ({ libelle: e.jour, valeur: e.chiffreAffaires }))}
+            formatValeur={(v) => montant(v)}
+            // Une date sur trois : au-delà, les libellés se chevauchent.
+            formatLibelle={(jour, i) =>
+              i % 3 === 0 || i === donnees.evolution.length - 1 ? dateCourte(jour).slice(0, 5) : ''
+            }
+          />
+        </Panneau>
+
+        <Panneau titre="Règlements du jour">
+          <Repartition
+            parts={donnees.reglements.map((r) => ({ libelle: modePaiement(r.mode), valeur: r.montant }))}
+            formatValeur={(v) => montant(v)}
+          />
+        </Panneau>
+      </div>
+
+      <div className="grille-pilotage">
+        <Panneau titre="À surveiller" sansCorps>
           {aSurveiller.length === 0 ? (
             <EtatVide icone="coche" titre="Rien à signaler">
               Aucune rupture, aucun lot périmé, aucune dette en cours. Votre pharmacie est à jour.
@@ -245,6 +256,17 @@ export default function TableauDeBord() {
         </Panneau>
 
         <div className="pile">
+          <Panneau titre="Meilleures ventes — 7 jours">
+            <Classement
+              donnees={donnees.meilleuresVentes.map((v) => ({
+                libelle: v.nom,
+                valeur: v.quantite,
+                complement: montant(v.montant)
+              }))}
+              formatValeur={(v) => `${nombre(v)}`}
+            />
+          </Panneau>
+
           <Panneau titre="Actions rapides">
             <div className="pile" style={{ gap: 6 }}>
               {session.peut('ventes.creer') ? (
@@ -278,11 +300,7 @@ export default function TableauDeBord() {
       </div>
 
       <div style={{ marginTop: 14 }}>
-        <Panneau
-          titre="Activité récente"
-          description="Les dernières opérations enregistrées."
-          sansCorps
-        >
+        <Panneau titre="Dernières opérations" sansCorps>
           {donnees.activite.length === 0 ? (
             <EtatVide icone="journal" titre="Aucune opération pour le moment">
               Les ventes, réceptions et dépenses apparaîtront ici dès qu’elles seront enregistrées.
