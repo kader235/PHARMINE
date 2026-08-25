@@ -184,7 +184,8 @@ export function Panneau({
   actions,
   children,
   pied,
-  sansCorps
+  sansCorps,
+  className
 }: {
   titre?: string
   description?: string
@@ -192,9 +193,11 @@ export function Panneau({
   children: ReactNode
   pied?: ReactNode
   sansCorps?: boolean
+  /** Placement dans une grille : le panneau ne decide pas de sa largeur. */
+  className?: string
 }) {
   return (
-    <section className="panneau">
+    <section className={`panneau${className ? ` ${className}` : ''}`}>
       {titre || actions ? (
         <header className="panneau-entete">
           <div>

@@ -431,8 +431,15 @@ export interface TableauDeBord {
     dettesFournisseurs: number
     creancesClients: number
   }
-  /** Quatorze derniers jours, jours creux compris. */
-  evolution: { jour: string; chiffreAffaires: number; nbVentes: number }[]
+  /** Chiffres simples de la journée, en remplacement d'une courbe. */
+  journee: {
+    panierMoyen: number
+    articles: number
+    ventesCredit: number
+    montantCredit: number
+    chiffreHier: number
+    moyenneSeptJours: number
+  }
   /** Produits les plus vendus sur sept jours. */
   meilleuresVentes: { nom: string; quantite: number; montant: number }[]
   /** Répartition des règlements du jour par mode. */
@@ -446,6 +453,35 @@ export interface TableauDeBord {
     utilisateur: string | null
   }[]
   aucuneDonnee: boolean
+}
+
+/**
+ * Fiche du répertoire intégré : ce que le logiciel sait d'un produit avant
+ * même qu'il existe au catalogue de l'officine. Jamais de prix : ils
+ * dépendent du fournisseur et du pays.
+ */
+export interface FicheRepertoire {
+  id: number
+  nom: string
+  nomCourt: string
+  dci: string | null
+  dosage: string | null
+  forme: string | null
+  formeId: number | null
+  categorie: string | null
+  categorieId: number | null
+  uniteId: number | null
+  ordonnance: boolean
+  classe: string | null
+  dejaAuCatalogue?: boolean
+}
+
+export interface EtatRepertoire {
+  disponible: boolean
+  produits: number
+  empreinte: string | null
+  compileLe: string | null
+  motif?: string
 }
 
 export interface ResultatRecherche {

@@ -15,6 +15,13 @@ files:
 
 asar: true
 
+# Le repertoire des produits voyage a cote de l'application, hors de l'archive :
+# il est ouvert en lecture seule par le processus principal, et le remplacer
+# suffit a mettre le catalogue a jour.
+extraResources:
+  - from: resources/repertoire.db
+    to: repertoire.db
+
 win:
   target:
     - target: nsis

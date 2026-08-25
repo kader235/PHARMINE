@@ -430,6 +430,41 @@ app.whenReady().then(async () => {
     if (!atteignable) erreurs.push(`Compte inatteignable en disposition ${disposition}`)
   }
 
+  // --- Le tableau de bord doit tenir dans l'ecran ----------------------------
+  // Un tableau de bord qu'il faut faire defiler ne remplit pas son office : on
+  // l'ouvre pour savoir ou on en est d'un coup d'oeil. La mesure porte sur le
+  // conteneur reel, pas sur une impression a l'oeil.
+  const mesureDebordement = `
+    (() => {
+      const c = document.querySelector('.contenu')
+      const p = document.querySelector('.pilotage')
+      return {
+        pilotage: !!p,
+        contenu: c.clientHeight,
+        defilement: c.scrollHeight,
+        deborde: c.scrollHeight > c.clientHeight + 2
+      }
+    })()`
+
+  for (const disposition of ['confort', 'compacte', 'tactile']) {
+    await fenetre.webContents.executeJavaScript(apparence('clair', disposition))
+    await new Promise((r) => setTimeout(r, 500))
+    const mesure = (await fenetre.webContents.executeJavaScript(mesureDebordement)) as {
+      pilotage: boolean
+      contenu: number
+      defilement: number
+      deborde: boolean
+    }
+    console.log(`  tableau de bord en ${disposition} : ${JSON.stringify(mesure)}`)
+    if (!mesure.pilotage) {
+      erreurs.push(`Tableau de bord : grille absente en disposition ${disposition}`)
+    } else if (mesure.deborde) {
+      erreurs.push(
+        `Tableau de bord : deborde de ${mesure.defilement - mesure.contenu} px en ${disposition}`
+      )
+    }
+  }
+
   await fenetre.webContents.executeJavaScript(apparence('clair', 'confort'))
   await new Promise((r) => setTimeout(r, 400))
 
@@ -544,6 +579,133 @@ app.whenReady().then(async () => {
 
   console.log(`  scan simule -> ${JSON.stringify(resultatScan)}`)
   await photographier(fenetre, 'comptoir-apres-scan', 400)
+
+  // --- Saisie assistee d'un produit ------------------------------------------
+  // Le repertoire livre avec le logiciel doit reellement remplir la fiche :
+  // on le verifie de bout en bout, depuis le clavier jusqu'aux champs.
+  const indexProduits = (await fenetre.webContents.executeJavaScript(`
+    Array.from(document.querySelectorAll('.nav-lien'))
+      .findIndex((b) => b.textContent && b.textContent.trim().startsWith('Produits'))`)) as number
+
+  if (indexProduits < 0) {
+    erreurs.push('Module Produits introuvable dans la navigation')
+  } else {
+    await fenetre.webContents.executeJavaScript(
+      `document.querySelectorAll('.nav-lien')[${indexProduits}].click()`
+    )
+    await new Promise((r) => setTimeout(r, 900))
+
+    const ouvert = await fenetre.webContents.executeJavaScript(`
+      (() => {
+        const b = Array.from(document.querySelectorAll('button'))
+          .find((e) => e.textContent && e.textContent.trim() === 'Ajouter un produit')
+        if (b) { b.click(); return true }
+        return false
+      })()`)
+    await new Promise((r) => setTimeout(r, 600))
+
+    if (!ouvert) {
+      erreurs.push('Produits : bouton « Ajouter un produit » introuvable')
+    } else {
+      await photographier(fenetre, 'produit-assistant', 400)
+
+      await fenetre.webContents.executeJavaScript(`(${SAISIR})('.assistant-saisie', 'parac')`)
+      await new Promise((r) => setTimeout(r, 800))
+
+      const propositions = (await fenetre.webContents.executeJavaScript(`
+        (() => {
+          const s = Array.from(document.querySelectorAll('.suggestion'))
+          return {
+            nombre: s.length,
+            premiere: s[0] ? s[0].textContent.trim().slice(0, 60) : null
+          }
+        })()`)) as { nombre: number; premiere: string | null }
+
+      console.log(`  repertoire « parac » -> ${JSON.stringify(propositions)}`)
+      if (propositions.nombre === 0) {
+        erreurs.push('Repertoire : aucune proposition pour « parac »')
+      }
+      await photographier(fenetre, 'produit-suggestions', 400)
+
+      // On choisit la premiere fiche : le formulaire doit s'ouvrir rempli.
+      await fenetre.webContents.executeJavaScript(
+        `document.querySelector('.suggestion')?.click()`
+      )
+      await new Promise((r) => setTimeout(r, 700))
+
+      const prerempli = (await fenetre.webContents.executeJavaScript(`
+        (() => {
+          const valeur = (libelle) => {
+            const champ = Array.from(document.querySelectorAll('.champ'))
+              .find((c) => c.querySelector('label') &&
+                           c.querySelector('label').textContent.startsWith(libelle))
+            const e = champ && (champ.querySelector('input') || champ.querySelector('select'))
+            return e ? e.value : null
+          }
+          return {
+            origine: !!document.querySelector('.fiche-origine'),
+            nom: valeur('Nom commercial'),
+            dosage: valeur('Dosage'),
+            principe: valeur('Principe actif'),
+            forme: valeur('Forme'),
+            prixVente: valeur('Prix de vente')
+          }
+        })()`)) as Record<string, unknown>
+
+      console.log(`  fiche pre-remplie -> ${JSON.stringify(prerempli)}`)
+      if (!prerempli.origine) erreurs.push('Repertoire : la fiche d origine n est pas rappelee')
+      if (!prerempli.nom) erreurs.push('Repertoire : le nom commercial n est pas pre-rempli')
+      if (!prerempli.principe) erreurs.push('Repertoire : le principe actif n est pas pre-rempli')
+      if (!prerempli.forme) erreurs.push('Repertoire : la forme pharmaceutique n est pas pre-remplie')
+      // Le repertoire ne connait aucun prix : il ne doit surtout pas en inventer.
+      if (prerempli.prixVente && prerempli.prixVente !== '0' && prerempli.prixVente !== '') {
+        erreurs.push(`Repertoire : un prix de vente a ete pre-rempli (${prerempli.prixVente})`)
+      }
+
+      await photographier(fenetre, 'produit-fiche-prete', 400)
+
+      // Le prix d'achat saisi doit proposer un prix de vente : c'est le
+      // dernier geste que l'assistance peut epargner au pharmacien.
+      await fenetre.webContents.executeJavaScript(`
+        (() => {
+          const champ = Array.from(document.querySelectorAll('.champ'))
+            .find((c) => c.querySelector('label') &&
+                         c.querySelector('label').textContent.startsWith('Prix d’'))
+          const input = champ && champ.querySelector('input')
+          if (!input) return false
+          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set
+          setter.call(input, '1000')
+          input.dispatchEvent(new Event('input', { bubbles: true }))
+          return true
+        })()`)
+      await new Promise((r) => setTimeout(r, 500))
+
+      const propose = (await fenetre.webContents.executeJavaScript(`
+        (() => {
+          const champ = Array.from(document.querySelectorAll('.champ'))
+            .find((c) => c.querySelector('label') &&
+                         c.querySelector('label').textContent.startsWith('Prix de vente'))
+          const input = champ && champ.querySelector('input')
+          return input ? input.value : null
+        })()`)) as string | null
+
+      console.log(`  prix de vente propose pour 1 000 d achat -> ${propose}`)
+      if (!propose || Number(propose) <= 1000) {
+        erreurs.push(`Repertoire : aucun prix de vente propose (${propose})`)
+      }
+
+      await photographier(fenetre, 'produit-prix-propose', 400)
+
+      await fenetre.webContents.executeJavaScript(`
+        (() => {
+          const b = Array.from(document.querySelectorAll('button'))
+            .find((e) => e.textContent && e.textContent.trim() === 'Annuler')
+          if (b) b.click()
+          return !!b
+        })()`)
+      await new Promise((r) => setTimeout(r, 500))
+    }
+  }
 
   // --- Les trois formats de document ----------------------------------------
   await fenetre.webContents.executeJavaScript(`document.querySelectorAll('.nav-lien')[1].click()`)

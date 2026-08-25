@@ -3,6 +3,7 @@ import { writeFileSync } from 'node:fs'
 import { ErreurMetier, journaliser } from '../services/commun'
 import * as auth from '../services/auth'
 import * as produits from '../services/produits'
+import * as repertoire from '../services/repertoire'
 import * as stock from '../services/stock'
 import * as ventes from '../services/ventes'
 import * as caisse from '../services/caisse'
@@ -114,6 +115,14 @@ const CANAUX: Record<string, Canal> = {
     produits.archiverProduit(p.id, p.archiver, ctx.utilisateurId)
   ),
   'produits.creerLaboratoire': c('produits.creer', (p: { nom: string }) => produits.creerLaboratoire(p.nom)),
+
+  // --- Repertoire integre ----------------------------------------------------
+  // Lecture seule : aucun canal n'ecrit dans le repertoire, par construction.
+  'repertoire.rechercher': c('produits.voir', (p: { saisie: string; limite?: number }) =>
+    repertoire.rechercher(p.saisie, p.limite)
+  ),
+  'repertoire.fiche': c('produits.voir', (p: { id: number }) => repertoire.fiche(p.id)),
+  'repertoire.etat': connecte(() => repertoire.etat()),
 
   // --- Stock -----------------------------------------------------------------
   'stock.lots': c('stock.voir', (p: { produitId: number; inclureVides?: boolean }) =>

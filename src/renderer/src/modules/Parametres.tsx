@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { EtatRepertoire } from '@shared/types'
 import { useAction, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
 import { useNotifications } from '../ui/Notifications'
@@ -58,6 +59,7 @@ const CATEGORIES: Record<string, string> = {
   ventes: 'Ventes',
   caisse: 'Caisse',
   impression: 'Impression et documents',
+  produits: 'Catalogue et saisie',
   securite: 'Sécurité et sauvegardes'
 }
 
@@ -256,6 +258,8 @@ function Regles({ modifiable }: { modifiable: boolean }) {
     <div className="pile">
       {action.erreur ? <Bandeau ton="danger">{action.erreur.message}</Bandeau> : null}
 
+      <PanneauRepertoire />
+
       {Object.entries(groupes).map(([categorie, liste]) => (
         <Panneau key={categorie} titre={CATEGORIES[categorie] ?? categorie}>
           <div className="pile" style={{ gap: 14 }}>
@@ -429,5 +433,42 @@ function Sauvegardes({ onMessage }: { onMessage: (titre: string, message?: strin
         </div>
       ) : null}
     </>
+  )
+}
+
+/**
+ * État du répertoire intégré.
+ *
+ * Le pharmacien doit pouvoir constater que le fichier livré avec le logiciel
+ * est bien celui qui l'assiste : combien de fiches, quelle empreinte, quelle
+ * date de compilation. Rien n'est modifiable ici — le répertoire est ouvert
+ * en lecture seule, et c'est précisément ce que ce panneau atteste.
+ */
+function PanneauRepertoire() {
+  const etat = useRequete<EtatRepertoire>('repertoire.etat')
+  if (!etat.donnees) return null
+
+  const r = etat.donnees
+
+  return (
+    <Panneau titre="Répertoire des produits" description="Aide à la saisie, livrée avec le logiciel.">
+      {r.disponible ? (
+        <dl className="liste-definitions">
+          <dt>Fiches disponibles</dt>
+          <dd>{nombre(r.produits)}</dd>
+          <dt>Compilé le</dt>
+          <dd>{r.compileLe ?? '—'}</dd>
+          <dt>Empreinte</dt>
+          <dd>{r.empreinte?.slice(0, 16) ?? '—'}</dd>
+          <dt>Accès</dt>
+          <dd>Lecture seule</dd>
+        </dl>
+      ) : (
+        <Bandeau ton="attention">
+          Le répertoire n’est pas disponible sur ce poste{r.motif ? ` : ${r.motif}` : ''}. La saisie
+          des produits reste possible, sans suggestions.
+        </Bandeau>
+      )}
+    </Panneau>
   )
 }

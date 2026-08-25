@@ -8,6 +8,10 @@ set -eu
 taskkill //F //IM electron.exe >/dev/null 2>&1 || true
 sleep 1
 
+# Le repertoire des produits est recompile depuis sa source : l'installateur ne
+# doit jamais embarquer une version plus ancienne que le fichier texte du depot.
+ELECTRON_RUN_AS_NODE=1 npx electron scripts/repertoire.js
+
 export PHARMINA_SANS_TESTS=1
 npx electron-vite build
 npx electron-builder --win

@@ -4,7 +4,7 @@ import { useSession } from '../app/Session'
 import { useFonctions } from '../app/fonctions'
 import { useNavigation } from '../app/navigation'
 import Icone, { type NomIcone } from '../ui/Icone'
-import { Classement, Evolution, Repartition } from '../ui/Graphiques'
+import { Classement, Repartition } from '../ui/Graphiques'
 import {
   Bouton,
   Chargement,
@@ -16,12 +16,22 @@ import {
   Panneau,
   type Ton
 } from '../ui/Composants'
-import { dateCourte, depuis, modePaiement, montant, nombre } from '../lib/format'
+import { depuis, modePaiement, montant, nombre, pourcentage } from '../lib/format'
 
+/**
+ * Tableau de bord.
+ *
+ * Une seule règle de mise en page : tout tient dans l'écran. Un tableau de
+ * bord qu'il faut faire défiler ne remplit pas son office — on l'ouvre pour
+ * savoir où on en est d'un coup d'œil, pas pour lire un rapport.
+ *
+ * Chaque panneau défile donc à l'intérieur de ses propres bords, et la page
+ * elle-même ne bouge pas.
+ */
 export default function TableauDeBord() {
   const session = useSession()
   const naviguer = useNavigation()
-  const { donnees, chargement, erreur, recharger } = useRequete<DonneesTableau>('pilotage.tableauDeBord')
+  const { donnees, erreur, recharger } = useRequete<DonneesTableau>('pilotage.tableauDeBord')
 
   useFonctions('tableau-bord', [
     {
@@ -79,12 +89,12 @@ export default function TableauDeBord() {
   }
 
   const s = donnees.surveillance
+  const j = donnees.journee
 
   const surveillance: {
     ton: Ton
     icone: NomIcone
     titre: string
-    detail: string
     valeur: string
     action: () => void
     visible: boolean
@@ -93,7 +103,6 @@ export default function TableauDeBord() {
       ton: 'danger',
       icone: 'boite-vide',
       titre: 'Produits en rupture',
-      detail: 'À réapprovisionner en priorité',
       valeur: `${s.ruptures}`,
       action: () => naviguer({ module: 'stock', filtre: 'rupture' }),
       visible: s.ruptures > 0
@@ -102,7 +111,6 @@ export default function TableauDeBord() {
       ton: 'danger',
       icone: 'peremption',
       titre: 'Lots périmés en rayon',
-      detail: `${montant(s.valeurExpiree)} de valeur concernée`,
       valeur: `${s.expires}`,
       action: () => naviguer({ module: 'peremptions', filtre: 'expire' }),
       visible: s.expires > 0
@@ -111,7 +119,6 @@ export default function TableauDeBord() {
       ton: 'attention',
       icone: 'stock',
       titre: 'Stock faible',
-      detail: 'Sous le seuil minimum',
       valeur: `${s.stockFaible}`,
       action: () => naviguer({ module: 'stock', filtre: 'faible' }),
       visible: s.stockFaible > 0
@@ -120,16 +127,22 @@ export default function TableauDeBord() {
       ton: 'attention',
       icone: 'horloge',
       titre: 'Péremptions proches',
-      detail: 'Lots à écouler en priorité',
       valeur: `${s.peremptionProche}`,
       action: () => naviguer({ module: 'peremptions' }),
       visible: s.peremptionProche > 0
     },
     {
+      ton: 'danger',
+      icone: 'caisse',
+      titre: 'Caisse fermée',
+      valeur: 'Ouvrir',
+      action: () => naviguer({ module: 'caisse' }),
+      visible: !donnees.caisse.ouverte && session.peut('caisse.ouvrir')
+    },
+    {
       ton: 'info',
       icone: 'fournisseur',
       titre: 'Dettes fournisseurs',
-      detail: 'Restant dû sur les réceptions',
       valeur: montant(s.dettesFournisseurs),
       action: () => naviguer({ module: 'fournisseurs' }),
       visible: s.dettesFournisseurs > 0
@@ -138,7 +151,6 @@ export default function TableauDeBord() {
       ton: 'info',
       icone: 'client',
       titre: 'Créances clients',
-      detail: 'Ventes à crédit non réglées',
       valeur: montant(s.creancesClients),
       action: () => naviguer({ module: 'clients' }),
       visible: s.creancesClients > 0
@@ -146,7 +158,7 @@ export default function TableauDeBord() {
   ]
 
   const aSurveiller = surveillance.filter((e) => e.visible)
-
+  const ecart = donnees.chiffreAffaires.variation
 
   return (
     <>
@@ -167,23 +179,14 @@ export default function TableauDeBord() {
       />
 
       <div className="indicateurs bande">
-        <Indicateur
-          libelle="Chiffre d’affaires"
-          valeur={montant(donnees.chiffreAffaires.valeur)}
-        />
+        <Indicateur libelle="Chiffre d’affaires" valeur={montant(donnees.chiffreAffaires.valeur)} />
         <Indicateur
           libelle="Ventes"
           valeur={nombre(donnees.nbVentes.valeur)}
           unite={donnees.nbVentes.valeur > 1 ? 'ventes' : 'vente'}
         />
-        <Indicateur
-          libelle="Bénéfice estimé"
-          valeur={montant(donnees.beneficeEstime.valeur)}
-        />
-        <Indicateur
-          libelle="Dépenses"
-          valeur={montant(donnees.depenses.valeur)}
-        />
+        <Indicateur libelle="Bénéfice estimé" valeur={montant(donnees.beneficeEstime.valeur)} />
+        <Indicateur libelle="Dépenses" valeur={montant(donnees.depenses.valeur)} />
         <Indicateur
           libelle="Caisse"
           valeur={donnees.caisse.ouverte ? montant(donnees.caisse.theorique) : 'Fermée'}
@@ -191,37 +194,25 @@ export default function TableauDeBord() {
         />
       </div>
 
-      <div className="grille-pilotage">
-        <Panneau titre="Chiffre d’affaires — 14 derniers jours">
-          <Evolution
-            donnees={donnees.evolution.map((e) => ({ libelle: e.jour, valeur: e.chiffreAffaires }))}
-            formatValeur={(v) => montant(v)}
-            // Une date sur trois : au-delà, les libellés se chevauchent.
-            formatLibelle={(jour, i) =>
-              i % 3 === 0 || i === donnees.evolution.length - 1 ? dateCourte(jour).slice(0, 5) : ''
-            }
-          />
-        </Panneau>
-
-        <Panneau titre="Règlements du jour">
-          <Repartition
-            parts={donnees.reglements.map((r) => ({ libelle: modePaiement(r.mode), valeur: r.montant }))}
-            formatValeur={(v) => montant(v)}
-          />
-        </Panneau>
-      </div>
-
-      <div className="grille-pilotage">
+      <div className="pilotage">
         <Panneau titre="À traiter" sansCorps>
           {aSurveiller.length === 0 ? (
             <EtatVide icone="coche" titre="Rien à signaler">
-              Aucune rupture, aucun lot périmé, aucune dette en cours. Votre pharmacie est à jour.
+              Aucune rupture, aucun lot périmé, aucune dette en cours.
             </EtatVide>
           ) : (
             <div>
               {aSurveiller.map((element) => (
                 <button key={element.titre} className="alerte-ligne" onClick={element.action}>
-                  <span className={`alerte-marque ${element.ton === 'danger' ? 'urgent' : element.ton === 'attention' ? 'important' : 'information'}`}>
+                  <span
+                    className={`alerte-marque ${
+                      element.ton === 'danger'
+                        ? 'urgent'
+                        : element.ton === 'attention'
+                          ? 'important'
+                          : 'information'
+                    }`}
+                  >
                     <Icone nom={element.icone} taille={14} />
                   </span>
                   <span className="alerte-texte">
@@ -237,97 +228,116 @@ export default function TableauDeBord() {
           )}
         </Panneau>
 
-        <div className="pile">
-          <Panneau titre="Meilleures ventes — 7 jours">
+        {/* Ce panneau remplace la courbe de chiffre d'affaires. Une courbe
+            montrait la forme des quatorze derniers jours ; ces cinq lignes
+            répondent aux questions qu'on se pose vraiment le matin. */}
+        <Panneau titre="La journée">
+          <dl className="faits">
+            <div>
+              <dt>Panier moyen</dt>
+              <dd>{montant(j.panierMoyen)}</dd>
+            </div>
+            <div>
+              <dt>Articles vendus</dt>
+              <dd>{nombre(j.articles)}</dd>
+            </div>
+            <div>
+              <dt>Ventes à crédit</dt>
+              <dd>
+                {j.ventesCredit === 0
+                  ? 'Aucune'
+                  : `${nombre(j.ventesCredit)} · ${montant(j.montantCredit)}`}
+              </dd>
+            </div>
+            <div className="faits-coupure" />
+            <div>
+              <dt>Hier</dt>
+              <dd>{montant(j.chiffreHier)}</dd>
+            </div>
+            <div>
+              <dt>Moyenne 7 jours</dt>
+              <dd>{montant(j.moyenneSeptJours)}</dd>
+            </div>
+            {ecart !== null ? (
+              <div>
+                <dt>Écart sur hier</dt>
+                <dd className={ecart >= 0 ? 'fait-hausse' : 'fait-baisse'}>
+                  {ecart >= 0 ? '+' : ''}
+                  {pourcentage(ecart)}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        </Panneau>
+
+        <Panneau titre="Meilleures ventes — 7 jours">
+          {donnees.meilleuresVentes.length === 0 ? (
+            <EtatVide icone="vente" titre="Aucune vente cette semaine" />
+          ) : (
             <Classement
-              donnees={donnees.meilleuresVentes.map((v) => ({
-                libelle: v.nom,
-                valeur: v.quantite
-              }))}
+              donnees={donnees.meilleuresVentes.map((v) => ({ libelle: v.nom, valeur: v.quantite }))}
               formatValeur={(v) => `${nombre(v)}`}
             />
-          </Panneau>
+          )}
+        </Panneau>
 
-          <Panneau titre="Actions rapides">
-            <div className="pile" style={{ gap: 6 }}>
-              {session.peut('ventes.creer') ? (
-                <Bouton icone="vente" pleine onClick={() => naviguer({ module: 'ventes' })}>
-                  Enregistrer une vente
-                </Bouton>
-              ) : null}
-              {session.peut('achats.valider') ? (
-                <Bouton icone="achat" pleine onClick={() => naviguer({ module: 'achats', filtre: 'nouveau' })}>
-                  Enregistrer une réception
-                </Bouton>
-              ) : null}
-              {session.peut('produits.creer') ? (
-                <Bouton icone="produit" pleine onClick={() => naviguer({ module: 'produits', filtre: 'nouveau' })}>
-                  Ajouter un produit
-                </Bouton>
-              ) : null}
-              {session.peut('inventaire.creer') ? (
-                <Bouton icone="inventaire" pleine onClick={() => naviguer({ module: 'inventaire' })}>
-                  Faire un inventaire
-                </Bouton>
-              ) : null}
-              {!donnees.caisse.ouverte && session.peut('caisse.ouvrir') ? (
-                <Bouton icone="caisse" pleine variante="principal" onClick={() => naviguer({ module: 'caisse' })}>
-                  Ouvrir la caisse
-                </Bouton>
-              ) : null}
-            </div>
-          </Panneau>
-        </div>
-      </div>
-
-      <div style={{ marginTop: 14 }}>
-        <Panneau titre="Dernières opérations" sansCorps>
+        <Panneau titre="Dernières opérations" sansCorps className="pilotage-large">
           {donnees.activite.length === 0 ? (
             <EtatVide icone="journal" titre="Aucune opération pour le moment">
               Les ventes, réceptions et dépenses apparaîtront ici dès qu’elles seront enregistrées.
             </EtatVide>
           ) : (
-            <div className="tableau-defilement">
-              <table className="tableau">
-                <thead>
-                  <tr>
-                    <th style={{ width: 130 }}>Opération</th>
-                    <th>Référence</th>
-                    <th>Détail</th>
-                    <th className="cellule-nombre">Montant</th>
-                    <th style={{ width: 150 }}>Utilisateur</th>
-                    <th style={{ width: 120 }}>Quand</th>
+            <table className="tableau">
+              <thead>
+                <tr>
+                  <th style={{ width: 110 }}>Opération</th>
+                  <th>Référence</th>
+                  <th>Détail</th>
+                  <th className="cellule-nombre">Montant</th>
+                  <th style={{ width: 140 }}>Utilisateur</th>
+                  <th style={{ width: 100 }}>Quand</th>
+                </tr>
+              </thead>
+              <tbody>
+                {donnees.activite.map((ligne, index) => (
+                  <tr key={`${ligne.type}-${ligne.libelle}-${index}`}>
+                    <td>
+                      <Etiquette ton={tonActivite(ligne.type)}>{libelleActivite(ligne.type)}</Etiquette>
+                    </td>
+                    <td style={{ fontWeight: 500 }}>{ligne.libelle}</td>
+                    <td style={{ color: 'var(--texte-attenue)' }}>{ligne.detail}</td>
+                    <td className="cellule-nombre">
+                      {ligne.montant === null ? (
+                        '—'
+                      ) : (
+                        <span style={ligne.montant < 0 ? { color: 'var(--danger)' } : undefined}>
+                          {montant(ligne.montant)}
+                        </span>
+                      )}
+                    </td>
+                    <td style={{ color: 'var(--texte-attenue)' }}>{ligne.utilisateur ?? '—'}</td>
+                    <td style={{ color: 'var(--texte-faible)' }}>{depuis(ligne.at)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {donnees.activite.map((ligne, index) => (
-                    <tr key={`${ligne.type}-${ligne.libelle}-${index}`}>
-                      <td>
-                        <Etiquette ton={tonActivite(ligne.type)}>{libelleActivite(ligne.type)}</Etiquette>
-                      </td>
-                      <td style={{ fontWeight: 500 }}>{ligne.libelle}</td>
-                      <td style={{ color: 'var(--texte-attenue)' }}>{ligne.detail}</td>
-                      <td className="cellule-nombre">
-                        {ligne.montant === null ? (
-                          '—'
-                        ) : (
-                          <span style={ligne.montant < 0 ? { color: 'var(--danger)' } : undefined}>
-                            {montant(ligne.montant)}
-                          </span>
-                        )}
-                      </td>
-                      <td style={{ color: 'var(--texte-attenue)' }}>{ligne.utilisateur ?? '—'}</td>
-                      <td style={{ color: 'var(--texte-faible)' }}>{depuis(ligne.at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Panneau>
+
+        <Panneau titre="Règlements du jour">
+          {donnees.reglements.length === 0 ? (
+            <EtatVide icone="caisse" titre="Aucun encaissement" />
+          ) : (
+            <Repartition
+              parts={donnees.reglements.map((r) => ({
+                libelle: modePaiement(r.mode),
+                valeur: r.montant
+              }))}
+              formatValeur={(v) => montant(v)}
+            />
           )}
         </Panneau>
       </div>
-
-      {chargement ? null : null}
     </>
   )
 }

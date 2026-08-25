@@ -13,6 +13,7 @@ import { VERSION_SCHEMA, base, fermerBase, ouvrirBase } from '../src/main/db'
 import * as auth from '../src/main/services/auth'
 import * as configuration from '../src/main/services/configuration'
 import * as produits from '../src/main/services/produits'
+import * as repertoire from '../src/main/services/repertoire'
 import * as stock from '../src/main/services/stock'
 import * as achats from '../src/main/services/achats'
 import * as caisse from '../src/main/services/caisse'
@@ -731,6 +732,85 @@ try {
   verifier(
     journal.every((j) => j.at && j.resume !== null),
     'chaque entrée du journal est horodatée et décrite'
+  )
+
+  // ==========================================================================
+  titre('Répertoire intégré')
+
+  const etatRep = repertoire.etat()
+  verifier(etatRep.disponible, 'le répertoire livré avec le logiciel est lisible', etatRep.motif)
+  verifier(etatRep.produits >= 300, 'le répertoire contient au moins 300 fiches', etatRep.produits)
+  verifier(etatRep.empreinte !== null, 'le répertoire porte une empreinte')
+
+  const surParac = repertoire.rechercher('parac')
+  verifier(surParac.length > 0, 'recherche « parac » : le répertoire répond')
+  verifier(
+    surParac.some((f) => f.dci?.toLowerCase().includes('paracétamol')),
+    'recherche « parac » : le paracétamol remonte'
+  )
+
+  // Sans accent et en majuscules : c'est ainsi qu'on tape au comptoir.
+  verifier(repertoire.rechercher('AMOXICILLINE').length > 0, 'recherche insensible à la casse')
+  verifier(repertoire.rechercher('metronidazole').length > 0, 'recherche tolérante aux accents')
+  verifier(repertoire.rechercher('d').length > 0, 'une seule lettre suffit à obtenir des propositions')
+  verifier(repertoire.rechercher('zzzzzz').length === 0, 'un terme absent ne renvoie rien')
+
+  // Une fiche ne remplit jamais un prix : ils dépendent de l'officine.
+  const ficheRep = surParac[0]!
+  verifier(
+    !('prixAchat' in ficheRep) && !('prixVente' in ficheRep),
+    'une fiche du répertoire ne porte aucun prix'
+  )
+  verifier(
+    ficheRep.nomCourt.length > 0 && !/\d+\s*(mg|g|ml)$/i.test(ficheRep.nomCourt),
+    'le nom pré-rempli ne répète pas le dosage',
+    ficheRep.nomCourt
+  )
+
+  // Le répertoire pointe vers le référentiel réel : une forme ou une catégorie
+  // fantôme remplirait les fiches avec des identifiants sans correspondance.
+  const refsBase = produits.referentiels()
+  const formesConnues = new Set(refsBase.formes.map((f) => f.id))
+  const categoriesConnues = new Set(refsBase.categories.map((c) => c.id))
+  const unitesConnues = new Set(refsBase.unites.map((u) => u.id))
+
+  const echantillon = [
+    ...repertoire.rechercher('a', 50),
+    ...repertoire.rechercher('e', 50),
+    ...repertoire.rechercher('i', 50)
+  ]
+  verifier(
+    echantillon.every((f) => f.formeId === null || formesConnues.has(f.formeId)),
+    'chaque forme du répertoire existe dans le référentiel'
+  )
+  verifier(
+    echantillon.every((f) => f.categorieId === null || categoriesConnues.has(f.categorieId)),
+    'chaque catégorie du répertoire existe dans le référentiel'
+  )
+  verifier(
+    echantillon.every((f) => f.uniteId === null || unitesConnues.has(f.uniteId)),
+    'chaque unité de vente du répertoire existe dans le référentiel'
+  )
+
+  // Le produit « Doliprane » a été créé plus haut : le répertoire doit le
+  // signaler comme déjà présent, pour éviter un doublon au catalogue.
+  const surDoli = repertoire.rechercher('doliprane')
+  verifier(
+    surDoli.some((f) => f.dejaAuCatalogue === true),
+    'une fiche déjà au catalogue est signalée comme telle'
+  )
+  verifier(
+    surDoli.some((f) => f.dejaAuCatalogue === false),
+    'une fiche absente du catalogue n’est pas signalée à tort'
+  )
+
+  // La marge par défaut permet de proposer un prix de vente dès la saisie du
+  // prix d'achat : sans elle, l'assistance de saisie perdrait son dernier pas.
+  const reglagesSaisie = configuration.reglagesInterface()
+  verifier(
+    reglagesSaisie.margeParDefaut > 0 && reglagesSaisie.margeParDefaut < 500,
+    'la marge par défaut proposée est exploitable',
+    reglagesSaisie.margeParDefaut
   )
 
   // ==========================================================================

@@ -316,3 +316,140 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* =============================================================================
+   Tableau de bord — tient dans l'écran
+
+   La page ne défile pas. Les panneaux se partagent la hauteur restante et
+   défilent chacun entre ses propres bords : on ouvre le tableau de bord pour
+   voir où on en est, pas pour parcourir un rapport.
+   ============================================================================= */
+
+.contenu:has(.pilotage) {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 12px;
+}
+
+/* Le module est monte dans une enveloppe centree : elle doit transmettre la
+   hauteur, sinon la grille retombe sur sa hauteur naturelle et la page defile. */
+.contenu:has(.pilotage) > .contenu-large {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pilotage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: 11px;
+  grid-template-columns: 1.45fr 1fr 1fr;
+  /* La rangée du haut respire un peu plus que celle du bas : c'est là que se
+     trouve ce qui demande une action. */
+  grid-template-rows: minmax(0, 1.05fr) minmax(0, 1fr);
+}
+
+.pilotage > .panneau {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pilotage-large {
+  grid-column: span 2;
+}
+
+.pilotage > .panneau > .panneau-entete {
+  flex: 0 0 auto;
+}
+
+/* Le corps du panneau — qu'il soit enveloppé ou non — prend la hauteur
+   restante et défile seul. */
+.pilotage > .panneau > .panneau-corps,
+.pilotage > .panneau > div:not(.panneau-entete):not(.panneau-pied),
+.pilotage > .panneau > table {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Sous 1200 px de large, trois colonnes deviennent illisibles : on repasse à
+   deux, et la page redevient défilante plutôt que d'écraser les panneaux. */
+@media (max-width: 1200px) {
+  .contenu:has(.pilotage) {
+    display: block;
+    overflow-y: auto;
+  }
+
+  .pilotage {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: none;
+  }
+
+  .pilotage > .panneau {
+    min-height: 210px;
+  }
+}
+
+/* L'en-tête de « Dernières opérations » reste visible pendant le défilement :
+   sans lui, les colonnes deviennent indéchiffrables dès la deuxième ligne. */
+.pilotage > .panneau > table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--surface);
+}
+
+/* --- Faits de la journée ------------------------------------------------------
+   Libellé à gauche, valeur à droite, alignée. Aucun graphique : ces cinq
+   lignes se lisent plus vite qu'une courbe.
+   ----------------------------------------------------------------------------- */
+
+.faits {
+  /* La marge par défaut d'une liste de définitions ajouterait 26 px et ferait
+     défiler un panneau de cinq lignes. */
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.faits > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 3px;
+}
+
+.faits dt {
+  color: var(--texte-attenue);
+  font-size: 12.5px;
+}
+
+.faits dd {
+  color: var(--texte-fort);
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.faits-coupure {
+  height: 0;
+  padding: 0 !important;
+  margin: 4px 0;
+  border-top: 1px solid var(--bordure-legere);
+}
+
+.fait-hausse {
+  color: var(--succes);
+}
+
+.fait-baisse {
+  color: var(--danger);
+}

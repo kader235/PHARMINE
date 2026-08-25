@@ -274,6 +274,8 @@ export interface ReglagesInterface {
   avertirScanInconnu: boolean
   remiseMaxPourcent: number
   exigerCaisseOuverte: boolean
+  /** Marge proposee a la creation d'un produit, en pourcentage. */
+  margeParDefaut: number
 }
 
 /**
@@ -292,7 +294,8 @@ export function reglagesInterface(): ReglagesInterface {
     scanAjouteDirectement: parametreBooleen('comptoir.scan_ajoute_directement', true),
     avertirScanInconnu: parametreBooleen('comptoir.avertir_scan_inconnu', true),
     remiseMaxPourcent: parametreEntier('ventes.remise_max_pourcent', 10),
-    exigerCaisseOuverte: parametreBooleen('caisse.exiger_ouverture', true)
+    exigerCaisseOuverte: parametreBooleen('caisse.exiger_ouverture', true),
+    margeParDefaut: parametreEntier('produits.marge_par_defaut', 30)
   }
 }
 
@@ -302,7 +305,7 @@ export function themeParDefaut(): string {
     return parametre('interface.theme') ?? 'clair'
   } catch {
     // Base pas encore migrée : le thème par défaut fera l'affaire.
-    return 'officine'
+    return 'clair'
   }
 }
 

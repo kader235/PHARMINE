@@ -1077,6 +1077,134 @@ table.tableau tbody tr.selectionnee td {
 }
 
 /* =============================================================================
+   Assistant de saisie d'un produit
+
+   Un seul champ, grand, déjà actif à l'ouverture. Le reste de l'écran est
+   silencieux : la seule chose à faire est de taper le nom du produit.
+   ============================================================================= */
+
+.assistant-produit {
+  padding: 18px 16px 14px;
+}
+
+.assistant-question {
+  display: block;
+  margin-bottom: 9px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--texte);
+}
+
+.assistant-saisie {
+  width: 100%;
+  height: 44px;
+  padding: 0 13px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+  color: var(--texte);
+  font-size: 15px;
+  font-family: inherit;
+}
+
+.assistant-saisie:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-clair);
+}
+
+.assistant-saisie::placeholder {
+  color: var(--texte-faible);
+  font-size: 13.5px;
+}
+
+.assistant-aide {
+  margin: 8px 2px 0;
+  color: var(--texte-attenue);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* La liste occupe une hauteur stable : les suggestions ne doivent pas faire
+   sauter le bouton du bas à chaque frappe. */
+.suggestions {
+  margin-top: 10px;
+  max-height: 296px;
+  overflow-y: auto;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+}
+
+.suggestion {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--bordure-legere);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.suggestion:last-child {
+  border-bottom: 0;
+}
+
+.suggestion.surligne {
+  background: var(--accent-clair);
+}
+
+.suggestion-nom {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--texte);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.suggestion-detail {
+  display: block;
+  margin-top: 2px;
+  color: var(--texte-attenue);
+  font-size: 12px;
+}
+
+.suggestions-vide {
+  margin-top: 10px;
+  padding: 16px 12px;
+  border: 1px dashed var(--bordure);
+  border-radius: var(--rayon);
+  color: var(--texte-attenue);
+  font-size: 12.5px;
+  text-align: center;
+}
+
+.assistant-pied {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--bordure-legere);
+}
+
+/* Rappel de la fiche d'origine, en tête du formulaire pré-rempli. */
+.fiche-origine {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--bordure-legere);
+  background: var(--surface-attenuee);
+  color: var(--texte-attenue);
+  font-size: 12.5px;
+}
+
+.fiche-origine strong {
+  color: var(--texte);
+}
+
+/* =============================================================================
    Formulaires
    ============================================================================= */
 

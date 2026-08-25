@@ -106,32 +106,47 @@ export function tableauDeBord(): TableauDeBord {
     )
     .all() as unknown as TableauDeBord['activite']
 
-  // --- Séries pour les graphiques -------------------------------------------
-  // `date(at, 'localtime')` regroupe par jour civil local : regrouper sur la
-  // date UTC couperait les journées au mauvais moment selon le fuseau.
-  const brut = db
-    .prepare(
-      `SELECT date(at, 'localtime') AS jour,
-              COALESCE(SUM(total), 0) AS ca,
-              COUNT(*) AS nb
-       FROM ventes
-       WHERE statut = 'finalisee' AND at >= ?
-       GROUP BY jour`
-    )
-    .all(debutDeJournee(decalerJours(jour, -13))) as unknown as {
-    jour: string
-    ca: number
-    nb: number
-  }[]
+  // --- Chiffres de la journee -------------------------------------------
+  // Le tableau de bord ne montre plus de courbe : ce qu'on regarde le matin,
+  // c'est le panier moyen, ce qui est parti a credit, et si la journee se
+  // tient par rapport aux precedentes. Une courbe de quatorze points ne
+  // repond a aucune de ces trois questions.
 
-  const parJour = new Map(brut.map((l) => [l.jour, l]))
-  const evolution: TableauDeBord['evolution'] = []
-  for (let i = 13; i >= 0; i--) {
-    const j = decalerJours(jour, -i)
-    const trouve = parJour.get(j)
-    // Les jours sans vente valent zéro : un trou dans la courbe se lirait
-    // comme une absence de données, pas comme une journée creuse.
-    evolution.push({ jour: j, chiffreAffaires: trouve?.ca ?? 0, nbVentes: trouve?.nb ?? 0 })
+  const articles = (
+    db
+      .prepare(
+        `SELECT COALESCE(SUM(vl.quantite), 0) n
+         FROM vente_lignes vl JOIN ventes v ON v.id = vl.vente_id
+         WHERE v.statut = 'finalisee' AND v.at BETWEEN ? AND ?`
+      )
+      .get(debut, fin) as unknown as { n: number }
+  ).n
+
+  const credit = db
+    .prepare(
+      `SELECT COUNT(*) n, COALESCE(SUM(reste_a_payer), 0) montant
+       FROM ventes
+       WHERE statut = 'finalisee' AND reste_a_payer > 0 AND at BETWEEN ? AND ?`
+    )
+    .get(debut, fin) as unknown as { n: number; montant: number }
+
+  // Moyenne des sept jours precedents, aujourd'hui exclu : comparer la
+  // journee en cours a une moyenne qui la contient la lisserait.
+  const septJours = db
+    .prepare(
+      `SELECT COALESCE(SUM(total), 0) ca, COUNT(*) n
+       FROM ventes
+       WHERE statut = 'finalisee' AND at >= ? AND at < ?`
+    )
+    .get(debutDeJournee(decalerJours(jour, -7)), debut) as unknown as { ca: number; n: number }
+
+  const journee: TableauDeBord['journee'] = {
+    panierMoyen: ceJour.n > 0 ? Math.round(ceJour.ca / ceJour.n) : 0,
+    articles,
+    ventesCredit: credit.n,
+    montantCredit: credit.montant,
+    chiffreHier: laVeille.ca,
+    moyenneSeptJours: Math.round(septJours.ca / 7)
   }
 
   const meilleuresVentes = db
@@ -184,7 +199,7 @@ export function tableauDeBord(): TableauDeBord {
       dettesFournisseurs: dettes,
       creancesClients: creances
     },
-    evolution,
+    journee,
     meilleuresVentes,
     reglements,
     activite,

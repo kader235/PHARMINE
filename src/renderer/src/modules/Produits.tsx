@@ -1,5 +1,12 @@
-import { useEffect, useState } from 'react'
-import type { Lot, MouvementStock, Page, ProduitEtat } from '@shared/types'
+import { useEffect, useRef, useState } from 'react'
+import type {
+  EtatRepertoire,
+  FicheRepertoire,
+  Lot,
+  MouvementStock,
+  Page,
+  ProduitEtat
+} from '@shared/types'
 import { useAction, useDifferee, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
 import { useFonctions } from '../app/fonctions'
@@ -22,6 +29,8 @@ import {
   ZoneTexte
 } from '../ui/Composants'
 import Tableau, { CellulePrincipale, RechercheTableau } from '../ui/Tableau'
+import Icone from '../ui/Icone'
+import { useLecteurCodeBarres } from '../lib/codeBarres'
 import { dateCourte, etatStock, montant, nombre, pourcentage, typeMouvement } from '../lib/format'
 
 interface Referentiels {
@@ -234,6 +243,21 @@ export default function Produits({ destination }: { destination: Destination }) 
 // Formulaire
 // ===========================================================================
 
+/**
+ * Création d'un produit, en deux temps.
+ *
+ * Temps 1 — on cherche le produit dans le répertoire livré avec le logiciel.
+ * Trois lettres suffisent. La fiche choisie remplit la dénomination, le
+ * principe actif, le dosage, la forme, la catégorie, l'unité de vente et le
+ * statut d'ordonnance.
+ *
+ * Temps 2 — il ne reste que ce que le répertoire ne peut pas savoir : les
+ * prix de l'officine. Le prix de vente est proposé à partir de la marge
+ * habituelle, et reste modifiable.
+ *
+ * Un produit absent du répertoire se saisit librement : le répertoire aide,
+ * il n'enferme pas.
+ */
 function FormulaireProduit({
   produit,
   referentiels,
@@ -246,7 +270,14 @@ function FormulaireProduit({
   onEnregistre: (nouveau: boolean) => void
 }) {
   const action = useAction()
+  const notifications = useNotifications()
+  const reglages = useRequete<{ margeParDefaut: number }>('app.reglages')
+
+  // À la modification, la fiche est déjà connue : pas d'étape de recherche.
+  const [etape, setEtape] = useState<'recherche' | 'fiche'>(produit ? 'fiche' : 'recherche')
+  const [origine, setOrigine] = useState<FicheRepertoire | null>(null)
   const [avance, setAvance] = useState(false)
+  const [prixVenteTouche, setPrixVenteTouche] = useState(false)
 
   const [donnees, setDonnees] = useState({
     nomCommercial: produit?.nom_commercial ?? '',
@@ -269,8 +300,67 @@ function FormulaireProduit({
     codesBarres: (produit?.codes_barres ?? []).join(', ')
   })
 
-  const valide = donnees.nomCommercial.trim().length >= 2 && donnees.prixVente >= 0
-  const marge =
+  // Un code-barres lu pendant la saisie se range tout seul : c'est le geste
+  // naturel quand on a la boîte en main.
+  useLecteurCodeBarres({
+    onScan: (code) => {
+      setDonnees((d) => {
+        const codes = d.codesBarres
+          .split(',')
+          .map((c) => c.trim())
+          .filter(Boolean)
+        if (codes.includes(code)) return d
+        notifications.info(`Code-barres ${code} ajouté`)
+        return { ...d, codesBarres: [...codes, code].join(', ') }
+      })
+      if (etape === 'recherche') setEtape('fiche')
+    }
+  })
+
+  const marge = reglages.donnees?.margeParDefaut ?? 30
+
+  function choisir(fiche: FicheRepertoire): void {
+    setOrigine(fiche)
+    setDonnees((d) => ({
+      ...d,
+      nomCommercial: fiche.nomCourt,
+      dosage: fiche.dosage ?? '',
+      nomGenerique: fiche.dci ?? '',
+      principeActif: fiche.dci ?? '',
+      formeId: fiche.formeId,
+      categorieId: fiche.categorieId,
+      uniteId: fiche.uniteId,
+      ordonnanceRequise: fiche.ordonnance,
+      // Un dispositif ou un accessoire ne se périme pas comme un médicament.
+      suiviPeremption: fiche.categorie !== 'Matériel médical'
+    }))
+    setEtape('fiche')
+  }
+
+  function saisirLibrement(nom: string): void {
+    setOrigine(null)
+    setDonnees((d) => ({ ...d, nomCommercial: nom.trim() }))
+    setEtape('fiche')
+  }
+
+  /**
+   * Prix d'achat saisi : on propose une vente cohérente tant que rien n'a été
+   * tapé dans le champ de vente.
+   *
+   * La marge se calcule sur le prix de vente, comme partout ailleurs dans le
+   * logiciel — proposer un coefficient sur le prix d'achat afficherait
+   * ensuite une marge différente de celle annoncée.
+   */
+  function changerPrixAchat(valeur: number): void {
+    setDonnees((d) => {
+      const applicable = marge > 0 && marge < 95 && valeur > 0
+      const propose = applicable ? Math.round(valeur / (1 - marge / 100)) : d.prixVente
+      return { ...d, prixAchat: valeur, prixVente: prixVenteTouche ? d.prixVente : propose }
+    })
+  }
+
+  const valide = donnees.nomCommercial.trim().length >= 2 && donnees.prixVente > 0
+  const margeReelle =
     donnees.prixVente > 0 ? ((donnees.prixVente - donnees.prixAchat) / donnees.prixVente) * 100 : null
 
   async function enregistrer(): Promise<void> {
@@ -294,6 +384,20 @@ function FormulaireProduit({
     if (resultat !== null) onEnregistre(!produit)
   }
 
+  // ---------------------------------------------------------------------------
+  // Temps 1 : le répertoire
+  // ---------------------------------------------------------------------------
+  if (etape === 'recherche') {
+    return (
+      <Modale titre="Nouveau produit" large onFermer={onFermer}>
+        <RechercheRepertoire onChoisir={choisir} onLibre={saisirLibrement} />
+      </Modale>
+    )
+  }
+
+  // ---------------------------------------------------------------------------
+  // Temps 2 : la fiche
+  // ---------------------------------------------------------------------------
   return (
     <Modale
       titre={produit ? `Modifier ${produit.nom_commercial}` : 'Nouveau produit'}
@@ -301,6 +405,9 @@ function FormulaireProduit({
       onFermer={onFermer}
       pied={
         <>
+          {produit ? null : (
+            <Bouton onClick={() => setEtape('recherche')}>Revenir au répertoire</Bouton>
+          )}
           <Bouton onClick={onFermer}>Annuler</Bouton>
           <Bouton variante="principal" disabled={!valide} enCours={action.enCours} onClick={enregistrer}>
             {produit ? 'Enregistrer les modifications' : 'Créer le produit'}
@@ -313,6 +420,52 @@ function FormulaireProduit({
           <Bandeau ton="danger">{action.erreur.message}</Bandeau>
         </div>
       ) : null}
+
+      {origine ? (
+        <div className="fiche-origine">
+          <Icone nom="etiquette" taille={15} />
+          <span>
+            <strong>{origine.nom}</strong>
+            {origine.classe ? ` · ${origine.classe}` : ''} — fiche du répertoire, modifiable.
+          </span>
+        </div>
+      ) : null}
+
+      <div className="formulaire-section">
+        <div className="formulaire-titre">Prix de l’officine</div>
+        <div className="grille trois">
+          <ChampMontant
+            libelle="Prix d’achat"
+            valeur={donnees.prixAchat}
+            onChangeValeur={changerPrixAchat}
+            aide="Mis à jour automatiquement à chaque réception."
+          />
+          <ChampMontant
+            libelle="Prix de vente"
+            obligatoire
+            valeur={donnees.prixVente}
+            onChangeValeur={(v) => {
+              setPrixVenteTouche(true)
+              setDonnees({ ...donnees, prixVente: v })
+            }}
+            aide={
+              margeReelle !== null
+                ? `Marge de ${pourcentage(margeReelle)}`
+                : marge > 0
+                  ? `Proposé à ${marge} % de marge dès le prix d’achat saisi.`
+                  : undefined
+            }
+          />
+          <Champ
+            libelle="Seuil minimum"
+            type="number"
+            min={0}
+            value={donnees.stockMin}
+            onChange={(e) => setDonnees({ ...donnees, stockMin: Number(e.target.value) })}
+            aide="En dessous, une alerte est levée."
+          />
+        </div>
+      </div>
 
       <div className="formulaire-section">
         <div className="formulaire-titre">Identification</div>
@@ -339,12 +492,6 @@ function FormulaireProduit({
             onChange={(e) => setDonnees({ ...donnees, formeId: e.target.value ? Number(e.target.value) : null })}
           />
           <Champ
-            libelle="Nom générique"
-            value={donnees.nomGenerique}
-            onChange={(e) => setDonnees({ ...donnees, nomGenerique: e.target.value })}
-            placeholder="Paracétamol"
-          />
-          <Champ
             libelle="Principe actif"
             value={donnees.principeActif}
             onChange={(e) => setDonnees({ ...donnees, principeActif: e.target.value })}
@@ -364,33 +511,6 @@ function FormulaireProduit({
             value={donnees.uniteId ?? ''}
             onChange={(e) => setDonnees({ ...donnees, uniteId: e.target.value ? Number(e.target.value) : null })}
           />
-        </div>
-      </div>
-
-      <div className="formulaire-section">
-        <div className="formulaire-titre">Prix et stock</div>
-        <div className="grille trois">
-          <ChampMontant
-            libelle="Prix d’achat"
-            valeur={donnees.prixAchat}
-            onChangeValeur={(v) => setDonnees({ ...donnees, prixAchat: v })}
-            aide="Mis à jour automatiquement à chaque réception."
-          />
-          <ChampMontant
-            libelle="Prix de vente"
-            obligatoire
-            valeur={donnees.prixVente}
-            onChangeValeur={(v) => setDonnees({ ...donnees, prixVente: v })}
-            aide={marge !== null ? `Marge de ${pourcentage(marge)}` : undefined}
-          />
-          <Champ
-            libelle="Seuil minimum"
-            type="number"
-            min={0}
-            value={donnees.stockMin}
-            onChange={(e) => setDonnees({ ...donnees, stockMin: Number(e.target.value) })}
-            aide="En dessous, une alerte est levée."
-          />
           <Champ
             libelle="Emplacement"
             value={donnees.emplacement}
@@ -402,7 +522,7 @@ function FormulaireProduit({
             large
             value={donnees.codesBarres}
             onChange={(e) => setDonnees({ ...donnees, codesBarres: e.target.value })}
-            aide="Séparez par une virgule si le produit a plusieurs conditionnements."
+            aide="Scannez la boîte : le code se range ici tout seul."
           />
         </div>
       </div>
@@ -438,6 +558,12 @@ function FormulaireProduit({
               onChange={(e) => setDonnees({ ...donnees, venteAutorisee: e.target.checked })}
             />
             <Champ
+              libelle="Nom générique"
+              value={donnees.nomGenerique}
+              onChange={(e) => setDonnees({ ...donnees, nomGenerique: e.target.value })}
+              placeholder="Paracétamol"
+            />
+            <Champ
               libelle="Stock maximum"
               type="number"
               min={0}
@@ -456,6 +582,126 @@ function FormulaireProduit({
         ) : null}
       </div>
     </Modale>
+  )
+}
+
+/**
+ * Champ de recherche du répertoire.
+ *
+ * Entièrement pilotable au clavier : on tape, on descend, on valide. Un
+ * comptoir n'a pas le temps d'attraper la souris.
+ */
+function RechercheRepertoire({
+  onChoisir,
+  onLibre
+}: {
+  onChoisir: (fiche: FicheRepertoire) => void
+  onLibre: (nom: string) => void
+}) {
+  const [saisie, setSaisie] = useState('')
+  const [surligne, setSurligne] = useState(0)
+  const differee = useDifferee(saisie, 120)
+  const champ = useRef<HTMLInputElement>(null)
+
+  const etat = useRequete<EtatRepertoire>('repertoire.etat')
+  const resultats = useRequete<FicheRepertoire[]>(
+    'repertoire.rechercher',
+    { saisie: differee.trim(), limite: 10 },
+    differee.trim().length >= 1
+  )
+
+  const fiches = resultats.donnees ?? []
+
+  useEffect(() => {
+    champ.current?.focus()
+  }, [])
+
+  useEffect(() => {
+    setSurligne(0)
+  }, [differee])
+
+  function auClavier(e: React.KeyboardEvent<HTMLInputElement>): void {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSurligne((i) => Math.min(i + 1, fiches.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSurligne((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      if (fiches[surligne]) onChoisir(fiches[surligne]!)
+      else if (saisie.trim().length >= 2) onLibre(saisie)
+    }
+  }
+
+  const repertoireAbsent = etat.donnees && !etat.donnees.disponible
+
+  return (
+    <div className="assistant-produit">
+      <label className="assistant-question" htmlFor="assistant-saisie">
+        Quel produit voulez-vous enregistrer ?
+      </label>
+
+      <input
+        id="assistant-saisie"
+        ref={champ}
+        className="assistant-saisie"
+        value={saisie}
+        onChange={(e) => setSaisie(e.target.value)}
+        onKeyDown={auClavier}
+        placeholder="Nom, principe actif ou classe — par exemple « parac », « amox », « seringue »"
+        autoComplete="off"
+      />
+
+      {repertoireAbsent ? (
+        <Bandeau ton="attention">
+          Le répertoire n’est pas disponible sur ce poste ({etat.donnees?.motif}). La saisie manuelle
+          reste possible.
+        </Bandeau>
+      ) : (
+        <p className="assistant-aide">
+          {etat.donnees?.produits ?? 0} produits référencés. La fiche choisie remplit la
+          dénomination, le principe actif, le dosage et la forme : il ne vous restera que vos prix.
+        </p>
+      )}
+
+      {saisie.trim().length >= 1 ? (
+        fiches.length > 0 ? (
+          <div className="suggestions" role="listbox">
+            {fiches.map((fiche, index) => (
+              <button
+                key={fiche.id}
+                type="button"
+                role="option"
+                aria-selected={index === surligne}
+                className={`suggestion${index === surligne ? ' surligne' : ''}`}
+                onMouseEnter={() => setSurligne(index)}
+                onClick={() => onChoisir(fiche)}
+              >
+                <span className="suggestion-nom">
+                  {fiche.nom}
+                  {fiche.dejaAuCatalogue ? <Etiquette ton="info">Déjà au catalogue</Etiquette> : null}
+                  {fiche.ordonnance ? <Etiquette ton="attention">Ordonnance</Etiquette> : null}
+                </span>
+                <span className="suggestion-detail">
+                  {[fiche.dci, fiche.forme, fiche.classe].filter(Boolean).join(' · ')}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : resultats.chargement ? null : (
+          <div className="suggestions-vide">
+            Aucune fiche ne correspond à « {saisie.trim()} ».
+          </div>
+        )
+      ) : null}
+
+      <div className="assistant-pied">
+        <Bouton icone="plus" onClick={() => onLibre(saisie)} disabled={saisie.trim().length < 2}>
+          Saisir « {saisie.trim() || '…' } » sans le répertoire
+        </Bouton>
+      </div>
+    </div>
   )
 }
 

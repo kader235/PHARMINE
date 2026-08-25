@@ -1,0 +1,445 @@
+# =============================================================================
+# PHARMINA — Répertoire des produits pharmaceutiques
+#
+# Aide à la saisie. Lorsque l'utilisateur tape les premières lettres d'un
+# produit, le logiciel propose une fiche pré-remplie : dénomination, principe
+# actif, dosage, forme, catégorie et statut d'ordonnance.
+#
+# Ce répertoire ne remplit JAMAIS un prix : les prix dépendent de l'officine,
+# du fournisseur et du pays. Il ne se substitue pas davantage au jugement du
+# pharmacien : c'est un gain de frappe, pas une référence de prescription.
+#
+# Composition : médicaments essentiels de l'OMS, spécialités courantes en
+# Afrique de l'Ouest et centrale, matériel médical et parapharmacie d'officine.
+#
+# Format, un produit par ligne, champs séparés par une barre verticale :
+#   nom | principe actif (DCI) | dosage | forme | catégorie | ordonnance | classe
+#
+# ordonnance : 1 = délivrance sur ordonnance, 0 = conseil libre.
+# Les lignes vides et celles commençant par # sont ignorées.
+#
+# Pour enrichir le répertoire : ajouter les lignes ici, puis
+#   node scripts/repertoire.js
+# qui régénère la migration SQL correspondante.
+# =============================================================================
+
+# --- Antalgiques et antipyrétiques -------------------------------------------
+Paracétamol 500 mg|Paracétamol|500 mg|Comprimé|Médicament|0|Antalgique
+Paracétamol 1 g|Paracétamol|1 g|Comprimé|Médicament|0|Antalgique
+Doliprane 500 mg|Paracétamol|500 mg|Comprimé|Médicament|0|Antalgique
+Doliprane 1000 mg|Paracétamol|1 g|Comprimé|Médicament|0|Antalgique
+Efferalgan 500 mg|Paracétamol|500 mg|Comprimé|Médicament|0|Antalgique
+Panadol 500 mg|Paracétamol|500 mg|Comprimé|Médicament|0|Antalgique
+Paracétamol sirop enfant|Paracétamol|120 mg/5 ml|Sirop|Médicament|0|Antalgique
+Doliprane suspension buvable|Paracétamol|2,4 %|Suspension buvable|Médicament|0|Antalgique
+Paracétamol suppositoire nourrisson|Paracétamol|100 mg|Suppositoire|Médicament|0|Antalgique
+Paracétamol suppositoire enfant|Paracétamol|300 mg|Suppositoire|Médicament|0|Antalgique
+Paracétamol injectable|Paracétamol|1 g/100 ml|Solution injectable|Médicament|1|Antalgique
+Perfalgan|Paracétamol|1 g/100 ml|Solution injectable|Médicament|1|Antalgique
+Ibuprofène 200 mg|Ibuprofène|200 mg|Comprimé|Médicament|0|Anti-inflammatoire
+Ibuprofène 400 mg|Ibuprofène|400 mg|Comprimé|Médicament|0|Anti-inflammatoire
+Ibuprofène sirop enfant|Ibuprofène|100 mg/5 ml|Sirop|Médicament|0|Anti-inflammatoire
+Advil 400 mg|Ibuprofène|400 mg|Comprimé|Médicament|0|Anti-inflammatoire
+Aspirine 500 mg|Acide acétylsalicylique|500 mg|Comprimé|Médicament|0|Antalgique
+Aspégic 1000 mg|Acide acétylsalicylique|1 g|Sachet|Médicament|0|Antalgique
+Aspirine cardio 100 mg|Acide acétylsalicylique|100 mg|Comprimé|Médicament|1|Antiagrégant
+Diclofénac 50 mg|Diclofénac sodique|50 mg|Comprimé|Médicament|1|Anti-inflammatoire
+Diclofénac 75 mg injectable|Diclofénac sodique|75 mg/3 ml|Solution injectable|Médicament|1|Anti-inflammatoire
+Voltarène gel|Diclofénac sodique|1 %|Gel|Médicament|0|Anti-inflammatoire
+Kétoprofène 100 mg|Kétoprofène|100 mg|Comprimé|Médicament|1|Anti-inflammatoire
+Kétoprofène gel|Kétoprofène|2,5 %|Gel|Médicament|0|Anti-inflammatoire
+Piroxicam 20 mg|Piroxicam|20 mg|Comprimé|Médicament|1|Anti-inflammatoire
+Acide méfénamique 250 mg|Acide méfénamique|250 mg|Gélule|Médicament|1|Anti-inflammatoire
+Nimésulide 100 mg|Nimésulide|100 mg|Comprimé|Médicament|1|Anti-inflammatoire
+Indométacine 25 mg|Indométacine|25 mg|Gélule|Médicament|1|Anti-inflammatoire
+Tramadol 50 mg|Tramadol|50 mg|Gélule|Médicament|1|Antalgique opioïde
+Tramadol injectable|Tramadol|100 mg/2 ml|Solution injectable|Médicament|1|Antalgique opioïde
+Paracétamol codéiné|Paracétamol + codéine|500 mg / 30 mg|Comprimé|Médicament|1|Antalgique opioïde
+Néfopam injectable|Néfopam|20 mg/2 ml|Solution injectable|Médicament|1|Antalgique
+Morphine 10 mg injectable|Chlorhydrate de morphine|10 mg/ml|Solution injectable|Médicament|1|Antalgique opioïde
+Colchicine 1 mg|Colchicine|1 mg|Comprimé|Médicament|1|Antigoutteux
+Allopurinol 100 mg|Allopurinol|100 mg|Comprimé|Médicament|1|Antigoutteux
+Allopurinol 300 mg|Allopurinol|300 mg|Comprimé|Médicament|1|Antigoutteux
+
+# --- Antibiotiques ------------------------------------------------------------
+Amoxicilline 250 mg|Amoxicilline|250 mg|Gélule|Médicament|1|Antibiotique
+Amoxicilline 500 mg|Amoxicilline|500 mg|Gélule|Médicament|1|Antibiotique
+Amoxicilline 1 g|Amoxicilline|1 g|Comprimé|Médicament|1|Antibiotique
+Amoxicilline suspension 125 mg|Amoxicilline|125 mg/5 ml|Suspension buvable|Médicament|1|Antibiotique
+Amoxicilline suspension 250 mg|Amoxicilline|250 mg/5 ml|Suspension buvable|Médicament|1|Antibiotique
+Clamoxyl 500 mg|Amoxicilline|500 mg|Gélule|Médicament|1|Antibiotique
+Augmentin 1 g|Amoxicilline + acide clavulanique|1 g / 125 mg|Comprimé|Médicament|1|Antibiotique
+Augmentin 500 mg|Amoxicilline + acide clavulanique|500 mg / 62,5 mg|Comprimé|Médicament|1|Antibiotique
+Augmentin suspension|Amoxicilline + acide clavulanique|100 mg/12,5 mg par ml|Suspension buvable|Médicament|1|Antibiotique
+Ampicilline injectable|Ampicilline|1 g|Poudre|Médicament|1|Antibiotique
+Cloxacilline 500 mg|Cloxacilline|500 mg|Gélule|Médicament|1|Antibiotique
+Benzathine benzylpénicilline|Benzathine benzylpénicilline|2,4 MUI|Poudre|Médicament|1|Antibiotique
+Pénicilline G injectable|Benzylpénicilline|1 MUI|Poudre|Médicament|1|Antibiotique
+Phénoxyméthylpénicilline|Phénoxyméthylpénicilline|500 mg|Comprimé|Médicament|1|Antibiotique
+Céfixime 200 mg|Céfixime|200 mg|Comprimé|Médicament|1|Antibiotique
+Céfixime suspension|Céfixime|100 mg/5 ml|Suspension buvable|Médicament|1|Antibiotique
+Ceftriaxone 1 g|Ceftriaxone|1 g|Poudre|Médicament|1|Antibiotique
+Ceftriaxone 500 mg|Ceftriaxone|500 mg|Poudre|Médicament|1|Antibiotique
+Céfuroxime 500 mg|Céfuroxime|500 mg|Comprimé|Médicament|1|Antibiotique
+Céfalexine 500 mg|Céfalexine|500 mg|Gélule|Médicament|1|Antibiotique
+Céfotaxime 1 g|Céfotaxime|1 g|Poudre|Médicament|1|Antibiotique
+Azithromycine 500 mg|Azithromycine|500 mg|Comprimé|Médicament|1|Antibiotique
+Azithromycine 250 mg|Azithromycine|250 mg|Comprimé|Médicament|1|Antibiotique
+Azithromycine suspension|Azithromycine|200 mg/5 ml|Suspension buvable|Médicament|1|Antibiotique
+Zithromax 500 mg|Azithromycine|500 mg|Comprimé|Médicament|1|Antibiotique
+Érythromycine 500 mg|Érythromycine|500 mg|Comprimé|Médicament|1|Antibiotique
+Clarithromycine 500 mg|Clarithromycine|500 mg|Comprimé|Médicament|1|Antibiotique
+Spiramycine 3 MUI|Spiramycine|3 MUI|Comprimé|Médicament|1|Antibiotique
+Doxycycline 100 mg|Doxycycline|100 mg|Gélule|Médicament|1|Antibiotique
+Tétracycline pommade ophtalmique|Tétracycline|1 %|Pommade|Médicament|1|Antibiotique
+Ciprofloxacine 500 mg|Ciprofloxacine|500 mg|Comprimé|Médicament|1|Antibiotique
+Ciprofloxacine 250 mg|Ciprofloxacine|250 mg|Comprimé|Médicament|1|Antibiotique
+Ciprofloxacine perfusion|Ciprofloxacine|200 mg/100 ml|Solution injectable|Médicament|1|Antibiotique
+Ofloxacine 200 mg|Ofloxacine|200 mg|Comprimé|Médicament|1|Antibiotique
+Lévofloxacine 500 mg|Lévofloxacine|500 mg|Comprimé|Médicament|1|Antibiotique
+Norfloxacine 400 mg|Norfloxacine|400 mg|Comprimé|Médicament|1|Antibiotique
+Métronidazole 250 mg|Métronidazole|250 mg|Comprimé|Médicament|1|Antibactérien
+Métronidazole 500 mg|Métronidazole|500 mg|Comprimé|Médicament|1|Antibactérien
+Métronidazole suspension|Métronidazole|125 mg/5 ml|Suspension buvable|Médicament|1|Antibactérien
+Métronidazole perfusion|Métronidazole|500 mg/100 ml|Solution injectable|Médicament|1|Antibactérien
+Flagyl 500 mg|Métronidazole|500 mg|Comprimé|Médicament|1|Antibactérien
+Cotrimoxazole 480 mg|Sulfaméthoxazole + triméthoprime|400 mg / 80 mg|Comprimé|Médicament|1|Antibiotique
+Cotrimoxazole 960 mg|Sulfaméthoxazole + triméthoprime|800 mg / 160 mg|Comprimé|Médicament|1|Antibiotique
+Cotrimoxazole suspension|Sulfaméthoxazole + triméthoprime|200 mg/40 mg par 5 ml|Suspension buvable|Médicament|1|Antibiotique
+Gentamicine 80 mg|Gentamicine|80 mg/2 ml|Solution injectable|Médicament|1|Antibiotique
+Chloramphénicol collyre|Chloramphénicol|0,5 %|Collyre|Médicament|1|Antibiotique
+Nitrofurantoïne 100 mg|Nitrofurantoïne|100 mg|Gélule|Médicament|1|Antibiotique urinaire
+Fosfomycine trométamol|Fosfomycine trométamol|3 g|Sachet|Médicament|1|Antibiotique urinaire
+Clindamycine 300 mg|Clindamycine|300 mg|Gélule|Médicament|1|Antibiotique
+Vancomycine 500 mg|Vancomycine|500 mg|Poudre|Médicament|1|Antibiotique
+Rifampicine 300 mg|Rifampicine|300 mg|Gélule|Médicament|1|Antituberculeux
+Isoniazide 300 mg|Isoniazide|300 mg|Comprimé|Médicament|1|Antituberculeux
+Éthambutol 400 mg|Éthambutol|400 mg|Comprimé|Médicament|1|Antituberculeux
+Pyrazinamide 500 mg|Pyrazinamide|500 mg|Comprimé|Médicament|1|Antituberculeux
+Antituberculeux RHZE|Rifampicine + isoniazide + pyrazinamide + éthambutol|150/75/400/275 mg|Comprimé|Médicament|1|Antituberculeux
+
+# --- Antipaludiques ------------------------------------------------------------
+Artéméther + Luméfantrine 20/120|Artéméther + luméfantrine|20 mg / 120 mg|Comprimé|Médicament|1|Antipaludique
+Coartem 20/120|Artéméther + luméfantrine|20 mg / 120 mg|Comprimé|Médicament|1|Antipaludique
+Artéméther + Luméfantrine dispersible|Artéméther + luméfantrine|20 mg / 120 mg|Comprimé|Médicament|1|Antipaludique
+Artésunate + Amodiaquine 100/270|Artésunate + amodiaquine|100 mg / 270 mg|Comprimé|Médicament|1|Antipaludique
+Artésunate + Amodiaquine 25/67,5|Artésunate + amodiaquine|25 mg / 67,5 mg|Comprimé|Médicament|1|Antipaludique
+Artésunate injectable 60 mg|Artésunate|60 mg|Poudre|Médicament|1|Antipaludique
+Artéméther injectable 80 mg|Artéméther|80 mg/ml|Solution injectable|Médicament|1|Antipaludique
+Artésunate suppositoire|Artésunate|100 mg|Suppositoire|Médicament|1|Antipaludique
+Dihydroartémisinine + Pipéraquine|Dihydroartémisinine + pipéraquine|40 mg / 320 mg|Comprimé|Médicament|1|Antipaludique
+Quinine 300 mg|Sulfate de quinine|300 mg|Comprimé|Médicament|1|Antipaludique
+Quinine injectable 600 mg|Dichlorhydrate de quinine|600 mg/2 ml|Solution injectable|Médicament|1|Antipaludique
+Sulfadoxine + Pyriméthamine|Sulfadoxine + pyriméthamine|500 mg / 25 mg|Comprimé|Médicament|1|Antipaludique
+Amodiaquine 200 mg|Amodiaquine|200 mg|Comprimé|Médicament|1|Antipaludique
+Chloroquine 100 mg|Chloroquine|100 mg|Comprimé|Médicament|1|Antipaludique
+Primaquine 15 mg|Primaquine|15 mg|Comprimé|Médicament|1|Antipaludique
+Méfloquine 250 mg|Méfloquine|250 mg|Comprimé|Médicament|1|Antipaludique
+Test de diagnostic rapide du paludisme|Test rapide Plasmodium|Unitaire|Dispositif médical|Matériel médical|0|Diagnostic
+Moustiquaire imprégnée longue durée|Moustiquaire imprégnée|Double taille|Dispositif médical|Matériel médical|0|Prévention
+
+# --- Antiparasitaires -----------------------------------------------------------
+Albendazole 400 mg|Albendazole|400 mg|Comprimé|Médicament|0|Antiparasitaire
+Albendazole suspension|Albendazole|200 mg/5 ml|Suspension buvable|Médicament|0|Antiparasitaire
+Mébendazole 100 mg|Mébendazole|100 mg|Comprimé|Médicament|0|Antiparasitaire
+Mébendazole 500 mg|Mébendazole|500 mg|Comprimé|Médicament|0|Antiparasitaire
+Ivermectine 3 mg|Ivermectine|3 mg|Comprimé|Médicament|1|Antiparasitaire
+Ivermectine 6 mg|Ivermectine|6 mg|Comprimé|Médicament|1|Antiparasitaire
+Praziquantel 600 mg|Praziquantel|600 mg|Comprimé|Médicament|1|Antiparasitaire
+Pyrantel|Pamoate de pyrantel|125 mg|Comprimé|Médicament|0|Antiparasitaire
+Niclosamide 500 mg|Niclosamide|500 mg|Comprimé|Médicament|1|Antiparasitaire
+Tinidazole 500 mg|Tinidazole|500 mg|Comprimé|Médicament|1|Antiparasitaire
+Secnidazole 500 mg|Secnidazole|500 mg|Comprimé|Médicament|1|Antiparasitaire
+Secnidazole 2 g|Secnidazole|2 g|Sachet|Médicament|1|Antiparasitaire
+
+# --- Antifongiques --------------------------------------------------------------
+Fluconazole 150 mg|Fluconazole|150 mg|Gélule|Médicament|1|Antifongique
+Fluconazole 50 mg|Fluconazole|50 mg|Gélule|Médicament|1|Antifongique
+Fluconazole 200 mg|Fluconazole|200 mg|Gélule|Médicament|1|Antifongique
+Griséofulvine 500 mg|Griséofulvine|500 mg|Comprimé|Médicament|1|Antifongique
+Kétoconazole crème|Kétoconazole|2 %|Crème|Médicament|0|Antifongique
+Kétoconazole shampooing|Kétoconazole|2 %|Gel|Hygiène et soins|0|Antifongique
+Clotrimazole crème|Clotrimazole|1 %|Crème|Médicament|0|Antifongique
+Clotrimazole ovule|Clotrimazole|500 mg|Ovule|Médicament|0|Antifongique
+Miconazole gel buccal|Miconazole|2 %|Gel|Médicament|0|Antifongique
+Miconazole crème|Miconazole|2 %|Crème|Médicament|0|Antifongique
+Nystatine suspension|Nystatine|100 000 UI/ml|Suspension buvable|Médicament|1|Antifongique
+Terbinafine crème|Terbinafine|1 %|Crème|Médicament|0|Antifongique
+Terbinafine 250 mg|Terbinafine|250 mg|Comprimé|Médicament|1|Antifongique
+Éconazole crème|Éconazole|1 %|Crème|Médicament|0|Antifongique
+Violet de gentiane|Violet de gentiane|0,5 %|Gouttes|Médicament|0|Antiseptique
+
+# --- Antiviraux et ARV ----------------------------------------------------------
+Aciclovir 200 mg|Aciclovir|200 mg|Comprimé|Médicament|1|Antiviral
+Aciclovir 400 mg|Aciclovir|400 mg|Comprimé|Médicament|1|Antiviral
+Aciclovir 800 mg|Aciclovir|800 mg|Comprimé|Médicament|1|Antiviral
+Aciclovir crème|Aciclovir|5 %|Crème|Médicament|0|Antiviral
+Ténofovir + Lamivudine + Dolutégravir|Ténofovir + lamivudine + dolutégravir|300/300/50 mg|Comprimé|Médicament|1|Antirétroviral
+Ténofovir + Lamivudine|Ténofovir + lamivudine|300 mg / 300 mg|Comprimé|Médicament|1|Antirétroviral
+Zidovudine + Lamivudine|Zidovudine + lamivudine|300 mg / 150 mg|Comprimé|Médicament|1|Antirétroviral
+Névirapine 200 mg|Névirapine|200 mg|Comprimé|Médicament|1|Antirétroviral
+Éfavirenz 600 mg|Éfavirenz|600 mg|Comprimé|Médicament|1|Antirétroviral
+Dolutégravir 50 mg|Dolutégravir|50 mg|Comprimé|Médicament|1|Antirétroviral
+Lopinavir + Ritonavir|Lopinavir + ritonavir|200 mg / 50 mg|Comprimé|Médicament|1|Antirétroviral
+Oseltamivir 75 mg|Oseltamivir|75 mg|Gélule|Médicament|1|Antiviral
+
+# --- Cardiovasculaire -----------------------------------------------------------
+Amlodipine 5 mg|Amlodipine|5 mg|Comprimé|Médicament|1|Antihypertenseur
+Amlodipine 10 mg|Amlodipine|10 mg|Comprimé|Médicament|1|Antihypertenseur
+Nifédipine LP 20 mg|Nifédipine|20 mg|Comprimé|Médicament|1|Antihypertenseur
+Nicardipine 20 mg|Nicardipine|20 mg|Comprimé|Médicament|1|Antihypertenseur
+Captopril 25 mg|Captopril|25 mg|Comprimé|Médicament|1|Antihypertenseur
+Énalapril 5 mg|Énalapril|5 mg|Comprimé|Médicament|1|Antihypertenseur
+Énalapril 20 mg|Énalapril|20 mg|Comprimé|Médicament|1|Antihypertenseur
+Lisinopril 10 mg|Lisinopril|10 mg|Comprimé|Médicament|1|Antihypertenseur
+Losartan 50 mg|Losartan|50 mg|Comprimé|Médicament|1|Antihypertenseur
+Valsartan 80 mg|Valsartan|80 mg|Comprimé|Médicament|1|Antihypertenseur
+Hydrochlorothiazide 25 mg|Hydrochlorothiazide|25 mg|Comprimé|Médicament|1|Diurétique
+Furosémide 40 mg|Furosémide|40 mg|Comprimé|Médicament|1|Diurétique
+Furosémide injectable|Furosémide|20 mg/2 ml|Solution injectable|Médicament|1|Diurétique
+Spironolactone 25 mg|Spironolactone|25 mg|Comprimé|Médicament|1|Diurétique
+Aténolol 50 mg|Aténolol|50 mg|Comprimé|Médicament|1|Bêtabloquant
+Aténolol 100 mg|Aténolol|100 mg|Comprimé|Médicament|1|Bêtabloquant
+Bisoprolol 5 mg|Bisoprolol|5 mg|Comprimé|Médicament|1|Bêtabloquant
+Propranolol 40 mg|Propranolol|40 mg|Comprimé|Médicament|1|Bêtabloquant
+Méthyldopa 250 mg|Méthyldopa|250 mg|Comprimé|Médicament|1|Antihypertenseur
+Digoxine 0,25 mg|Digoxine|0,25 mg|Comprimé|Médicament|1|Cardiotonique
+Isosorbide dinitrate 5 mg|Isosorbide dinitrate|5 mg|Comprimé|Médicament|1|Antiangineux
+Trinitrine spray|Trinitrine|0,4 mg/dose|Spray|Médicament|1|Antiangineux
+Atorvastatine 20 mg|Atorvastatine|20 mg|Comprimé|Médicament|1|Hypolipémiant
+Simvastatine 20 mg|Simvastatine|20 mg|Comprimé|Médicament|1|Hypolipémiant
+Clopidogrel 75 mg|Clopidogrel|75 mg|Comprimé|Médicament|1|Antiagrégant
+Warfarine 5 mg|Warfarine|5 mg|Comprimé|Médicament|1|Anticoagulant
+Acénocoumarol 4 mg|Acénocoumarol|4 mg|Comprimé|Médicament|1|Anticoagulant
+Énoxaparine 4000 UI|Énoxaparine sodique|4000 UI/0,4 ml|Solution injectable|Médicament|1|Anticoagulant
+Héparine 25000 UI|Héparine sodique|25 000 UI/5 ml|Solution injectable|Médicament|1|Anticoagulant
+
+# --- Diabète et endocrinologie ---------------------------------------------------
+Metformine 500 mg|Metformine|500 mg|Comprimé|Médicament|1|Antidiabétique
+Metformine 850 mg|Metformine|850 mg|Comprimé|Médicament|1|Antidiabétique
+Metformine 1000 mg|Metformine|1 g|Comprimé|Médicament|1|Antidiabétique
+Glibenclamide 5 mg|Glibenclamide|5 mg|Comprimé|Médicament|1|Antidiabétique
+Gliclazide 80 mg|Gliclazide|80 mg|Comprimé|Médicament|1|Antidiabétique
+Gliclazide LM 30 mg|Gliclazide|30 mg|Comprimé|Médicament|1|Antidiabétique
+Insuline rapide|Insuline humaine ordinaire|100 UI/ml|Solution injectable|Médicament|1|Antidiabétique
+Insuline NPH|Insuline humaine isophane|100 UI/ml|Solution injectable|Médicament|1|Antidiabétique
+Insuline mixte 30/70|Insuline biphasique|100 UI/ml|Solution injectable|Médicament|1|Antidiabétique
+Insuline glargine|Insuline glargine|100 UI/ml|Solution injectable|Médicament|1|Antidiabétique
+Lévothyroxine 50 µg|Lévothyroxine sodique|50 µg|Comprimé|Médicament|1|Hormone thyroïdienne
+Lévothyroxine 100 µg|Lévothyroxine sodique|100 µg|Comprimé|Médicament|1|Hormone thyroïdienne
+Carbimazole 5 mg|Carbimazole|5 mg|Comprimé|Médicament|1|Antithyroïdien
+Prednisolone 5 mg|Prednisolone|5 mg|Comprimé|Médicament|1|Corticoïde
+Prednisolone 20 mg|Prednisolone|20 mg|Comprimé|Médicament|1|Corticoïde
+Dexaméthasone 0,5 mg|Dexaméthasone|0,5 mg|Comprimé|Médicament|1|Corticoïde
+Dexaméthasone injectable|Dexaméthasone|4 mg/ml|Solution injectable|Médicament|1|Corticoïde
+Hydrocortisone injectable|Hydrocortisone|100 mg|Poudre|Médicament|1|Corticoïde
+
+# --- Appareil digestif ------------------------------------------------------------
+Oméprazole 20 mg|Oméprazole|20 mg|Gélule|Médicament|0|Antiulcéreux
+Oméprazole 40 mg injectable|Oméprazole|40 mg|Poudre|Médicament|1|Antiulcéreux
+Ésoméprazole 40 mg|Ésoméprazole|40 mg|Gélule|Médicament|1|Antiulcéreux
+Pantoprazole 40 mg|Pantoprazole|40 mg|Comprimé|Médicament|1|Antiulcéreux
+Ranitidine 150 mg|Ranitidine|150 mg|Comprimé|Médicament|1|Antiulcéreux
+Hydroxyde d'aluminium et magnésium|Hydroxyde d'aluminium + hydroxyde de magnésium|400 mg/400 mg|Suspension buvable|Médicament|0|Antiacide
+Maalox suspension|Hydroxyde d'aluminium + hydroxyde de magnésium|Suspension|Suspension buvable|Médicament|0|Antiacide
+Gel de polysilane|Diméticone|Gel oral|Gel|Médicament|0|Antiacide
+Métoclopramide 10 mg|Métoclopramide|10 mg|Comprimé|Médicament|1|Antiémétique
+Métoclopramide injectable|Métoclopramide|10 mg/2 ml|Solution injectable|Médicament|1|Antiémétique
+Dompéridone 10 mg|Dompéridone|10 mg|Comprimé|Médicament|1|Antiémétique
+Ondansétron 4 mg|Ondansétron|4 mg|Comprimé|Médicament|1|Antiémétique
+Ondansétron injectable|Ondansétron|4 mg/2 ml|Solution injectable|Médicament|1|Antiémétique
+Bisacodyl 5 mg|Bisacodyl|5 mg|Comprimé|Médicament|0|Laxatif
+Lactulose sirop|Lactulose|10 g/15 ml|Sirop|Médicament|0|Laxatif
+Macrogol sachet|Macrogol 4000|10 g|Sachet|Médicament|0|Laxatif
+Lopéramide 2 mg|Lopéramide|2 mg|Gélule|Médicament|0|Antidiarrhéique
+Racécadotril 100 mg|Racécadotril|100 mg|Gélule|Médicament|0|Antidiarrhéique
+Diosmectite sachet|Diosmectite|3 g|Sachet|Médicament|0|Antidiarrhéique
+Smecta|Diosmectite|3 g|Sachet|Médicament|0|Antidiarrhéique
+Sels de réhydratation orale|Sels de réhydratation orale|Sachet 20,5 g|Sachet|Médicament|0|Réhydratation
+Zinc 20 mg dispersible|Sulfate de zinc|20 mg|Comprimé|Médicament|0|Réhydratation
+Charbon activé|Charbon activé|250 mg|Gélule|Médicament|0|Antidiarrhéique
+Butylscopolamine 10 mg|Butylbromure de scopolamine|10 mg|Comprimé|Médicament|0|Antispasmodique
+Butylscopolamine injectable|Butylbromure de scopolamine|20 mg/ml|Solution injectable|Médicament|1|Antispasmodique
+Phloroglucinol 80 mg|Phloroglucinol|80 mg|Comprimé|Médicament|0|Antispasmodique
+Spasfon injectable|Phloroglucinol|40 mg/4 ml|Solution injectable|Médicament|1|Antispasmodique
+Trimébutine 100 mg|Trimébutine|100 mg|Comprimé|Médicament|0|Antispasmodique
+Trimébutine 200 mg|Trimébutine|200 mg|Comprimé|Médicament|0|Antispasmodique
+Siméticone|Siméticone|40 mg|Gélule|Médicament|0|Antiflatulent
+Saccharomyces boulardii|Saccharomyces boulardii|200 mg|Gélule|Médicament|0|Probiotique
+Ultra-Levure 200 mg|Saccharomyces boulardii|200 mg|Gélule|Médicament|0|Probiotique
+Sulfate de magnésium injectable|Sulfate de magnésium|50 %|Solution injectable|Médicament|1|Électrolyte
+
+# --- Appareil respiratoire et allergies -------------------------------------------
+Salbutamol inhalateur|Salbutamol|100 µg/dose|Spray|Médicament|1|Bronchodilatateur
+Salbutamol sirop|Salbutamol|2 mg/5 ml|Sirop|Médicament|1|Bronchodilatateur
+Salbutamol nébulisation|Salbutamol|5 mg/2,5 ml|Solution injectable|Médicament|1|Bronchodilatateur
+Ventoline inhalateur|Salbutamol|100 µg/dose|Spray|Médicament|1|Bronchodilatateur
+Béclométasone inhalateur|Dipropionate de béclométasone|250 µg/dose|Spray|Médicament|1|Corticoïde inhalé
+Salmétérol + Fluticasone|Salmétérol + fluticasone|25/125 µg|Spray|Médicament|1|Corticoïde inhalé
+Ipratropium nébulisation|Bromure d'ipratropium|0,25 mg/ml|Solution injectable|Médicament|1|Bronchodilatateur
+Aminophylline injectable|Aminophylline|250 mg/10 ml|Solution injectable|Médicament|1|Bronchodilatateur
+Théophylline LP 200 mg|Théophylline|200 mg|Gélule|Médicament|1|Bronchodilatateur
+Cétirizine 10 mg|Cétirizine|10 mg|Comprimé|Médicament|0|Antihistaminique
+Cétirizine sirop|Cétirizine|5 mg/5 ml|Sirop|Médicament|0|Antihistaminique
+Loratadine 10 mg|Loratadine|10 mg|Comprimé|Médicament|0|Antihistaminique
+Desloratadine 5 mg|Desloratadine|5 mg|Comprimé|Médicament|0|Antihistaminique
+Chlorphéniramine 4 mg|Maléate de chlorphéniramine|4 mg|Comprimé|Médicament|0|Antihistaminique
+Prométhazine sirop|Prométhazine|5 mg/5 ml|Sirop|Médicament|0|Antihistaminique
+Prométhazine injectable|Prométhazine|50 mg/2 ml|Solution injectable|Médicament|1|Antihistaminique
+Dexchlorphéniramine 2 mg|Dexchlorphéniramine|2 mg|Comprimé|Médicament|0|Antihistaminique
+Ambroxol sirop|Ambroxol|30 mg/5 ml|Sirop|Médicament|0|Expectorant
+Carbocistéine sirop|Carbocistéine|250 mg/5 ml|Sirop|Médicament|0|Expectorant
+Acétylcystéine sachet|Acétylcystéine|200 mg|Sachet|Médicament|0|Expectorant
+Dextrométhorphane sirop|Dextrométhorphane|15 mg/5 ml|Sirop|Médicament|0|Antitussif
+Oxomémazine sirop|Oxomémazine|0,33 mg/ml|Sirop|Médicament|0|Antitussif
+Sérum physiologique dosette|Chlorure de sodium|0,9 %|Gouttes|Hygiène et soins|0|Lavage nasal
+Xylométazoline gouttes nasales|Xylométazoline|0,1 %|Gouttes|Médicament|0|Décongestionnant
+Pastilles pour la gorge|Antiseptique local|Boîte|Comprimé|Médicament|0|ORL
+Bain de bouche chlorhexidine|Chlorhexidine|0,12 %|Gouttes|Hygiène et soins|0|ORL
+Gouttes auriculaires anti-inflammatoires|Phénazone + lidocaïne|Flacon 15 ml|Gouttes|Médicament|1|ORL
+
+# --- Système nerveux ---------------------------------------------------------------
+Diazépam 5 mg|Diazépam|5 mg|Comprimé|Médicament|1|Anxiolytique
+Diazépam injectable|Diazépam|10 mg/2 ml|Solution injectable|Médicament|1|Anxiolytique
+Bromazépam 6 mg|Bromazépam|6 mg|Comprimé|Médicament|1|Anxiolytique
+Alprazolam 0,25 mg|Alprazolam|0,25 mg|Comprimé|Médicament|1|Anxiolytique
+Zolpidem 10 mg|Zolpidem|10 mg|Comprimé|Médicament|1|Hypnotique
+Phénobarbital 100 mg|Phénobarbital|100 mg|Comprimé|Médicament|1|Antiépileptique
+Carbamazépine 200 mg|Carbamazépine|200 mg|Comprimé|Médicament|1|Antiépileptique
+Valproate de sodium 500 mg|Valproate de sodium|500 mg|Comprimé|Médicament|1|Antiépileptique
+Phénytoïne 100 mg|Phénytoïne|100 mg|Gélule|Médicament|1|Antiépileptique
+Amitriptyline 25 mg|Amitriptyline|25 mg|Comprimé|Médicament|1|Antidépresseur
+Fluoxétine 20 mg|Fluoxétine|20 mg|Gélule|Médicament|1|Antidépresseur
+Halopéridol 5 mg|Halopéridol|5 mg|Comprimé|Médicament|1|Neuroleptique
+Halopéridol injectable|Halopéridol|5 mg/ml|Solution injectable|Médicament|1|Neuroleptique
+Chlorpromazine 100 mg|Chlorpromazine|100 mg|Comprimé|Médicament|1|Neuroleptique
+Rispéridone 2 mg|Rispéridone|2 mg|Comprimé|Médicament|1|Neuroleptique
+Trihexyphénidyle 2 mg|Trihexyphénidyle|2 mg|Comprimé|Médicament|1|Antiparkinsonien
+Bétahistine 24 mg|Bétahistine|24 mg|Comprimé|Médicament|1|Antivertigineux
+Flunarizine 10 mg|Flunarizine|10 mg|Gélule|Médicament|1|Antimigraineux
+Sumatriptan 50 mg|Sumatriptan|50 mg|Comprimé|Médicament|1|Antimigraineux
+Piracétam 800 mg|Piracétam|800 mg|Comprimé|Médicament|1|Neurotrope
+
+# --- Vitamines et compléments -------------------------------------------------------
+Acide folique 5 mg|Acide folique|5 mg|Comprimé|Médicament|0|Vitamine
+Fer + Acide folique|Sulfate ferreux + acide folique|200 mg / 0,4 mg|Comprimé|Médicament|0|Antianémique
+Sulfate ferreux 200 mg|Sulfate ferreux|200 mg|Comprimé|Médicament|0|Antianémique
+Fer sirop enfant|Sulfate ferreux|50 mg/5 ml|Sirop|Médicament|0|Antianémique
+Vitamine C 500 mg|Acide ascorbique|500 mg|Comprimé|Médicament|0|Vitamine
+Vitamine C 1000 mg effervescent|Acide ascorbique|1 g|Comprimé|Médicament|0|Vitamine
+Vitamine B complexe|Complexe vitaminique B|Comprimé|Comprimé|Médicament|0|Vitamine
+Vitamine B1 B6 B12 injectable|Thiamine + pyridoxine + cyanocobalamine|Ampoule|Solution injectable|Médicament|1|Vitamine
+Vitamine A 200 000 UI|Rétinol|200 000 UI|Gélule|Médicament|0|Vitamine
+Vitamine D3 gouttes|Cholécalciférol|10 000 UI/ml|Gouttes|Médicament|0|Vitamine
+Calcium + Vitamine D3|Carbonate de calcium + cholécalciférol|500 mg / 400 UI|Comprimé|Médicament|0|Minéral
+Multivitamines sirop enfant|Complexe multivitaminé|Flacon 100 ml|Sirop|Nutrition|0|Vitamine
+Magnésium + Vitamine B6|Magnésium + pyridoxine|Comprimé|Comprimé|Nutrition|0|Minéral
+Sulfate de zinc 20 mg|Sulfate de zinc|20 mg|Comprimé|Médicament|0|Minéral
+Aliment thérapeutique prêt à l'emploi|Pâte nutritive enrichie|Sachet 92 g|Sachet|Nutrition|0|Nutrition
+Farine infantile enrichie|Farine infantile|Boîte 400 g|Poudre|Nutrition|0|Nutrition
+
+# --- Santé de la femme et urologie ---------------------------------------------------
+Contraceptif oral combiné|Lévonorgestrel + éthinylestradiol|150 µg / 30 µg|Comprimé|Médicament|1|Contraception
+Pilule progestative|Lévonorgestrel|30 µg|Comprimé|Médicament|1|Contraception
+Contraception d'urgence|Lévonorgestrel|1,5 mg|Comprimé|Médicament|0|Contraception
+Médroxyprogestérone injectable|Acétate de médroxyprogestérone|150 mg/ml|Solution injectable|Médicament|1|Contraception
+Implant contraceptif|Étonogestrel|68 mg|Dispositif médical|Médicament|1|Contraception
+Dispositif intra-utérin au cuivre|DIU cuivre|T 380 A|Dispositif médical|Matériel médical|1|Contraception
+Préservatif masculin|Préservatif latex|Boîte de 3|Dispositif médical|Hygiène et soins|0|Contraception
+Test de grossesse|Test hCG urinaire|Unitaire|Dispositif médical|Matériel médical|0|Diagnostic
+Misoprostol 200 µg|Misoprostol|200 µg|Comprimé|Médicament|1|Obstétrique
+Oxytocine injectable|Oxytocine|5 UI/ml|Solution injectable|Médicament|1|Obstétrique
+Méthylergométrine injectable|Méthylergométrine|0,2 mg/ml|Solution injectable|Médicament|1|Obstétrique
+Acide tranexamique injectable|Acide tranexamique|500 mg/5 ml|Solution injectable|Médicament|1|Hémostatique
+Clomifène 50 mg|Citrate de clomifène|50 mg|Comprimé|Médicament|1|Inducteur d'ovulation
+Ovule antiseptique vaginal|Néomycine + polymyxine + nystatine|Ovule|Ovule|Médicament|1|Gynécologie
+Sildénafil 50 mg|Sildénafil|50 mg|Comprimé|Médicament|1|Urologie
+Sildénafil 100 mg|Sildénafil|100 mg|Comprimé|Médicament|1|Urologie
+Tamsulosine 0,4 mg|Tamsulosine|0,4 mg|Gélule|Médicament|1|Urologie
+Finastéride 5 mg|Finastéride|5 mg|Comprimé|Médicament|1|Urologie
+
+# --- Dermatologie et antiseptiques -----------------------------------------------------
+Bétaméthasone crème|Bétaméthasone|0,05 %|Crème|Médicament|1|Dermocorticoïde
+Hydrocortisone crème|Hydrocortisone|1 %|Crème|Médicament|0|Dermocorticoïde
+Povidone iodée solution|Povidone iodée|10 %|Gouttes|Médicament|0|Antiseptique
+Povidone iodée savon|Povidone iodée|4 %|Gel|Hygiène et soins|0|Antiseptique
+Bétadine dermique|Povidone iodée|10 %|Gouttes|Médicament|0|Antiseptique
+Chlorhexidine solution|Digluconate de chlorhexidine|0,5 %|Gouttes|Médicament|0|Antiseptique
+Alcool à 70 degrés|Éthanol|70 %|Gouttes|Hygiène et soins|0|Antiseptique
+Eau oxygénée 10 volumes|Peroxyde d'hydrogène|3 %|Gouttes|Hygiène et soins|0|Antiseptique
+Éosine aqueuse 2 %|Éosine disodique|2 %|Gouttes|Médicament|0|Antiseptique
+Vaseline officinale|Vaseline|Pot 100 g|Pommade|Hygiène et soins|0|Dermatologie
+Lotion calamine|Calamine|Flacon 100 ml|Gouttes|Médicament|0|Dermatologie
+Benzoate de benzyle 25 %|Benzoate de benzyle|25 %|Gouttes|Médicament|0|Antiparasitaire
+Perméthrine crème 5 %|Perméthrine|5 %|Crème|Médicament|1|Antiparasitaire
+Acide fusidique crème|Acide fusidique|2 %|Crème|Médicament|1|Antibiotique local
+Néomycine + Bacitracine pommade|Néomycine + bacitracine|Tube 15 g|Pommade|Médicament|1|Antibiotique local
+Pommade cicatrisante|Oxyde de zinc|Tube 30 g|Pommade|Médicament|0|Dermatologie
+Crème solaire indice 50|Filtres solaires|SPF 50|Crème|Parapharmacie|0|Protection solaire
+Lait corporel hydratant|Émollient|Flacon 400 ml|Crème|Parapharmacie|0|Hydratation
+Savon dermatologique surgras|Base lavante surgras|Pain 100 g|Autre|Hygiène et soins|0|Hygiène
+
+# --- Ophtalmologie ------------------------------------------------------------------------
+Collyre ciprofloxacine|Ciprofloxacine|0,3 %|Collyre|Médicament|1|Ophtalmologie
+Collyre antiseptique|Céthexonium|Flacon 10 ml|Collyre|Médicament|0|Ophtalmologie
+Larmes artificielles|Hypromellose|Flacon 10 ml|Collyre|Médicament|0|Ophtalmologie
+Collyre dexaméthasone|Dexaméthasone|0,1 %|Collyre|Médicament|1|Ophtalmologie
+Timolol collyre|Timolol|0,5 %|Collyre|Médicament|1|Ophtalmologie
+
+# --- Solutés et perfusion -------------------------------------------------------------------
+Sérum salé isotonique 500 ml|Chlorure de sodium|0,9 %|Solution injectable|Médicament|1|Soluté
+Sérum glucosé 5 % 500 ml|Glucose|5 %|Solution injectable|Médicament|1|Soluté
+Ringer lactate 500 ml|Solution de Ringer lactate|500 ml|Solution injectable|Médicament|1|Soluté
+Sérum glucosé 10 % 500 ml|Glucose|10 %|Solution injectable|Médicament|1|Soluté
+Eau pour préparation injectable|Eau PPI|10 ml|Solution injectable|Médicament|1|Soluté
+
+# --- Matériel médical ---------------------------------------------------------------------------
+Seringue 2 ml|Seringue stérile à usage unique|2 ml|Dispositif médical|Matériel médical|0|Injection
+Seringue 5 ml|Seringue stérile à usage unique|5 ml|Dispositif médical|Matériel médical|0|Injection
+Seringue 10 ml|Seringue stérile à usage unique|10 ml|Dispositif médical|Matériel médical|0|Injection
+Seringue à insuline|Seringue insuline graduée|1 ml|Dispositif médical|Matériel médical|0|Injection
+Aiguille 21 G|Aiguille hypodermique|21 G|Dispositif médical|Matériel médical|0|Injection
+Aiguille 23 G|Aiguille hypodermique|23 G|Dispositif médical|Matériel médical|0|Injection
+Compresse stérile 10 x 10|Compresse de gaze stérile|10 x 10 cm|Dispositif médical|Matériel médical|0|Pansement
+Bande de gaze|Bande de gaze hydrophile|10 cm x 4 m|Dispositif médical|Matériel médical|0|Pansement
+Bande Velpeau|Bande de crêpe|10 cm x 4 m|Dispositif médical|Matériel médical|0|Pansement
+Sparadrap|Sparadrap adhésif|2,5 cm x 5 m|Dispositif médical|Matériel médical|0|Pansement
+Pansement adhésif|Pansement stérile prédécoupé|Boîte de 20|Dispositif médical|Matériel médical|0|Pansement
+Coton hydrophile|Coton hydrophile|Rouleau 100 g|Dispositif médical|Matériel médical|0|Pansement
+Gant d'examen latex|Gant d'examen non stérile|Boîte de 100|Dispositif médical|Matériel médical|0|Protection
+Gant chirurgical stérile|Gant chirurgical|Taille 7,5|Dispositif médical|Matériel médical|0|Protection
+Masque chirurgical|Masque de soins 3 plis|Boîte de 50|Dispositif médical|Matériel médical|0|Protection
+Thermomètre digital|Thermomètre électronique|Unitaire|Dispositif médical|Matériel médical|0|Diagnostic
+Tensiomètre électronique|Tensiomètre brassard|Unitaire|Dispositif médical|Matériel médical|0|Diagnostic
+Stéthoscope|Stéthoscope biauriculaire|Unitaire|Dispositif médical|Matériel médical|0|Diagnostic
+Perfuseur|Nécessaire à perfusion|Unitaire|Dispositif médical|Matériel médical|0|Perfusion
+Cathéter veineux 20 G|Cathéter court|20 G|Dispositif médical|Matériel médical|0|Perfusion
+Garrot élastique|Garrot|Unitaire|Dispositif médical|Matériel médical|0|Perfusion
+Sonde urinaire Foley 16|Sonde vésicale|CH 16|Dispositif médical|Matériel médical|1|Sondage
+Poche à urine|Poche collectrice|2 litres|Dispositif médical|Matériel médical|0|Sondage
+Bandelette urinaire|Bandelette réactive urinaire|Boîte de 100|Dispositif médical|Matériel médical|0|Diagnostic
+Bandelette glycémie|Bandelette réactive glycémie|Boîte de 50|Dispositif médical|Matériel médical|0|Diagnostic
+Lecteur de glycémie|Glucomètre|Unitaire|Dispositif médical|Matériel médical|0|Diagnostic
+Lancette|Lancette stérile|Boîte de 100|Dispositif médical|Matériel médical|0|Diagnostic
+Test rapide VIH|Test sérologique VIH|Unitaire|Dispositif médical|Matériel médical|1|Diagnostic
+Fil de suture|Fil de suture stérile|Décimale 2|Dispositif médical|Matériel médical|1|Chirurgie
+Lame de bistouri|Lame stérile|Numéro 11|Dispositif médical|Matériel médical|1|Chirurgie
+Attelle d'immobilisation|Attelle|Taille adulte|Dispositif médical|Matériel médical|0|Orthopédie
+Béquille réglable|Béquille axillaire|Unitaire|Dispositif médical|Matériel médical|0|Orthopédie
+Ceinture lombaire|Ceinture de maintien|Taille M|Dispositif médical|Matériel médical|0|Orthopédie
+
+# --- Hygiène et parapharmacie --------------------------------------------------------------------
+Gel hydroalcoolique 100 ml|Solution hydroalcoolique|100 ml|Gel|Hygiène et soins|0|Hygiène
+Gel hydroalcoolique 500 ml|Solution hydroalcoolique|500 ml|Gel|Hygiène et soins|0|Hygiène
+Savon antiseptique|Savon antibactérien|Flacon 250 ml|Gel|Hygiène et soins|0|Hygiène
+Dentifrice|Dentifrice fluoré|Tube 75 ml|Autre|Hygiène et soins|0|Hygiène bucco-dentaire
+Brosse à dents|Brosse à dents souple|Unitaire|Autre|Hygiène et soins|0|Hygiène bucco-dentaire
+Shampooing antipelliculaire|Shampooing traitant|Flacon 200 ml|Autre|Hygiène et soins|0|Hygiène
+Couche bébé taille 3|Couche jetable|Paquet|Autre|Hygiène et soins|0|Bébé
+Lingette nettoyante bébé|Lingette|Paquet de 72|Autre|Hygiène et soins|0|Bébé
+Lait infantile 1er âge|Préparation pour nourrissons|Boîte 400 g|Poudre|Nutrition|0|Bébé
+Lait infantile 2e âge|Préparation de suite|Boîte 400 g|Poudre|Nutrition|0|Bébé
+Biberon|Biberon gradué|250 ml|Autre|Hygiène et soins|0|Bébé
+Serviette hygiénique|Protection périodique|Paquet de 10|Autre|Hygiène et soins|0|Hygiène
+Répulsif anti-moustique|Répulsif cutané|Flacon 100 ml|Spray|Hygiène et soins|0|Prévention
+Coupe-ongles|Accessoire de soin|Unitaire|Autre|Parapharmacie|0|Accessoire

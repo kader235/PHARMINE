@@ -6,6 +6,7 @@ import schemaSql from './schema.sql?raw'
 import seedSql from './seed.sql?raw'
 import migration003 from './migrations/003-impression-et-comptoir.sql?raw'
 import migration004 from './migrations/004-theme-clair.sql?raw'
+import migration005 from './migrations/005-saisie-assistee.sql?raw'
 
 /**
  * Migrations du schéma.
@@ -18,7 +19,8 @@ const MIGRATIONS: { version: number; nom: string; sql: string }[] = [
   { version: 1, nom: 'schema-initial', sql: schemaSql },
   { version: 2, nom: 'referentiel-de-base', sql: seedSql },
   { version: 3, nom: 'impression-et-comptoir', sql: migration003 },
-  { version: 4, nom: 'theme-clair', sql: migration004 }
+  { version: 4, nom: 'theme-clair', sql: migration004 },
+  { version: 5, nom: 'saisie-assistee', sql: migration005 }
 ]
 
 export const VERSION_SCHEMA = MIGRATIONS[MIGRATIONS.length - 1]!.version

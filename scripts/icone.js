@@ -24,17 +24,16 @@ const PAGE = `
   svg { display: block; }
 </style></head><body>
 <svg width="${SOURCE}" height="${SOURCE}" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="fond" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#12897f"/>
-      <stop offset="1" stop-color="#0a5f59"/>
-    </linearGradient>
-  </defs>
-  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#fond)"/>
-  <g fill="none" stroke="#ffffff" stroke-width="26"
-     stroke-linecap="round" stroke-linejoin="round">
-    <path d="M392 176 256 108 120 176v160l136 68 136-68V176Z"/>
-    <path d="M126 180l130 64 130-64M256 244v160"/>
+  <!--
+    La croix verte est le signe de la pharmacie dans toute l'Afrique
+    francophone : c'est ce qu'on cherche des yeux dans une rue. Aucune
+    metaphore a decoder, aucun degrade, et elle reste lisible a 16 pixels
+    dans la barre des taches.
+  -->
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="#136c51"/>
+  <g fill="#ffffff">
+    <rect x="200" y="104" width="112" height="304" rx="24"/>
+    <rect x="104" y="200" width="304" height="112" rx="24"/>
   </g>
 </svg>
 </body></html>`
