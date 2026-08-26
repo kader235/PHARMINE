@@ -232,9 +232,11 @@ a {
   width: 32px;
   height: 32px;
   flex: 0 0 32px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: #fff;
+  border-radius: 8px;
+  /* La croix porte ses propres couleurs : elle se pose sur du blanc, pas sur
+     un aplat qui les etoufferait. */
+  background: #ffffff;
+  border: 1px solid var(--bordure);
 }
 
 /* Marque sur deux lignes : le nom, puis ce que fait le logiciel. */
@@ -1818,8 +1820,7 @@ table.tableau tbody tr.selectionnee td {
   height: 38px;
   flex: 0 0 38px;
   border-radius: 10px;
-  background: rgba(255, 255, 255, 0.16);
-  color: #fff;
+  background: #ffffff;
 }
 
 .connexion-produit {
@@ -2621,4 +2622,23 @@ table.tableau tbody tr.selectionnee td {
 
 .marche-a-suivre strong {
   color: var(--texte);
+}
+
+/* Clé de secours : espacée et en gros caractères, parce qu'elle se recopie à
+   la main sur un papier et se relit des mois plus tard. */
+.cle-secours {
+  padding: 12px 14px;
+  border: 1px dashed var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface-attenuee);
+  color: var(--texte-fort);
+  font-family: var(--police-mono, ui-monospace, 'Cascadia Mono', Consolas, monospace);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  line-height: 1.9;
+  word-break: break-all;
+}
+
+.cle-secours.masquee {
+  color: var(--texte-faible);
 }

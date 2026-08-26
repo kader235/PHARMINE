@@ -25,15 +25,28 @@ const PAGE = `
 </style></head><body>
 <svg width="${SOURCE}" height="${SOURCE}" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <!--
-    La croix verte est le signe de la pharmacie dans toute l'Afrique
-    francophone : c'est ce qu'on cherche des yeux dans une rue. Aucune
-    metaphore a decoder, aucun degrade, et elle reste lisible a 16 pixels
-    dans la barre des taches.
+    La croix de pharmacie, aux couleurs du drapeau tchadien.
+
+    Les separations tombent exactement sur les articulations de la croix : le
+    bras gauche, la colonne centrale, le bras droit. Ce n'est donc pas un
+    drapeau plaque sur une forme, c'est la forme elle-meme qui porte les
+    couleurs — et les limites restent nettes a 16 pixels.
   -->
-  <rect x="0" y="0" width="512" height="512" rx="112" fill="#136c51"/>
-  <g fill="#ffffff">
-    <rect x="200" y="104" width="112" height="304" rx="24"/>
-    <rect x="104" y="200" width="304" height="112" rx="24"/>
+  <defs>
+    <clipPath id="croix">
+      <rect x="200" y="104" width="112" height="304" rx="24"/>
+      <rect x="104" y="200" width="304" height="112" rx="24"/>
+    </clipPath>
+  </defs>
+
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="#ffffff"/>
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="none"
+        stroke="#e2e6e9" stroke-width="8"/>
+
+  <g clip-path="url(#croix)">
+    <rect x="96"  y="96" width="104" height="320" fill="#002664"/>
+    <rect x="200" y="96" width="112" height="320" fill="#fecb00"/>
+    <rect x="312" y="96" width="104" height="320" fill="#c60c30"/>
   </g>
 </svg>
 </body></html>`

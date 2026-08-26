@@ -15,12 +15,13 @@ import {
   EtatVide,
   Indicateur,
   Liste,
+  Modale,
   Panneau,
   Segments
 } from '../ui/Composants'
 import Tableau, { CellulePrincipale } from '../ui/Tableau'
 import Reprise from './Reprise'
-import { FORMATS } from '../ui/Impression'
+import { FORMATS, useImpression } from '../ui/Impression'
 import { THEMES } from '../app/themes'
 import { dateCourte, depuis, nombre } from '../lib/format'
 
@@ -392,8 +393,10 @@ function Sauvegardes({ onMessage }: { onMessage: (titre: string, message?: strin
         />
       </div>
 
-      <div style={{ marginBottom: 14 }}>
+      <div className="pile" style={{ marginBottom: 14 }}>
         <CopieExterne modifiable={session.peut('parametres.modifier')} onMessage={onMessage} />
+        <CleDeSecours />
+        {session.peut('sauvegardes.restaurer') ? <Restauration onMessage={onMessage} /> : null}
       </div>
 
       <Tableau
@@ -650,5 +653,215 @@ function TestImpression({ enregistre }: { enregistre: boolean }) {
         </Bouton>
       </div>
     </div>
+  )
+}
+
+/**
+ * Clé de secours.
+ *
+ * Les sauvegardes sont chiffrées avec une clé rangée dans la base. Tant que la
+ * machine fonctionne, le logiciel restaure ses sauvegardes sans rien demander.
+ * Le jour où la machine disparaît, cette clé disparaît avec elle — et le
+ * disque de sauvegarde retrouvé ne sert plus à rien.
+ *
+ * D'où ce panneau : la clé s'affiche à la demande, s'imprime, et se recopie à
+ * la main sans ambiguïté. Elle est masquée par défaut, car un secret affiché
+ * en permanence sur un écran de comptoir n'est plus un secret.
+ */
+function CleDeSecours() {
+  const etat = useRequete<{ cle: string; chiffrementActif: boolean }>('sauvegardes.cleDeSecours')
+  const [visible, setVisible] = useState(false)
+  const { imprimer } = useImpression()
+  const session = useSession()
+
+  if (!etat.donnees) return null
+
+  const { cle, chiffrementActif } = etat.donnees
+
+  return (
+    <Panneau
+      titre="Clé de secours"
+      description="À noter sur papier, hors de cet ordinateur."
+      pied={
+        <div className="rangee espace">
+          <span style={{ fontSize: 11.5, color: 'var(--texte-faible)' }}>
+            Elle ne change jamais. Une seule copie conservée en lieu sûr suffit.
+          </span>
+          <div className="rangee">
+            <Bouton compact onClick={() => setVisible((v) => !v)}>
+              {visible ? 'Masquer' : 'Afficher la clé'}
+            </Bouton>
+            <Bouton
+              compact
+              icone="imprimer"
+              disabled={!visible}
+              onClick={() =>
+                imprimer(
+                  <div className="document">
+                    <h1>PHARMINA — Clé de secours des sauvegardes</h1>
+                    <p>{session.pharmacie.nom}</p>
+                    <p className="cle-secours" style={{ marginTop: 18 }}>
+                      {cle}
+                    </p>
+                    <p style={{ marginTop: 18, fontSize: 11 }}>
+                      Sans cette clé, une sauvegarde restaurée sur un autre ordinateur restera
+                      illisible. Conservez ce papier hors de l’officine.
+                    </p>
+                  </div>,
+                  'a4'
+                )
+              }
+            >
+              Imprimer
+            </Bouton>
+          </div>
+        </div>
+      }
+    >
+      {!chiffrementActif ? (
+        <Bandeau ton="attention" titre="Le chiffrement est désactivé">
+          Vos sauvegardes sont enregistrées en clair : n’importe quel outil peut les ouvrir.
+          Réactivez le chiffrement dans l’onglet Règles.
+        </Bandeau>
+      ) : (
+        <>
+          <p style={{ marginBottom: 12, fontSize: 12.5, color: 'var(--texte-attenue)', lineHeight: 1.6 }}>
+            Vos sauvegardes sont chiffrées : copiées sur une clé USB perdue ou volée, elles
+            restent illisibles. Cette clé de secours est le seul moyen de les rouvrir depuis un
+            autre ordinateur — après un vol, un incendie, un disque mort.
+          </p>
+          {visible ? (
+            <p className="cle-secours">{cle}</p>
+          ) : (
+            <p className="cle-secours masquee">{cle.replace(/[^-]/g, '•')}</p>
+          )}
+        </>
+      )}
+    </Panneau>
+  )
+}
+
+/**
+ * Restauration.
+ *
+ * On vérifie avant de remplacer, on met l'existant de côté, et on redémarre.
+ * Une restauration ne se fait pas à la légère : c'est la seule opération du
+ * logiciel qui remplace des données par d'autres.
+ */
+function Restauration({ onMessage }: { onMessage: (titre: string, message?: string) => void }) {
+  const action = useAction()
+  const [candidat, setCandidat] = useState<{ fichier: string } | null>(null)
+  const [controle, setControle] = useState<{
+    valide: boolean
+    version?: number
+    motif?: string
+    chiffree?: boolean
+  } | null>(null)
+  const [cleSecours, setCleSecours] = useState('')
+
+  async function choisir(): Promise<void> {
+    const choix = await action.executer<{ fichier: string } | null>('sauvegardes.choisirFichier')
+    if (!choix) return
+    setCandidat(choix)
+    setCleSecours('')
+    const verdict = await action.executer<typeof controle>('sauvegardes.controler', {
+      fichier: choix.fichier
+    })
+    setControle(verdict ?? null)
+  }
+
+  async function reverifier(): Promise<void> {
+    if (!candidat) return
+    const verdict = await action.executer<typeof controle>('sauvegardes.controler', {
+      fichier: candidat.fichier,
+      cleSecours: cleSecours.trim() || undefined
+    })
+    setControle(verdict ?? null)
+  }
+
+  async function restaurer(): Promise<void> {
+    if (!candidat) return
+    const r = await action.executer<{ copieDeSecurite: string }>('sauvegardes.restaurer', {
+      fichier: candidat.fichier,
+      cleSecours: cleSecours.trim() || undefined
+    })
+    if (!r) return
+    setCandidat(null)
+    onMessage('Restauration effectuée', 'Le logiciel va redémarrer.')
+  }
+
+  return (
+    <>
+      <Panneau
+        titre="Restaurer une sauvegarde"
+        description="Remplace les données actuelles par celles d’une sauvegarde."
+      >
+        <div className="rangee espace">
+          <span style={{ fontSize: 12.5, color: 'var(--texte-attenue)' }}>
+            La base actuelle est mise de côté avant tout remplacement : une restauration faite par
+            erreur reste réversible.
+          </span>
+          <Bouton icone="sauvegarde" enCours={action.enCours} onClick={choisir}>
+            Choisir un fichier
+          </Bouton>
+        </div>
+      </Panneau>
+
+      {candidat ? (
+        <Modale
+          titre="Restaurer cette sauvegarde ?"
+          onFermer={() => setCandidat(null)}
+          pied={
+            <>
+              <Bouton onClick={() => setCandidat(null)}>Annuler</Bouton>
+              <Bouton
+                variante="danger"
+                disabled={!controle?.valide}
+                enCours={action.enCours}
+                onClick={restaurer}
+              >
+                Remplacer les données
+              </Bouton>
+            </>
+          }
+        >
+          <div className="panneau-corps pile">
+            <dl className="liste-definitions">
+              <dt>Fichier</dt>
+              <dd style={{ wordBreak: 'break-all' }}>{candidat.fichier}</dd>
+              <dt>Chiffrée</dt>
+              <dd>{controle?.chiffree ? 'Oui' : 'Non'}</dd>
+              <dt>Version du schéma</dt>
+              <dd>{controle?.version ?? '—'}</dd>
+            </dl>
+
+            {controle?.valide ? (
+              <Bandeau ton="attention" titre="Cette opération remplace toutes vos données">
+                Les ventes, stocks et règlements enregistrés depuis cette sauvegarde seront perdus.
+                La base actuelle sera conservée sous « avant-restauration ». Le logiciel redémarrera.
+              </Bandeau>
+            ) : (
+              <>
+                <Bandeau ton="danger" titre="Sauvegarde illisible">
+                  {controle?.motif ?? 'Fichier non reconnu.'}
+                </Bandeau>
+                <Champ
+                  libelle="Clé de secours"
+                  value={cleSecours}
+                  onChange={(e) => setCleSecours(e.target.value)}
+                  placeholder="XXXX-XXXX-XXXX-…"
+                  aide="Nécessaire si la sauvegarde vient d’une autre installation."
+                />
+                <div className="rangee" style={{ justifyContent: 'flex-end' }}>
+                  <Bouton enCours={action.enCours} disabled={!cleSecours.trim()} onClick={reverifier}>
+                    Réessayer avec cette clé
+                  </Bouton>
+                </div>
+              </>
+            )}
+          </div>
+        </Modale>
+      ) : null}
+    </>
   )
 }

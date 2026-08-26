@@ -1,6 +1,8 @@
 import {
   copyFileSync,
+  existsSync,
   mkdirSync,
+  rmSync,
   readdirSync,
   statSync,
   statfsSync,
@@ -8,7 +10,9 @@ import {
   writeFileSync
 } from 'node:fs'
 import { basename, join } from 'node:path'
-import { base, sauvegarder, transaction, verifierSauvegarde } from '../db'
+import { randomUUID } from 'node:crypto'
+import { tmpdir } from 'node:os'
+import { base, fermerBase, sauvegarder, transaction, verifierSauvegarde } from '../db'
 import type { Pharmacie } from '@shared/types'
 import {
   ErreurMetier,
@@ -20,6 +24,14 @@ import {
   parametreEntier
 } from './commun'
 import { creerUtilisateur, type DemandeUtilisateur } from './auth'
+import {
+  chiffrerFichier,
+  cleDeSecours,
+  cleDepuisSecours,
+  cleMaitresse,
+  dechiffrerFichier,
+  estChiffre
+} from './coffre'
 
 export interface DemandeConfiguration {
   pharmacie: {
@@ -182,10 +194,16 @@ export function creerSauvegarde(
   utilisateurId: number | null
 ): { fichier: string; taille: number } {
   const horodatage = maintenant().replace(/[:.]/g, '-').slice(0, 19)
+  const chiffrer = parametreBooleen('sauvegarde.chiffrement', true)
   const nom = `pharmina-${horodatage}.db`
 
   try {
-    const resultat = sauvegarder(cheminBase, dossier, nom)
+    const brut = sauvegarder(cheminBase, dossier, nom)
+
+    // Chiffrement sur place : le fichier en clair ne subsiste pas une seconde
+    // de plus que nécessaire, et la copie sortante part déjà protégée.
+    const scelle = chiffrer ? sceller(brut) : { ...brut, chiffree: false, motif: undefined }
+    const resultat = { fichier: scelle.fichier, taille: scelle.taille }
 
     // La copie sortante part dans la foulée : c'est elle qui protège
     // réellement, et la reporter revient à ne jamais la faire.
@@ -201,7 +219,12 @@ export function creerSauvegarde(
         resultat.taille,
         declencheur,
         'ok',
-        externe.motif ? `Copie externe impossible : ${externe.motif}` : null,
+        [
+          scelle.motif ? `Sauvegarde NON chiffrée : ${scelle.motif}` : null,
+          externe.motif ? `Copie externe impossible : ${externe.motif}` : null
+        ]
+          .filter(Boolean)
+          .join(' — ') || null,
         externe.chemin,
         utilisateurId
       )
@@ -232,7 +255,7 @@ function purgerAnciennes(dossier: string): void {
   const aConserver = parametreEntier('sauvegarde.conserver_nombre', 30)
   try {
     const fichiers = readdirSync(dossier)
-      .filter((f) => f.startsWith('pharmina-') && f.endsWith('.db'))
+      .filter((f) => f.startsWith('pharmina-') && (f.endsWith('.db') || f.endsWith('.pharmina')))
       .map((f) => ({ nom: f, chemin: `${dossier}/${f}`, at: statSync(`${dossier}/${f}`).mtimeMs }))
       .sort((a, b) => b.at - a.at)
 
@@ -242,6 +265,35 @@ function purgerAnciennes(dossier: string): void {
     }
   } catch {
     // Une purge impossible ne doit jamais faire échouer une sauvegarde réussie.
+  }
+}
+
+/**
+ * Remplace une sauvegarde en clair par sa version chiffrée.
+ *
+ * Le fichier en clair est supprimé aussitôt : une sauvegarde chiffrée posée à
+ * côté de la même sauvegarde lisible ne protégerait rien.
+ *
+ * Si le chiffrement échoue — disque plein, droits refusés — on conserve la
+ * sauvegarde en clair et on le DIT. Une sauvegarde lisible vaut mieux que pas
+ * de sauvegarde du tout ; en revanche, laisser croire qu'elle est protégée
+ * serait la faute grave.
+ */
+function sceller(clair: { fichier: string; taille: number }): {
+  fichier: string
+  taille: number
+  chiffree: boolean
+  motif?: string
+} {
+  const scelle = `${clair.fichier.replace(/\.db$/, '')}.pharmina`
+
+  try {
+    chiffrerFichier(clair.fichier, scelle, cleMaitresse())
+    rmSync(clair.fichier, { force: true })
+    return { fichier: scelle, taille: statSync(scelle).size, chiffree: true }
+  } catch (erreur) {
+    rmSync(scelle, { force: true })
+    return { ...clair, chiffree: false, motif: (erreur as Error).message }
   }
 }
 
@@ -386,8 +438,126 @@ export function listerSauvegardes(): {
     .all() as unknown as never
 }
 
-export function controlerSauvegarde(fichier: string): { valide: boolean; version?: number; motif?: string } {
-  return verifierSauvegarde(fichier)
+// ---------------------------------------------------------------------------
+// Contrôle et restauration
+// ---------------------------------------------------------------------------
+
+/** Emplacement de travail pour déchiffrer sans laisser de trace ailleurs. */
+function fichierTemporaire(suffixe: string): string {
+  return join(tmpdir(), `pharmina-${randomUUID()}${suffixe}`)
+}
+
+/**
+ * Ouvre une sauvegarde, chiffrée ou non, et rend un chemin en clair utilisable.
+ *
+ * Les sauvegardes créées avant le chiffrement restent lisibles : refuser de
+ * restaurer l'historique d'une officine parce que le format a changé serait
+ * inacceptable.
+ */
+function ouvrirSauvegarde(
+  fichier: string,
+  cleFournie?: Buffer
+): { chemin: string; temporaire: boolean; chiffree: boolean } {
+  if (!estChiffre(fichier)) return { chemin: fichier, temporaire: false, chiffree: false }
+
+  const destination = fichierTemporaire('.db')
+  const cle = cleFournie ?? cleMaitresse()
+  dechiffrerFichier(fichier, destination, cle)
+  return { chemin: destination, temporaire: true, chiffree: true }
+}
+
+export function controlerSauvegarde(
+  fichier: string,
+  cleSecours?: string
+): { valide: boolean; version?: number; motif?: string; chiffree?: boolean } {
+  if (!existsSync(fichier)) return { valide: false, motif: 'Fichier introuvable.' }
+
+  let ouverte: { chemin: string; temporaire: boolean; chiffree: boolean } | null = null
+  try {
+    ouverte = ouvrirSauvegarde(fichier, cleSecours ? cleDepuisSecours(cleSecours) : undefined)
+    return { ...verifierSauvegarde(ouverte.chemin), chiffree: ouverte.chiffree }
+  } catch (erreur) {
+    return { valide: false, motif: (erreur as Error).message, chiffree: true }
+  } finally {
+    if (ouverte?.temporaire) rmSync(ouverte.chemin, { force: true })
+  }
+}
+
+/** Clé de secours à noter hors de l'ordinateur. */
+export function cleDeSecoursSauvegardes(): { cle: string; chiffrementActif: boolean } {
+  return {
+    cle: cleDeSecours(),
+    chiffrementActif: parametreBooleen('sauvegarde.chiffrement', true)
+  }
+}
+
+export interface RestaurationDemandee {
+  fichier: string
+  /** Nécessaire seulement si la sauvegarde vient d'une autre installation. */
+  cleSecours?: string
+}
+
+/**
+ * Remplace la base courante par une sauvegarde.
+ *
+ * Trois précautions, dans cet ordre :
+ *
+ *   1. la sauvegarde est déchiffrée et vérifiée AVANT qu'on touche à quoi que
+ *      ce soit — on ne remplace jamais des données valides par un fichier dont
+ *      on ignore l'état ;
+ *   2. la base actuelle est mise de côté sous un nom horodaté, y compris si
+ *      l'utilisateur croit ne plus en avoir besoin. Une restauration faite par
+ *      erreur reste ainsi réversible ;
+ *   3. le remplacement se fait base fermée, puis le logiciel redémarre. Écrire
+ *      sous une connexion ouverte laisserait un journal WAL incohérent.
+ */
+export function restaurerSauvegarde(
+  demande: RestaurationDemandee,
+  cheminBase: string,
+  dossierSauvegardes: string,
+  utilisateurId: number
+): { restaure: boolean; copieDeSecurite: string; version: number } {
+  const controle = controlerSauvegarde(demande.fichier, demande.cleSecours)
+  if (!controle.valide) {
+    throw new ErreurMetier(
+      `Restauration refusée : ${controle.motif ?? 'sauvegarde illisible'}.`,
+      'sauvegarde'
+    )
+  }
+
+  journaliser({
+    utilisateurId,
+    action: 'Restauration de sauvegarde',
+    entite: 'sauvegarde',
+    resume: `${basename(demande.fichier)} (schéma ${controle.version})`
+  })
+
+  // La copie de sécurité est prise pendant que la base est encore ouverte et
+  // saine : c'est le dernier point de retour.
+  const horodatage = maintenant().replace(/[:.]/g, '-').slice(0, 19)
+  const copie = join(dossierSauvegardes, `avant-restauration-${horodatage}.db`)
+  mkdirSync(dossierSauvegardes, { recursive: true })
+  base().exec('PRAGMA wal_checkpoint(TRUNCATE)')
+  copyFileSync(cheminBase, copie)
+
+  const ouverte = ouvrirSauvegarde(
+    demande.fichier,
+    demande.cleSecours ? cleDepuisSecours(demande.cleSecours) : undefined
+  )
+
+  try {
+    fermerBase()
+    // Les fichiers voisins du WAL décrivent l'ANCIENNE base : les laisser
+    // reviendrait à mélanger deux histoires au prochain démarrage.
+    for (const reste of [`${cheminBase}-wal`, `${cheminBase}-shm`]) {
+      rmSync(reste, { force: true })
+    }
+    copyFileSync(ouverte.chemin, cheminBase)
+  } finally {
+    if (ouverte.temporaire) rmSync(ouverte.chemin, { force: true })
+  }
+
+  return { restaure: true, copieDeSecurite: copie, version: controle.version ?? 0 }
 }
 
 export function statistiquesBase(): {

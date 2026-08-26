@@ -13,18 +13,25 @@
  * Rien ne flotte, rien ne décore. Le soin est dans les proportions et dans la
  * typographie, pas dans des formes ajoutées.
  */
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import type { Pharmacie, SessionActive } from '@shared/types'
 import { appeler, messageErreur, type ErreurAffichable } from '../lib/api'
 import { dateLongue } from '../lib/format'
-import { Bandeau, Bouton, Champ } from '../ui/Composants'
+import { Bandeau, Bouton, Case, Champ } from '../ui/Composants'
 
 /**
- * La croix verte, dessinée ici plutôt qu'importée : c'est la marque du
- * logiciel, la même que l'icône de l'application, et elle doit rester nette à
- * toutes les tailles.
+ * Marque du logiciel : la croix de pharmacie aux couleurs du drapeau tchadien.
+ *
+ * Les separations tombent sur les articulations de la croix — bras gauche,
+ * colonne centrale, bras droit — et non sur une grille arbitraire. La forme
+ * porte donc les couleurs au lieu de les subir, et les limites restent nettes
+ * jusqu'aux tres petites tailles.
+ *
+ * Dessinee ici plutot qu'importee comme image : c'est la meme geometrie que
+ * l'icone de l'application, et elle doit rester nette a toutes les tailles.
  */
 export function CroixPharmacie({ taille = 40 }: { taille?: number }) {
+  const identifiant = `croix-${taille}`
   return (
     <svg
       width={taille}
@@ -34,12 +41,49 @@ export function CroixPharmacie({ taille = 40 }: { taille?: number }) {
       aria-hidden="true"
       focusable="false"
     >
-      <g fill="currentColor">
-        <rect x="200" y="104" width="112" height="304" rx="24" />
-        <rect x="104" y="200" width="304" height="112" rx="24" />
+      <defs>
+        <clipPath id={identifiant}>
+          <rect x="200" y="104" width="112" height="304" rx="24" />
+          <rect x="104" y="200" width="304" height="112" rx="24" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#${identifiant})`}>
+        <rect x="96" y="96" width="104" height="320" fill="#002664" />
+        <rect x="200" y="96" width="112" height="320" fill="#fecb00" />
+        <rect x="312" y="96" width="104" height="320" fill="#c60c30" />
       </g>
     </svg>
   )
+}
+
+/**
+ * Identifiant retenu sur ce poste.
+ *
+ * Seul l'identifiant est conserve — jamais le mot de passe. C'est la limite a
+ * ne pas franchir : un mot de passe enregistre en clair sur le poste
+ * annulerait le verrouillage d'ecran, la journalisation nominative et le
+ * controle des permissions d'un seul coup.
+ *
+ * Le choix est propre au poste : le comptoir peut retenir le caissier tandis
+ * que le bureau ne retient personne.
+ */
+const CLE_IDENTIFIANT = 'pharmina.identifiant'
+
+function identifiantRetenu(): string {
+  try {
+    return localStorage.getItem(CLE_IDENTIFIANT) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function retenirIdentifiant(identifiant: string | null): void {
+  try {
+    if (identifiant) localStorage.setItem(CLE_IDENTIFIANT, identifiant)
+    else localStorage.removeItem(CLE_IDENTIFIANT)
+  } catch {
+    // Stockage local indisponible : on ne retient rien, la connexion marche.
+  }
 }
 
 export default function Connexion({
@@ -53,10 +97,20 @@ export default function Connexion({
   version: string
   onConnecte: (session: SessionActive) => void
 }) {
-  const [identifiant, setIdentifiant] = useState('')
+  const retenu = identifiantRetenu()
+  const [identifiant, setIdentifiant] = useState(retenu)
   const [motDePasse, setMotDePasse] = useState('')
+  const [seSouvenir, setSeSouvenir] = useState(retenu.length > 0)
   const [erreur, setErreur] = useState<ErreurAffichable | null>(null)
   const [enCours, setEnCours] = useState(false)
+  const champMotDePasse = useRef<HTMLInputElement>(null)
+
+  // L'identifiant est deja la : c'est le mot de passe qu'on attend. Placer le
+  // curseur ailleurs obligerait a une tabulation a chaque ouverture.
+  useEffect(() => {
+    if (retenu) champMotDePasse.current?.focus()
+    // Au premier rendu seulement : ensuite, le curseur appartient a l'utilisateur.
+  }, [])
 
   async function soumettre(evenement: FormEvent): Promise<void> {
     evenement.preventDefault()
@@ -69,6 +123,7 @@ export default function Connexion({
         identifiant: identifiant.trim(),
         motDePasse
       })
+      retenirIdentifiant(seSouvenir ? identifiant.trim() : null)
       onConnecte(session)
     } catch (e) {
       setErreur(messageErreur(e))
@@ -105,10 +160,20 @@ export default function Connexion({
             <Champ
               libelle="Mot de passe"
               type="password"
+              ref={champMotDePasse}
               value={motDePasse}
               onChange={(e) => setMotDePasse(e.target.value)}
               autoComplete="current-password"
               required
+            />
+
+            <Case
+              libelle="Se souvenir de moi sur ce poste"
+              checked={seSouvenir}
+              onChange={(e) => {
+                setSeSouvenir(e.target.checked)
+                if (!e.target.checked) retenirIdentifiant(null)
+              }}
             />
 
             <Bouton
@@ -122,7 +187,8 @@ export default function Connexion({
             </Bouton>
 
             <p className="connexion-note">
-              Vos identifiants sont personnels. Toute opération est enregistrée à votre nom.
+              Seul votre identifiant est retenu, jamais votre mot de passe. Toute opération est
+              enregistrée à votre nom.
             </p>
           </form>
         </main>

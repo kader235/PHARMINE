@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import {
   useEffect,
   useId,
@@ -336,7 +337,13 @@ export function Champ({
   obligatoire,
   large,
   ...reste
-}: BaseChamp & InputHTMLAttributes<HTMLInputElement>) {
+}: BaseChamp &
+  InputHTMLAttributes<HTMLInputElement> & {
+    /* React 19 accepte `ref` comme une propriété ordinaire : on la déclare
+       pour que l'appelant puisse placer le curseur, sans envelopper le
+       composant dans un forwardRef. */
+    ref?: Ref<HTMLInputElement>
+  }) {
   const id = useId()
   return (
     <div className={`champ${large ? ' large' : ''}`}>

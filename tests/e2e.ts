@@ -5,7 +5,7 @@
  * l'application. Aucune donnée n'est simulée : chaque chiffre vérifié est
  * calculé par le logiciel.
  */
-import { mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -13,6 +13,7 @@ import { VERSION_SCHEMA, base, fermerBase, ouvrirBase } from '../src/main/db'
 import * as auth from '../src/main/services/auth'
 import * as configuration from '../src/main/services/configuration'
 import * as produits from '../src/main/services/produits'
+import * as coffre from '../src/main/services/coffre'
 import * as repertoire from '../src/main/services/repertoire'
 import * as reprise from '../src/main/services/reprise'
 import * as stock from '../src/main/services/stock'
@@ -854,6 +855,7 @@ try {
     'peremption.seuil_alerte_jours',
     'produits.marge_par_defaut',
     'sauvegarde.alerte_jours',
+    'sauvegarde.chiffrement',
     'sauvegarde.conserver_nombre',
     'sauvegarde.destination_externe',
     'securite.tentatives_max',
@@ -1131,7 +1133,7 @@ try {
     'manuelle',
     adminId
   )
-  const copies = readdirSync(dossierExterne).filter((f) => f.endsWith('.db'))
+  const copies = readdirSync(dossierExterne).filter((f) => f.endsWith('.pharmina') || f.endsWith('.db'))
   verifier(copies.length === 1, 'la sauvegarde est recopiée dans la destination externe', copies)
   verifier(
     statSync(join(dossierExterne, copies[0]!)).size === avecCopie.taille,
@@ -1212,6 +1214,165 @@ try {
       .get(adminId) as unknown as { n: number }
   ).n
   verifier(compteur === 0, 'un déverrouillage réussi remet le compteur d’essais à zéro', compteur)
+
+  // ==========================================================================
+  titre('Sauvegardes chiffrées')
+
+  const dossierCoffre = join(dossier, 'coffre')
+  const scellee = configuration.creerSauvegarde(cheminBase, dossierCoffre, 'manuelle', adminId)
+
+  verifier(scellee.fichier.endsWith('.pharmina'), 'la sauvegarde porte l’extension chiffrée', scellee.fichier)
+  verifier(coffre.estChiffre(scellee.fichier), 'le fichier porte la signature du coffre')
+  verifier(
+    !existsSync(scellee.fichier.replace(/\.pharmina$/, '.db')),
+    'la version en clair ne subsiste pas à côté'
+  )
+
+  // Le point décisif : le fichier ne doit rien livrer à un outil tiers.
+  const octets = readFileSync(scellee.fichier)
+  verifier(
+    !octets.includes(Buffer.from('SQLite format 3')),
+    'le fichier ne s’annonce plus comme une base SQLite'
+  )
+  verifier(
+    !octets.includes(Buffer.from('Doliprane')),
+    'aucun nom de produit n’est lisible dans le fichier'
+  )
+  verifier(
+    !octets.includes(Buffer.from('Kouadio')),
+    'aucun nom de client n’est lisible dans le fichier'
+  )
+
+  // Et il doit rester exploitable par le logiciel, lui.
+  const controleScelle = configuration.controlerSauvegarde(scellee.fichier)
+  verifier(controleScelle.valide, 'le logiciel relit sa propre sauvegarde chiffrée', controleScelle.motif)
+  verifier(controleScelle.chiffree === true, 'le contrôle signale que la sauvegarde est chiffrée')
+
+  // Clé de secours : c'est elle qui sauve une officine dont la machine a brûlé.
+  const secours = configuration.cleDeSecoursSauvegardes()
+  verifier(secours.chiffrementActif, 'le chiffrement est actif par défaut')
+  verifier(secours.cle.includes('-'), 'la clé de secours est découpée pour être recopiée à la main')
+  verifier(
+    configuration.controlerSauvegarde(scellee.fichier, secours.cle).valide,
+    'la clé de secours ouvre la sauvegarde'
+  )
+
+  // Une clé étrangère ne doit rien ouvrir.
+  const cleEtrangere = coffre.cleDeSecours().replace(/[0-9A-Z]/, (c) => (c === 'Z' ? 'Y' : 'Z'))
+  const avecMauvaiseCle = configuration.controlerSauvegarde(scellee.fichier, cleEtrangere)
+  verifier(!avecMauvaiseCle.valide, 'une clé erronée est refusée')
+
+  verifier(
+    configuration.controlerSauvegarde(scellee.fichier, secours.cle.toLowerCase()).valide,
+    'la clé de secours fonctionne quelle que soit la casse'
+  )
+  verifier(
+    configuration.controlerSauvegarde(scellee.fichier, secours.cle.replace(/-/g, ' ')).valide,
+    'la clé de secours fonctionne avec des espaces au lieu des tirets'
+  )
+
+  refuse(
+    'une clé de secours tronquée est refusée avant tout déchiffrement',
+    () => coffre.cleDepuisSecours('ABCD-EFGH'),
+    'incomplète'
+  )
+
+  // Intégrité : GCM doit refuser un fichier retouché, même d'un seul octet.
+  const falsifiee = join(dossierCoffre, 'falsifiee.pharmina')
+  const copieOctets = Buffer.from(octets)
+  copieOctets[copieOctets.length - 5] ^= 0x01
+  writeFileSync(falsifiee, copieOctets)
+  const controleFalsifie = configuration.controlerSauvegarde(falsifiee)
+  verifier(
+    !controleFalsifie.valide,
+    'une sauvegarde modifiée d’un octet est refusée, pas restaurée en silence'
+  )
+
+  // Les sauvegardes d'avant le chiffrement doivent rester restaurables :
+  // refuser l'historique d'une officine parce que le format a change serait
+  // inacceptable.
+  configuration.definirParametres({ 'sauvegarde.chiffrement': '0' }, adminId)
+  const enClair = configuration.creerSauvegarde(cheminBase, dossierCoffre, 'manuelle', adminId)
+  verifier(enClair.fichier.endsWith('.db'), 'le chiffrement se désactive quand on le demande')
+  verifier(!coffre.estChiffre(enClair.fichier), 'la sauvegarde est alors en clair')
+  verifier(
+    configuration.controlerSauvegarde(enClair.fichier).valide,
+    'une sauvegarde en clair reste contrôlable'
+  )
+  configuration.definirParametres({ 'sauvegarde.chiffrement': '1' }, adminId)
+
+  // ==========================================================================
+  titre('Restauration')
+
+  const produitsAvantRestauration = (
+    base().prepare('SELECT COUNT(*) n FROM produits').get() as unknown as { n: number }
+  ).n
+
+  const pointDeRetour = configuration.creerSauvegarde(cheminBase, dossierCoffre, 'manuelle', adminId)
+
+  // On abîme volontairement la base : c'est ce qu'une restauration doit défaire.
+  produits.creerProduit(
+    { nomCommercial: 'Produit saisi par erreur', prixAchat: 1, prixVente: 2, stockMin: 1 },
+    adminId
+  )
+  const produitsAbimes = (
+    base().prepare('SELECT COUNT(*) n FROM produits').get() as unknown as { n: number }
+  ).n
+  verifier(produitsAbimes === produitsAvantRestauration + 1, 'la base contient bien le produit de trop')
+
+  refuse(
+    'restaurer un fichier illisible est refusé avant de toucher aux données',
+    () =>
+      configuration.restaurerSauvegarde(
+        { fichier: falsifiee },
+        cheminBase,
+        join(dossier, 'sauvegardes'),
+        adminId
+      ),
+    'refusée'
+  )
+  verifier(
+    (base().prepare('SELECT COUNT(*) n FROM produits').get() as unknown as { n: number }).n ===
+      produitsAbimes,
+    'un refus de restauration ne modifie rien'
+  )
+
+  const restauration = configuration.restaurerSauvegarde(
+    { fichier: pointDeRetour.fichier },
+    cheminBase,
+    join(dossier, 'sauvegardes'),
+    adminId
+  )
+  verifier(restauration.restaure, 'la restauration aboutit')
+  verifier(
+    existsSync(restauration.copieDeSecurite),
+    'la base précédente est mise de côté avant remplacement',
+    restauration.copieDeSecurite
+  )
+
+  // La base a été fermée par la restauration : c'est le logiciel redémarré qui
+  // la rouvre. On fait ici ce que fera le démarrage.
+  ouvrirBase(cheminBase)
+  const produitsApresRestauration = (
+    base().prepare('SELECT COUNT(*) n FROM produits').get() as unknown as { n: number }
+  ).n
+  verifier(
+    produitsApresRestauration === produitsAvantRestauration,
+    'le produit saisi par erreur a disparu',
+    produitsApresRestauration
+  )
+  verifier(
+    (base().prepare('PRAGMA integrity_check').get() as unknown as { integrity_check: string })
+      .integrity_check === 'ok',
+    'la base restaurée est intègre'
+  )
+
+  // La copie de securite doit vraiment contenir l'etat d'avant : c'est le
+  // dernier point de retour si la restauration etait une erreur.
+  verifier(
+    configuration.controlerSauvegarde(restauration.copieDeSecurite).valide,
+    'la copie de sécurité est elle-même relisible'
+  )
 
   // ==========================================================================
   titre('Intégrité finale de la base')

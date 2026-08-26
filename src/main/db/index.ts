@@ -9,6 +9,7 @@ import migration004 from './migrations/004-theme-clair.sql?raw'
 import migration005 from './migrations/005-saisie-assistee.sql?raw'
 import migration006 from './migrations/006-exploitation.sql?raw'
 import migration007 from './migrations/007-rattrapage-reglages.sql?raw'
+import migration008 from './migrations/008-coffre-sauvegardes.sql?raw'
 
 /**
  * Migrations du schéma.
@@ -24,7 +25,8 @@ const MIGRATIONS: { version: number; nom: string; sql: string }[] = [
   { version: 4, nom: 'theme-clair', sql: migration004 },
   { version: 5, nom: 'saisie-assistee', sql: migration005 },
   { version: 6, nom: 'exploitation', sql: migration006 },
-  { version: 7, nom: 'rattrapage-reglages', sql: migration007 }
+  { version: 7, nom: 'rattrapage-reglages', sql: migration007 },
+  { version: 8, nom: 'coffre-sauvegardes', sql: migration008 }
 ]
 
 export const VERSION_SCHEMA = MIGRATIONS[MIGRATIONS.length - 1]!.version

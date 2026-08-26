@@ -1,4 +1,4 @@
-import { dialog, ipcMain, type IpcMainInvokeEvent, type WebContents } from 'electron'
+import { app, dialog, ipcMain, type IpcMainInvokeEvent, type WebContents } from 'electron'
 
 /** Injectée à la compilation depuis package.json (voir electron.vite.config.ts). */
 declare const __VERSION_PHARMINA__: string
@@ -313,8 +313,13 @@ const CANAUX: Record<string, Canal> = {
   'sauvegardes.creer': c('sauvegardes.creer', (_, ctx) =>
     configuration.creerSauvegarde(cheminBaseCourant, dossierSauvegardesCourant, 'manuelle', ctx.utilisateurId)
   ),
-  'sauvegardes.controler': c('sauvegardes.restaurer', (p: { fichier: string }) =>
-    configuration.controlerSauvegarde(p.fichier)
+  'sauvegardes.controler': c('sauvegardes.restaurer', (p: { fichier: string; cleSecours?: string }) =>
+    configuration.controlerSauvegarde(p.fichier, p.cleSecours)
+  ),
+  'sauvegardes.cleDeSecours': c('parametres.voir', () => configuration.cleDeSecoursSauvegardes()),
+  'sauvegardes.choisirFichier': c('sauvegardes.restaurer', () => choisirSauvegarde()),
+  'sauvegardes.restaurer': c('sauvegardes.restaurer', (p: configuration.RestaurationDemandee, ctx) =>
+    restaurerPuisRedemarrer(p, ctx.utilisateurId)
   ),
 
   // --- Export de fichiers ----------------------------------------------------
@@ -381,6 +386,47 @@ function choisirFichierReprise(
 
   const chemin = choix[0]!
   return { chemin, ...reprise.analyser(chemin, type) }
+}
+
+/** Choix du fichier de sauvegarde a restaurer. */
+function choisirSauvegarde(): { fichier: string } | null {
+  const choix = dialog.showOpenDialogSync({
+    title: 'Sauvegarde a restaurer',
+    properties: ['openFile'],
+    filters: [
+      { name: 'Sauvegardes PHARMINA', extensions: ['pharmina', 'db'] },
+      { name: 'Tous les fichiers', extensions: ['*'] }
+    ]
+  })
+  return choix && choix.length > 0 ? { fichier: choix[0]! } : null
+}
+
+/**
+ * Restaure puis redemarre.
+ *
+ * Le remplacement se fait base fermee ; poursuivre dans le meme processus
+ * laisserait l'interface afficher les donnees de la base precedente, et les
+ * services garderaient des requetes preparees sur une connexion morte. Un
+ * redemarrage est la seule facon honnete de reprendre.
+ */
+function restaurerPuisRedemarrer(
+  demande: configuration.RestaurationDemandee,
+  utilisateurId: number
+): { restaure: boolean; copieDeSecurite: string; version: number } {
+  const resultat = configuration.restaurerSauvegarde(
+    demande,
+    cheminBaseCourant,
+    dossierSauvegardesCourant,
+    utilisateurId
+  )
+
+  contexte = null
+  setTimeout(() => {
+    app.relaunch()
+    app.exit(0)
+  }, 1200)
+
+  return resultat
 }
 
 function choisirDestinationSauvegarde(utilisateurId: number): {

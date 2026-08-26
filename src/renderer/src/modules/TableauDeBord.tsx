@@ -209,7 +209,7 @@ export default function TableauDeBord() {
       </div>
 
       <div className="pilotage">
-        <Panneau titre="À traiter" sansCorps>
+        <Panneau titre="Points d’attention" sansCorps>
           {aSurveiller.length === 0 ? (
             <EtatVide icone="coche" titre="Rien à signaler">
               Aucune rupture, aucun lot périmé, aucune dette en cours.

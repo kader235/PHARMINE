@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { useSession } from './Session'
 import { useVerrou } from './Verrou'
+import { CroixPharmacie } from './Connexion'
 import {
   ContexteNavigation,
   LIBELLES_GROUPE,
@@ -148,7 +149,7 @@ export default function Coque() {
         <nav className={`nav${reduite ? ' reduite' : ''}`} aria-label="Navigation principale">
           <div className="nav-entete">
             <span className="nav-logo">
-              <Icone nom="produit" taille={15} />
+              <CroixPharmacie taille={19} />
             </span>
             {!reduite ? (
               <span className="nav-marque">
