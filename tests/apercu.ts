@@ -90,6 +90,13 @@ function preparerDonnees(): void {
   })
 
   const admin = 1
+
+  // Le banc ne doit rien envoyer sur une imprimante reelle : on desactive
+  // l'impression directe, ce qui fait retomber le logiciel sur la boite de
+  // dialogue — elle-meme neutralisee plus bas. Un test qui imprime pour de
+  // vrai est un test qu'on finit par ne plus lancer.
+  configuration.definirParametres({ 'impression.silencieuse': '0' }, admin)
+
   auth.creerUtilisateur(
     { nomComplet: 'Jean Kouassi', identifiant: 'jean', motDePasse: 'Comptoir2026', roleId: 3 },
     admin
@@ -705,6 +712,216 @@ app.whenReady().then(async () => {
         })()`)
       await new Promise((r) => setTimeout(r, 500))
     }
+  }
+
+  // --- Verrouillage du poste --------------------------------------------------
+  // Un poste laisse ouvert, c'est la caisse ouverte. On verifie que l'ecran
+  // couvre reellement le travail, que le lecteur de codes-barres se tait
+  // derriere, et qu'un mauvais mot de passe ne laisse pas entrer.
+  // On se place au comptoir : c'est la que le lecteur remplit un panier, donc
+  // le seul endroit ou « le scan ne passe pas » veut dire quelque chose.
+  await fenetre.webContents.executeJavaScript(`document.querySelectorAll('.nav-lien')[1].click()`)
+  await new Promise((r) => setTimeout(r, 900))
+
+  // Temoin : dans cet etat precis, un scan ajoute bien une ligne. Sans ce
+  // controle, verifier plus bas que rien ne s'ajoute ne prouverait rien.
+  const temoinScan = (await fenetre.webContents.executeJavaScript(`
+    (async () => {
+      const avant = document.querySelectorAll('.panier-ligne').length
+      for (const c of '3400930000001') {
+        window.dispatchEvent(new KeyboardEvent('keydown', {
+          key: c, code: 'Digit' + c, bubbles: true, cancelable: true
+        }))
+      }
+      window.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Enter', code: 'Enter', bubbles: true, cancelable: true
+      }))
+      await new Promise((r) => setTimeout(r, 700))
+      return { avant, apres: document.querySelectorAll('.panier-ligne').length }
+    })()`)) as { avant: number; apres: number }
+
+  console.log(`  temoin : scan poste ouvert -> ${JSON.stringify(temoinScan)}`)
+  if (temoinScan.apres <= temoinScan.avant) {
+    erreurs.push('Verrouillage : le temoin est invalide, le scan n ajoute rien meme deverrouille')
+  }
+
+  await fenetre.webContents.executeJavaScript(
+    `document.querySelector('.barre-utilisateur')?.click()`
+  )
+  await new Promise((r) => setTimeout(r, 500))
+
+  const verrouille = await fenetre.webContents.executeJavaScript(`
+    (() => {
+      const b = Array.from(document.querySelectorAll('button'))
+        .find((e) => e.textContent && e.textContent.trim() === 'Verrouiller le poste')
+      if (b) { b.click(); return true }
+      return false
+    })()`)
+  await new Promise((r) => setTimeout(r, 600))
+
+  if (!verrouille) {
+    erreurs.push('Verrouillage : bouton « Verrouiller le poste » introuvable')
+  } else {
+    const couverture = (await fenetre.webContents.executeJavaScript(`
+      (() => {
+        const v = document.querySelector('.verrou')
+        if (!v) return { present: false }
+        const r = v.getBoundingClientRect()
+        return {
+          present: true,
+          couvreEcran: r.width >= window.innerWidth - 1 && r.height >= window.innerHeight - 1,
+          champFocalise: document.activeElement === document.getElementById('verrou-mot-de-passe')
+        }
+      })()`)) as { present: boolean; couvreEcran?: boolean; champFocalise?: boolean }
+
+    console.log(`  verrouillage -> ${JSON.stringify(couverture)}`)
+    if (!couverture.present) erreurs.push('Verrouillage : ecran absent apres declenchement')
+    if (couverture.present && !couverture.couvreEcran) {
+      erreurs.push('Verrouillage : l ecran ne couvre pas toute la fenetre')
+    }
+    if (couverture.present && !couverture.champFocalise) {
+      erreurs.push('Verrouillage : le champ mot de passe n a pas le focus')
+    }
+
+    await photographier(fenetre, 'poste-verrouille', 400)
+
+    // Une douchette passee sur une boite ne doit rien remplir derriere le voile.
+    const scanBloque = (await fenetre.webContents.executeJavaScript(`
+      (async () => {
+        const avant = document.querySelectorAll('.panier-ligne').length
+        for (const c of '3400930000001') {
+          window.dispatchEvent(new KeyboardEvent('keydown', {
+            key: c, code: 'Digit' + c, bubbles: true, cancelable: true
+          }))
+        }
+        window.dispatchEvent(new KeyboardEvent('keydown', {
+          key: 'Enter', code: 'Enter', bubbles: true, cancelable: true
+        }))
+        await new Promise((r) => setTimeout(r, 600))
+        return { avant, apres: document.querySelectorAll('.panier-ligne').length }
+      })()`)) as { avant: number; apres: number }
+
+    console.log(`  scan derriere le verrou -> ${JSON.stringify(scanBloque)}`)
+    if (scanBloque.apres !== scanBloque.avant) {
+      erreurs.push('Verrouillage : un code-barres a ete accepte poste verrouille')
+    }
+
+    // Mauvais mot de passe : on reste dehors, et on le dit.
+    await fenetre.webContents.executeJavaScript(
+      `(${SAISIR})('#verrou-mot-de-passe', 'MauvaisMotDePasse')`
+    )
+    await fenetre.webContents.executeJavaScript(`
+      (() => {
+        const b = Array.from(document.querySelectorAll('.verrou button'))
+          .find((e) => e.textContent && e.textContent.includes('Déverrouiller'))
+        if (b) b.click()
+        return !!b
+      })()`)
+    await new Promise((r) => setTimeout(r, 900))
+
+    const refus = (await fenetre.webContents.executeJavaScript(`
+      (() => ({
+        toujoursVerrouille: !!document.querySelector('.verrou'),
+        message: document.querySelector('.verrou-erreur')?.textContent ?? null
+      }))()`)) as { toujoursVerrouille: boolean; message: string | null }
+
+    console.log(`  mot de passe errone -> ${JSON.stringify(refus)}`)
+    if (!refus.toujoursVerrouille) {
+      erreurs.push('Verrouillage : un mauvais mot de passe a ouvert le poste')
+    }
+    if (!refus.message) erreurs.push('Verrouillage : aucun message apres un mot de passe errone')
+
+    await photographier(fenetre, 'verrou-mot-de-passe-refuse', 300)
+
+    // Le bon mot de passe rend la main, et le travail est toujours la.
+    await fenetre.webContents.executeJavaScript(
+      `(${SAISIR})('#verrou-mot-de-passe', 'Officine2026')`
+    )
+    await fenetre.webContents.executeJavaScript(`
+      (() => {
+        const b = Array.from(document.querySelectorAll('.verrou button'))
+          .find((e) => e.textContent && e.textContent.includes('Déverrouiller'))
+        if (b) b.click()
+        return !!b
+      })()`)
+    await new Promise((r) => setTimeout(r, 900))
+
+    const ouvert = await fenetre.webContents.executeJavaScript(
+      `!document.querySelector('.verrou')`
+    )
+    console.log(`  deverrouillage -> ${ouvert ? 'ouvert' : 'TOUJOURS VERROUILLE'}`)
+    if (!ouvert) erreurs.push('Verrouillage : le bon mot de passe n a pas ouvert le poste')
+  }
+
+  // --- Imprimantes vues par le poste -------------------------------------------
+  const imprimantes = (await fenetre.webContents.executeJavaScript(
+    `window.pharmina.appeler('impression.imprimantes')`
+  )) as { nom: string }[]
+  console.log(`  imprimantes detectees : ${imprimantes.length}`)
+
+  // --- Reglages : impression et protection des donnees -------------------------
+  const indexParametres = (await fenetre.webContents.executeJavaScript(`
+    Array.from(document.querySelectorAll('.nav-lien'))
+      .findIndex((b) => b.textContent && b.textContent.trim().startsWith('Paramètres'))`)) as number
+
+  if (indexParametres < 0) {
+    erreurs.push('Module Parametres introuvable dans la navigation')
+  } else {
+    const onglet = (nom: string): string =>
+      `(() => {
+        const b = Array.from(document.querySelectorAll('.segments button'))
+          .find((e) => e.textContent && e.textContent.trim() === ${JSON.stringify(nom)})
+        if (b) { b.click(); return true }
+        return false
+      })()`
+
+    await fenetre.webContents.executeJavaScript(
+      `document.querySelectorAll('.nav-lien')[${indexParametres}].click()`
+    )
+    await new Promise((r) => setTimeout(r, 900))
+
+    await fenetre.webContents.executeJavaScript(onglet('Règles'))
+    await new Promise((r) => setTimeout(r, 700))
+
+    // Le choix d'imprimante doit etre une liste des imprimantes reellement
+    // installees, pas un champ ou l'on tape un nom au hasard.
+    const choixImprimante = (await fenetre.webContents.executeJavaScript(`
+      (() => {
+        const champ = Array.from(document.querySelectorAll('.champ'))
+          .find((c) => c.querySelector('label') &&
+                       c.querySelector('label').textContent.startsWith('Imprimante des tickets'))
+        const select = champ && champ.querySelector('select')
+        return { liste: !!select, options: select ? select.options.length : 0 }
+      })()`)) as { liste: boolean; options: number }
+
+    console.log(`  choix de l imprimante -> ${JSON.stringify(choixImprimante)}`)
+    if (!choixImprimante.liste) {
+      erreurs.push('Reglages : l imprimante des tickets ne se choisit pas dans une liste')
+    }
+    await photographier(fenetre, 'parametres-regles', 1100)
+
+    await fenetre.webContents.executeJavaScript(onglet('Sauvegardes'))
+    await new Promise((r) => setTimeout(r, 900))
+
+    // Aucune destination externe n'est configuree dans le jeu de demonstration :
+    // le logiciel doit le dire franchement, pas laisser croire au contraire.
+    const protection = (await fenetre.webContents.executeJavaScript(`
+      (() => {
+        const t = document.body.innerText
+        return {
+          avertit: t.includes('Aucune copie ne quitte cet ordinateur'),
+          bouton: t.includes('Choisir un dossier')
+        }
+      })()`)) as { avertit: boolean; bouton: boolean }
+
+    console.log(`  protection des donnees -> ${JSON.stringify(protection)}`)
+    if (!protection.avertit) {
+      erreurs.push('Sauvegardes : l absence de copie externe n est pas signalee')
+    }
+    if (!protection.bouton) {
+      erreurs.push('Sauvegardes : aucun moyen de choisir la destination externe')
+    }
+    await photographier(fenetre, 'parametres-sauvegardes', 1100)
   }
 
   // --- Les trois formats de document ----------------------------------------

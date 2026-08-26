@@ -5,7 +5,7 @@
  * l'application. Aucune donnée n'est simulée : chaque chiffre vérifié est
  * calculé par le logiciel.
  */
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -825,6 +825,118 @@ try {
     configuration.controlerSauvegarde(join(dossier, 'inexistant.db')).valide === false,
     'un fichier inexistant est rejeté'
   )
+
+  // ==========================================================================
+  titre('Copie des sauvegardes hors de la machine')
+
+  // Tant qu'aucune destination n'est configurée, le logiciel doit le dire
+  // plutôt que de laisser croire que les données sont protégées.
+  const avant = configuration.etatCopieExterne()
+  verifier(!avant.configuree, 'sans destination, la copie externe est signalée absente')
+  verifier(avant.enRetard, 'sans destination, une alerte est levée dès le premier jour')
+
+  verifier(
+    configuration.controlerDestinationExterne('').valide === false,
+    'un dossier vide est refusé'
+  )
+  verifier(
+    configuration.controlerDestinationExterne('Z:\\\\pharmina-inexistant-' + adminId).valide === false,
+    'un dossier inaccessible est refusé avant d’être enregistré'
+  )
+
+  const dossierExterne = join(dossier, 'copie-externe')
+  const controleDestination = configuration.controlerDestinationExterne(dossierExterne)
+  verifier(controleDestination.valide, 'un dossier accessible en écriture est accepté')
+
+  configuration.definirParametres({ 'sauvegarde.destination_externe': dossierExterne }, adminId)
+
+  const avecCopie = configuration.creerSauvegarde(
+    cheminBase,
+    join(dossier, 'sauvegardes'),
+    'manuelle',
+    adminId
+  )
+  const copies = readdirSync(dossierExterne).filter((f) => f.endsWith('.db'))
+  verifier(copies.length === 1, 'la sauvegarde est recopiée dans la destination externe', copies)
+  verifier(
+    statSync(join(dossierExterne, copies[0]!)).size === avecCopie.taille,
+    'la copie externe fait exactement la taille de l’originale'
+  )
+
+  const ligneCopie = base()
+    .prepare('SELECT externe, statut FROM sauvegardes ORDER BY at DESC LIMIT 1')
+    .get() as unknown as { externe: string | null; statut: string }
+  verifier(ligneCopie.externe !== null, 'la base retient où la copie est partie')
+  verifier(
+    configuration.controlerSauvegarde(join(dossierExterne, copies[0]!)).valide,
+    'la copie externe est une base relisible, pas un fichier tronqué'
+  )
+
+  const apres = configuration.etatCopieExterne()
+  verifier(apres.configuree && apres.accessible, 'la destination est reconnue joignable')
+  verifier(!apres.enRetard, 'une copie du jour lève l’alerte')
+
+  // Une clé USB débranchée ne doit jamais faire perdre la sauvegarde locale.
+  configuration.definirParametres(
+    { 'sauvegarde.destination_externe': 'Z:\\\\pharmina-debranchee' },
+    adminId
+  )
+  const sansCopie = configuration.creerSauvegarde(
+    cheminBase,
+    join(dossier, 'sauvegardes'),
+    'manuelle',
+    adminId
+  )
+  verifier(sansCopie.taille > 0, 'une destination injoignable n’empêche pas la sauvegarde locale')
+
+  const ligneSansCopie = base()
+    .prepare('SELECT externe, statut, message FROM sauvegardes ORDER BY at DESC LIMIT 1')
+    .get() as unknown as { externe: string | null; statut: string; message: string | null }
+  verifier(ligneSansCopie.statut === 'ok', 'la sauvegarde locale reste marquée réussie')
+  verifier(ligneSansCopie.externe === null, 'aucune copie externe n’est inventée')
+  verifier(
+    (ligneSansCopie.message ?? '').includes('Copie externe impossible'),
+    'l’échec de la copie est consigné, pas tu',
+    ligneSansCopie.message
+  )
+  verifier(configuration.etatCopieExterne().accessible === false, 'la destination est signalée injoignable')
+
+  configuration.definirParametres({ 'sauvegarde.destination_externe': dossierExterne }, adminId)
+
+  // ==========================================================================
+  titre('Verrouillage du poste')
+
+  verifier(
+    auth.controlerMotDePasse(adminId, 'Officine2026'),
+    'le bon mot de passe déverrouille le poste'
+  )
+  verifier(
+    !auth.controlerMotDePasse(adminId, 'PasLeBon'),
+    'un mot de passe erroné ne déverrouille pas'
+  )
+  verifier(
+    !auth.controlerMotDePasse(999_999, 'Officine2026'),
+    'un utilisateur inexistant ne déverrouille pas'
+  )
+
+  // Le déverrouillage ne rouvre pas de session : il rend la main à celle qui
+  // était déjà ouverte. Aucune connexion supplémentaire ne doit être tracée.
+  const sessionsAvant = (
+    base().prepare('SELECT COUNT(*) n FROM sessions').get() as unknown as { n: number }
+  ).n
+  auth.controlerMotDePasse(adminId, 'Officine2026')
+  const sessionsApres = (
+    base().prepare('SELECT COUNT(*) n FROM sessions').get() as unknown as { n: number }
+  ).n
+  verifier(sessionsAvant === sessionsApres, 'déverrouiller ne crée pas une nouvelle session')
+
+  // Les essais ratés comptent : un poste abandonné n'est pas un terrain d'essai.
+  const compteur = (
+    base()
+      .prepare('SELECT tentatives_echouees n FROM utilisateurs WHERE id = ?')
+      .get(adminId) as unknown as { n: number }
+  ).n
+  verifier(compteur === 0, 'un déverrouillage réussi remet le compteur d’essais à zéro', compteur)
 
   // ==========================================================================
   titre('Intégrité finale de la base')

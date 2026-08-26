@@ -3,6 +3,7 @@ import { base } from '../db'
 import type { Indicateur, ResultatRecherche, TableauDeBord } from '@shared/types'
 import { aujourdhui, debutDeJournee, decalerJours, finDeJournee, parametreEntier } from './commun'
 import { etatCaisse } from './caisse'
+import { etatCopieExterne } from './configuration'
 
 function indicateur(valeur: number, precedent: number | null): Indicateur {
   const variation =
@@ -140,6 +141,10 @@ export function tableauDeBord(): TableauDeBord {
     )
     .get(debutDeJournee(decalerJours(jour, -7)), debut) as unknown as { ca: number; n: number }
 
+  // Une sauvegarde qui ne quitte pas la machine ne protège de rien : le
+  // tableau de bord le réclame jusqu'à ce que ce soit fait.
+  const copie = etatCopieExterne()
+
   const journee: TableauDeBord['journee'] = {
     panierMoyen: ceJour.n > 0 ? Math.round(ceJour.ca / ceJour.n) : 0,
     articles,
@@ -189,6 +194,12 @@ export function tableauDeBord(): TableauDeBord {
       depuis: caisse.session?.ouverte_at ?? null,
       theorique: caisse.theoriqueEspeces,
       responsable: caisse.session?.utilisateur ?? null
+    },
+    sauvegarde: {
+      configuree: copie.configuree,
+      enRetard: copie.enRetard,
+      joursDepuis: copie.joursDepuis,
+      accessible: copie.accessible
     },
     surveillance: {
       ruptures: stock.ruptures,

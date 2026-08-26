@@ -422,6 +422,13 @@ export interface TableauDeBord {
   beneficeEstime: Indicateur
   depenses: Indicateur
   caisse: { ouverte: boolean; depuis: string | null; theorique: number; responsable: string | null }
+  /** Protection reelle des donnees : la copie sort-elle de la machine ? */
+  sauvegarde: {
+    configuree: boolean
+    enRetard: boolean
+    joursDepuis: number | null
+    accessible: boolean
+  }
   surveillance: {
     ruptures: number
     stockFaible: number
@@ -474,6 +481,23 @@ export interface FicheRepertoire {
   ordonnance: boolean
   classe: string | null
   dejaAuCatalogue?: boolean
+}
+
+export interface Imprimante {
+  nom: string
+  description: string
+  defaut: boolean
+}
+
+export interface EtatCopieExterne {
+  configuree: boolean
+  destination: string | null
+  accessible: boolean
+  derniereCopie: string | null
+  joursDepuis: number | null
+  seuilJours: number
+  enRetard: boolean
+  motif?: string
 }
 
 export interface EtatRepertoire {

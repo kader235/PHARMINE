@@ -14,6 +14,17 @@ import { useEffect, useRef } from 'react'
  * normalement dans les mêmes champs.
  */
 
+/**
+ * Poste verrouillé : le lecteur écoute la fenêtre en phase de capture, avant
+ * tout le reste. Sans ce drapeau, une douchette passée sur un article
+ * remplirait un panier derrière l'écran de verrouillage.
+ */
+let verrouille = false
+
+export function definirPosteVerrouille(valeur: boolean): void {
+  verrouille = valeur
+}
+
 /** Délai maximal entre deux touches pour qu'il s'agisse d'un lecteur. */
 const DELAI_MAX_MS = 45
 
@@ -52,6 +63,11 @@ export function useLecteurCodeBarres({ onScan, actif = true }: OptionsLecteur): 
     if (!actif) return
 
     const gerer = (e: KeyboardEvent): void => {
+      if (verrouille) {
+        tampon.current = ''
+        return
+      }
+
       // Un raccourci du logiciel n'est jamais un code-barres.
       if (e.ctrlKey || e.altKey || e.metaKey) {
         tampon.current = ''

@@ -1,4 +1,13 @@
-import { readdirSync, statSync, unlinkSync } from 'node:fs'
+import {
+  copyFileSync,
+  mkdirSync,
+  readdirSync,
+  statSync,
+  statfsSync,
+  unlinkSync,
+  writeFileSync
+} from 'node:fs'
+import { basename, join } from 'node:path'
 import { base, sauvegarder, transaction, verifierSauvegarde } from '../db'
 import type { Pharmacie } from '@shared/types'
 import {
@@ -178,11 +187,24 @@ export function creerSauvegarde(
   try {
     const resultat = sauvegarder(cheminBase, dossier, nom)
 
+    // La copie sortante part dans la foulée : c'est elle qui protège
+    // réellement, et la reporter revient à ne jamais la faire.
+    const externe = copierVersExterne(resultat.fichier)
+
     base()
       .prepare(
-        'INSERT INTO sauvegardes (fichier, taille, declencheur, statut, created_by) VALUES (?, ?, ?, ?, ?)'
+        `INSERT INTO sauvegardes (fichier, taille, declencheur, statut, message, externe, created_by)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
-      .run(resultat.fichier, resultat.taille, declencheur, 'ok', utilisateurId)
+      .run(
+        resultat.fichier,
+        resultat.taille,
+        declencheur,
+        'ok',
+        externe.motif ? `Copie externe impossible : ${externe.motif}` : null,
+        externe.chemin,
+        utilisateurId
+      )
 
     if (declencheur !== 'automatique') {
       journaliser({
@@ -223,6 +245,129 @@ function purgerAnciennes(dossier: string): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Copie hors de la machine
+// ---------------------------------------------------------------------------
+
+/**
+ * Recopie une sauvegarde vers la destination externe configurée.
+ *
+ * Une sauvegarde qui dort sur le disque qu'elle sauvegarde ne protège que
+ * d'une fausse manœuvre. Contre un vol, un incendie ou un rançongiciel, il
+ * faut que la copie quitte la machine : clé USB, disque externe, dossier
+ * réseau.
+ *
+ * L'échec n'est jamais fatal — la clé peut être débranchée — mais il est
+ * enregistré, et le tableau de bord finit par le réclamer.
+ */
+function copierVersExterne(fichier: string): { chemin: string | null; motif?: string } {
+  const destination = (parametre('sauvegarde.destination_externe') ?? '').trim()
+  if (!destination) return { chemin: null }
+
+  try {
+    mkdirSync(destination, { recursive: true })
+    const cible = join(destination, basename(fichier))
+    copyFileSync(fichier, cible)
+    purgerAnciennes(destination)
+    return { chemin: cible }
+  } catch (erreur) {
+    return { chemin: null, motif: (erreur as Error).message }
+  }
+}
+
+/**
+ * Vérifie qu'un dossier peut réellement accueillir les sauvegardes.
+ *
+ * On écrit un fichier témoin plutôt que de se fier aux droits déclarés : un
+ * partage réseau monté en lecture seule se laisse ouvrir sans se laisser
+ * écrire, et on ne veut pas le découvrir le jour de la panne.
+ */
+export function controlerDestinationExterne(destination: string): {
+  valide: boolean
+  motif?: string
+  espaceLibre?: number
+} {
+  const chemin = destination.trim()
+  if (!chemin) return { valide: false, motif: 'Aucun dossier indiqué.' }
+
+  try {
+    mkdirSync(chemin, { recursive: true })
+    const temoin = join(chemin, '.pharmina-controle')
+    writeFileSync(temoin, 'controle')
+    unlinkSync(temoin)
+
+    let espaceLibre: number | undefined
+    try {
+      espaceLibre = statfsSync(chemin).bavail * statfsSync(chemin).bsize
+    } catch {
+      // Tous les systèmes de fichiers ne renseignent pas l'espace libre.
+    }
+
+    return { valide: true, espaceLibre }
+  } catch (erreur) {
+    return { valide: false, motif: (erreur as Error).message }
+  }
+}
+
+export interface EtatCopieExterne {
+  configuree: boolean
+  destination: string | null
+  accessible: boolean
+  derniereCopie: string | null
+  joursDepuis: number | null
+  seuilJours: number
+  enRetard: boolean
+  motif?: string
+}
+
+/**
+ * État de la protection réelle des données.
+ *
+ * C'est la question à laquelle un responsable doit pouvoir répondre en deux
+ * secondes : « si le poste brûle ce soir, qu'est-ce que je perds ? »
+ */
+export function etatCopieExterne(): EtatCopieExterne {
+  const destination = (parametre('sauvegarde.destination_externe') ?? '').trim()
+  const seuilJours = parametreEntier('sauvegarde.alerte_jours', 3)
+
+  if (!destination) {
+    return {
+      configuree: false,
+      destination: null,
+      accessible: false,
+      derniereCopie: null,
+      joursDepuis: null,
+      seuilJours,
+      // Sans destination configurée, il n'y a rien à réclamer d'autre que la
+      // configuration elle-même : c'est l'alerte, et elle vaut dès le premier jour.
+      enRetard: seuilJours > 0
+    }
+  }
+
+  const derniere = base()
+    .prepare(
+      "SELECT at FROM sauvegardes WHERE statut = 'ok' AND externe IS NOT NULL ORDER BY at DESC LIMIT 1"
+    )
+    .get() as unknown as { at: string } | undefined
+
+  const joursDepuis = derniere
+    ? Math.floor((Date.now() - new Date(derniere.at).getTime()) / 86_400_000)
+    : null
+
+  const controle = controlerDestinationExterne(destination)
+
+  return {
+    configuree: true,
+    destination,
+    accessible: controle.valide,
+    derniereCopie: derniere?.at ?? null,
+    joursDepuis,
+    seuilJours,
+    enRetard: seuilJours > 0 && (joursDepuis === null || joursDepuis >= seuilJours),
+    motif: controle.motif
+  }
+}
+
 export function listerSauvegardes(): {
   id: number
   fichier: string
@@ -231,9 +376,13 @@ export function listerSauvegardes(): {
   declencheur: string
   statut: string
   message: string | null
+  externe: string | null
 }[] {
   return base()
-    .prepare('SELECT id, fichier, taille, at, declencheur, statut, message FROM sauvegardes ORDER BY at DESC LIMIT 100')
+    .prepare(
+      `SELECT id, fichier, taille, at, declencheur, statut, message, externe
+       FROM sauvegardes ORDER BY at DESC LIMIT 100`
+    )
     .all() as unknown as never
 }
 
@@ -276,6 +425,8 @@ export interface ReglagesInterface {
   exigerCaisseOuverte: boolean
   /** Marge proposee a la creation d'un produit, en pourcentage. */
   margeParDefaut: number
+  /** Minutes d'inactivite avant verrouillage du poste. Zero desactive. */
+  verrouillagePosteMinutes: number
 }
 
 /**
@@ -295,7 +446,8 @@ export function reglagesInterface(): ReglagesInterface {
     avertirScanInconnu: parametreBooleen('comptoir.avertir_scan_inconnu', true),
     remiseMaxPourcent: parametreEntier('ventes.remise_max_pourcent', 10),
     exigerCaisseOuverte: parametreBooleen('caisse.exiger_ouverture', true),
-    margeParDefaut: parametreEntier('produits.marge_par_defaut', 30)
+    margeParDefaut: parametreEntier('produits.marge_par_defaut', 30),
+    verrouillagePosteMinutes: parametreEntier('securite.verrouillage_poste_minutes', 10)
   }
 }
 

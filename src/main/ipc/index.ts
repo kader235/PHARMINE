@@ -1,4 +1,4 @@
-import { dialog, ipcMain, type IpcMainInvokeEvent } from 'electron'
+import { dialog, ipcMain, type IpcMainInvokeEvent, type WebContents } from 'electron'
 import { writeFileSync } from 'node:fs'
 import { ErreurMetier, journaliser } from '../services/commun'
 import * as auth from '../services/auth'
@@ -14,6 +14,7 @@ import * as finances from '../services/finances'
 import * as pilotage from '../services/pilotage'
 import * as alertes from '../services/alertes'
 import * as configuration from '../services/configuration'
+import * as impression from '../services/impression'
 
 /** Session courante. Une seule à la fois : c'est un poste de travail, pas un serveur. */
 interface Contexte {
@@ -38,7 +39,7 @@ export function terminerSession(motif: string): void {
   contexte = null
 }
 
-type Gestionnaire = (payload: any, ctx: Contexte) => unknown
+type Gestionnaire = (payload: any, ctx: Contexte, source: WebContents) => unknown
 
 interface Canal {
   /** Permission exigée. `null` = accessible sans être connecté. */
@@ -252,6 +253,10 @@ const CANAUX: Record<string, Canal> = {
   // --- Utilisateurs et sécurité ----------------------------------------------
   'utilisateurs.lister': c('utilisateurs.voir', () => auth.listerUtilisateurs()),
   'utilisateurs.roles': c('utilisateurs.voir', () => auth.listerRoles()),
+  'securite.deverrouiller': connecte((p: { motDePasse: string }, ctx) =>
+    auth.controlerMotDePasse(ctx.utilisateurId, p.motDePasse)
+  ),
+
   'utilisateurs.permissions': c('utilisateurs.voir', () => auth.catalogePermissions()),
   'utilisateurs.permissionsDe': c('utilisateurs.voir', (p: { id: number }) => auth.permissionsDe(p.id)),
   'utilisateurs.creer': c('utilisateurs.gerer', (p, ctx) => auth.creerUtilisateur(p, ctx.utilisateurId)),
@@ -272,7 +277,20 @@ const CANAUX: Record<string, Canal> = {
   ),
   'parametres.pharmacie': c('parametres.modifier', (p, ctx) => configuration.modifierPharmacie(p, ctx.utilisateurId)),
   'parametres.statistiquesBase': c('parametres.voir', () => configuration.statistiquesBase()),
+  // --- Impression ------------------------------------------------------------
+  'impression.imprimantes': connecte((_p, _ctx, source) => impression.imprimantes(source)),
+  'impression.imprimer': connecte((p: impression.DemandeImpression, _ctx, source) =>
+    impression.imprimer(source, p)
+  ),
+  'impression.tester': c('parametres.modifier', (p: { format: impression.FormatImpression }, _ctx, source) =>
+    impression.testerImprimante(source, p.format)
+  ),
+
   'sauvegardes.lister': c('parametres.voir', () => configuration.listerSauvegardes()),
+  'sauvegardes.etatExterne': c('parametres.voir', () => configuration.etatCopieExterne()),
+  'sauvegardes.choisirDestination': c('parametres.modifier', (_p, ctx) =>
+    choisirDestinationSauvegarde(ctx.utilisateurId)
+  ),
   'sauvegardes.creer': c('sauvegardes.creer', (_, ctx) =>
     configuration.creerSauvegarde(cheminBaseCourant, dossierSauvegardesCourant, 'manuelle', ctx.utilisateurId)
   ),
@@ -315,8 +333,36 @@ function exporter(nomFichier: string, contenu: string, utilisateurId: number): {
   return { fichier: choix }
 }
 
+/**
+ * Choix du dossier de copie externe.
+ *
+ * Le dossier est contrôlé en y écrivant réellement un fichier témoin : un
+ * partage réseau monté en lecture seule se laisse ouvrir sans se laisser
+ * écrire, et on ne veut pas le découvrir le jour de la panne.
+ */
+function choisirDestinationSauvegarde(utilisateurId: number): {
+  choisi: boolean
+  destination?: string
+  motif?: string
+} {
+  const choix = dialog.showOpenDialogSync({
+    title: 'Où copier les sauvegardes hors de cette machine',
+    properties: ['openDirectory', 'createDirectory'],
+    buttonLabel: 'Utiliser ce dossier'
+  })
+
+  if (!choix || choix.length === 0) return { choisi: false }
+
+  const destination = choix[0]!
+  const controle = configuration.controlerDestinationExterne(destination)
+  if (!controle.valide) return { choisi: false, motif: controle.motif }
+
+  configuration.definirParametres({ 'sauvegarde.destination_externe': destination }, utilisateurId)
+  return { choisi: true, destination }
+}
+
 export function enregistrerCanaux(): void {
-  ipcMain.handle('pharmina', async (_evenement: IpcMainInvokeEvent, canal: string, charge: unknown) => {
+  ipcMain.handle('pharmina', async (evenement: IpcMainInvokeEvent, canal: string, charge: unknown) => {
     const definition = CANAUX[canal]
 
     if (!definition) {
@@ -347,7 +393,7 @@ export function enregistrerCanaux(): void {
     }
 
     try {
-      return { ok: true, donnees: definition.gestionnaire(charge, contexte as Contexte) }
+      return { ok: true, donnees: await definition.gestionnaire(charge, contexte as Contexte, evenement.sender) }
     } catch (erreur) {
       if (erreur instanceof ErreurMetier) {
         return { ok: false, erreur: { message: erreur.message, code: erreur.code, detail: erreur.detail } }

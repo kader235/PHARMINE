@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import type { EtatRepertoire } from '@shared/types'
+import type { EtatCopieExterne, EtatRepertoire } from '@shared/types'
+import type { Imprimante } from '@shared/types'
 import { useAction, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
 import { useNotifications } from '../ui/Notifications'
@@ -52,6 +53,13 @@ const CHOIX: Record<string, { valeur: string; libelle: string }[]> = {
   })),
   'interface.theme': THEMES.map((t) => ({ valeur: t.cle, libelle: t.nom }))
 }
+
+/** Reglages dont les valeurs sont les imprimantes reellement installees. */
+const CLES_IMPRIMANTE = new Set([
+  'impression.imprimante_ticket',
+  'impression.imprimante_a5',
+  'impression.imprimante_a4'
+])
 
 const CATEGORIES: Record<string, string> = {
   general: 'Général',
@@ -234,7 +242,18 @@ function Regles({ modifiable }: { modifiable: boolean }) {
   const notifications = useNotifications()
   const action = useAction()
   const parametres = useRequete<Parametre[]>('parametres.lister')
+  const imprimantes = useRequete<Imprimante[]>('impression.imprimantes')
   const [modifs, setModifs] = useState<Record<string, string>>({})
+
+  // Choisir une imprimante dans la liste du systeme plutot que taper son nom :
+  // une faute de frappe enverrait les tickets nulle part, sans message.
+  const optionsImprimante = [
+    { valeur: '', libelle: 'Imprimante par défaut de Windows' },
+    ...(imprimantes.donnees ?? []).map((i) => ({
+      valeur: i.nom,
+      libelle: i.defaut ? `${i.description} (par défaut)` : i.description
+    }))
+  ]
 
   useEffect(() => setModifs({}), [parametres.donnees])
 
@@ -261,10 +280,31 @@ function Regles({ modifiable }: { modifiable: boolean }) {
       <PanneauRepertoire />
 
       {Object.entries(groupes).map(([categorie, liste]) => (
-        <Panneau key={categorie} titre={CATEGORIES[categorie] ?? categorie}>
+        <Panneau
+          key={categorie}
+          titre={CATEGORIES[categorie] ?? categorie}
+          pied={
+            categorie === 'impression' && modifiable ? (
+              <TestImpression enregistre={!modifie} />
+            ) : undefined
+          }
+        >
           <div className="pile" style={{ gap: 14 }}>
             {liste.map((p) =>
-              CHOIX[p.cle] ? (
+              // La destination de sauvegarde se choisit dans un selecteur de
+              // dossier, onglet « Sauvegardes » : un chemin tape a la main est
+              // une source d'erreur silencieuse.
+              p.cle === 'sauvegarde.destination_externe' ? null : CLES_IMPRIMANTE.has(p.cle) ? (
+                <Liste
+                  key={p.cle}
+                  libelle={p.libelle}
+                  aide={p.description ?? undefined}
+                  options={optionsImprimante}
+                  value={valeur(p)}
+                  disabled={!modifiable}
+                  onChange={(e) => setModifs({ ...modifs, [p.cle]: e.target.value })}
+                />
+              ) : CHOIX[p.cle] ? (
                 <Liste
                   key={p.cle}
                   libelle={p.libelle}
@@ -348,11 +388,7 @@ function Sauvegardes({ onMessage }: { onMessage: (titre: string, message?: strin
       </div>
 
       <div style={{ marginBottom: 14 }}>
-        <Bandeau ton="info" titre="Vos données restent sur cet ordinateur">
-          Une sauvegarde est créée automatiquement à chaque fermeture du logiciel. Copiez
-          régulièrement le dossier de sauvegardes sur une clé USB ou un disque externe : c’est votre
-          seule protection en cas de panne matérielle.
-        </Bandeau>
+        <CopieExterne modifiable={session.peut('parametres.modifier')} onMessage={onMessage} />
       </div>
 
       <Tableau
@@ -470,5 +506,144 @@ function PanneauRepertoire() {
         </Bandeau>
       )}
     </Panneau>
+  )
+}
+
+/**
+ * Protection réelle des données.
+ *
+ * Une sauvegarde qui dort sur le disque qu'elle sauvegarde ne protège que
+ * d'une fausse manœuvre. Ce panneau répond à la seule question qui compte :
+ * « si ce poste brûle ce soir, qu'est-ce que je perds ? »
+ *
+ * Il reste rouge tant qu'aucune copie n'est sortie de la machine. C'est
+ * voulu : un avertissement qu'on peut ignorer sans conséquence visible finit
+ * toujours par être ignoré.
+ */
+function CopieExterne({
+  modifiable,
+  onMessage
+}: {
+  modifiable: boolean
+  onMessage: (titre: string, message?: string) => void
+}) {
+  const action = useAction()
+  const etat = useRequete<EtatCopieExterne>('sauvegardes.etatExterne')
+  const e = etat.donnees
+
+  async function choisir(): Promise<void> {
+    const r = await action.executer<{ choisi: boolean; destination?: string; motif?: string }>(
+      'sauvegardes.choisirDestination'
+    )
+    if (!r) return
+    if (r.choisi) {
+      etat.recharger()
+      onMessage('Destination enregistrée', r.destination)
+    } else if (r.motif) {
+      onMessage('Dossier inutilisable', r.motif)
+    }
+  }
+
+  if (!e) return null
+
+  const ton = e.enRetard || !e.accessible ? 'danger' : 'succes'
+
+  return (
+    <Panneau
+      titre="Copie hors de cette machine"
+      description="La seule protection contre un vol, un incendie ou un rançongiciel."
+      pied={
+        modifiable ? (
+          <div className="rangee" style={{ justifyContent: 'flex-end' }}>
+            <Bouton icone="sauvegarde" enCours={action.enCours} onClick={choisir}>
+              {e.configuree ? 'Changer de dossier' : 'Choisir un dossier'}
+            </Bouton>
+          </div>
+        ) : undefined
+      }
+    >
+      {!e.configuree ? (
+        <Bandeau ton="danger" titre="Aucune copie ne quitte cet ordinateur">
+          Vos sauvegardes sont enregistrées sur le disque qu’elles sauvegardent. Choisissez une clé
+          USB, un disque externe ou un dossier réseau : chaque sauvegarde y sera recopiée
+          automatiquement.
+        </Bandeau>
+      ) : !e.accessible ? (
+        <Bandeau ton="danger" titre="Destination injoignable">
+          {e.destination} — {e.motif ?? 'dossier inaccessible'}. Si c’est une clé USB, rebranchez-la ;
+          la copie repartira à la prochaine sauvegarde.
+        </Bandeau>
+      ) : e.enRetard ? (
+        <Bandeau ton="attention" titre="Aucune copie récente">
+          {e.derniereCopie
+            ? `Dernière copie il y a ${e.joursDepuis} jour${(e.joursDepuis ?? 0) > 1 ? 's' : ''}.`
+            : 'Aucune copie n’a encore été faite vers cette destination.'}
+        </Bandeau>
+      ) : (
+        <Bandeau ton="succes" titre="Vos données sont copiées hors de ce poste">
+          Dernière copie {depuis(e.derniereCopie!)}.
+        </Bandeau>
+      )}
+
+      <dl className="liste-definitions" style={{ marginTop: 12 }}>
+        <dt>Destination</dt>
+        <dd>{e.destination ?? 'Non configurée'}</dd>
+        <dt>Dernière copie</dt>
+        <dd>{e.derniereCopie ? dateCourte(e.derniereCopie) : '—'}</dd>
+        <dt>Seuil d’alerte</dt>
+        <dd>{e.seuilJours > 0 ? `${e.seuilJours} jours` : 'Désactivé'}</dd>
+        <dt>État</dt>
+        <dd>
+          <Etiquette ton={ton}>
+            {!e.configuree
+              ? 'Non protégé'
+              : !e.accessible
+                ? 'Injoignable'
+                : e.enRetard
+                  ? 'En retard'
+                  : 'À jour'}
+          </Etiquette>
+        </dd>
+      </dl>
+    </Panneau>
+  )
+}
+
+/**
+ * Contrôle d'impression.
+ *
+ * Sur un comptoir à deux ou trois imprimantes, un réglage ne se vérifie pas en
+ * lisant un nom dans une liste : il se vérifie en regardant sortir la feuille.
+ */
+function TestImpression({ enregistre }: { enregistre: boolean }) {
+  const action = useAction()
+  const notifications = useNotifications()
+
+  async function tester(format: 'ticket' | 'a5' | 'a4'): Promise<void> {
+    const r = await action.executer<{ imprime: boolean; imprimante: string | null; motif?: string }>(
+      'impression.tester',
+      { format }
+    )
+    if (!r) return
+    if (r.imprime) notifications.succes('Page envoyée', r.imprimante ?? 'imprimante par défaut')
+    else notifications.attention('Rien n’est parti', r.motif ?? 'Impression directe désactivée.')
+  }
+
+  return (
+    <div className="rangee espace">
+      <span style={{ fontSize: 12, color: 'var(--texte-attenue)' }}>
+        {enregistre
+          ? 'Envoie une page de contrôle pour vérifier le réglage.'
+          : 'Enregistrez d’abord vos modifications : le test utilise les valeurs enregistrées.'}
+      </span>
+      <div className="rangee">
+        <Bouton compact disabled={!enregistre} enCours={action.enCours} onClick={() => tester('ticket')}>
+          Tester le ticket
+        </Bouton>
+        <Bouton compact disabled={!enregistre} enCours={action.enCours} onClick={() => tester('a4')}>
+          Tester l’A4
+        </Bouton>
+      </div>
+    </div>
   )
 }

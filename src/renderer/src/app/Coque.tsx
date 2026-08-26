@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { useSession } from './Session'
+import { useVerrou } from './Verrou'
 import {
   ContexteNavigation,
   LIBELLES_GROUPE,
@@ -300,6 +301,7 @@ function MenuUtilisateur({
   onChangerMotDePasse: () => void
 }) {
   const session = useSession()
+  const verrou = useVerrou()
 
   return (
     <Modale
@@ -309,6 +311,17 @@ function MenuUtilisateur({
       pied={
         <>
           <Bouton onClick={onFermer}>Fermer</Bouton>
+          {/* Verrouiller plutôt que se déconnecter : on quitte le comptoir
+              deux minutes sans perdre le panier en cours. */}
+          <Bouton
+            icone="verrou"
+            onClick={() => {
+              onFermer()
+              verrou.verrouiller()
+            }}
+          >
+            Verrouiller le poste
+          </Bouton>
           <Bouton variante="danger" icone="sortie" onClick={() => session.deconnecter()}>
             Se déconnecter
           </Bouton>

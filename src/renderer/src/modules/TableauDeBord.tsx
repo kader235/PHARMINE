@@ -140,6 +140,20 @@ export default function TableauDeBord() {
       visible: !donnees.caisse.ouverte && session.peut('caisse.ouvrir')
     },
     {
+      // En tête des alertes techniques : c'est la seule dont la conséquence
+      // est irréversible.
+      ton: 'danger',
+      icone: 'sauvegarde',
+      titre: donnees.sauvegarde.configuree
+        ? donnees.sauvegarde.accessible
+          ? 'Sauvegarde non copiée hors du poste'
+          : 'Destination de sauvegarde injoignable'
+        : 'Sauvegardes non protégées',
+      valeur: 'Régler',
+      action: () => naviguer({ module: 'parametres' }),
+      visible: donnees.sauvegarde.enRetard && session.peut('parametres.voir')
+    },
+    {
       ton: 'info',
       icone: 'fournisseur',
       titre: 'Dettes fournisseurs',

@@ -6,6 +6,7 @@ import { FournisseurImpression } from '../ui/Impression'
 import { appliquerApparence, dispositionDuPoste, themeDuPoste } from './themes'
 import { Chargement, ErreurEcran } from '../ui/Composants'
 import { FournisseurSession } from './Session'
+import VerrouPoste from './Verrou'
 import Connexion from './Connexion'
 import Configuration from './Configuration'
 import Coque from './Coque'
@@ -64,19 +65,23 @@ export default function App() {
     )
   }
 
+  // Les notifications enveloppent l'impression : une impression directe qui
+  // échoue doit pouvoir le dire, plutôt que de disparaître en silence.
   return (
-    <FournisseurImpression>
-      <FournisseurNotifications>
-      {etat.besoinConfiguration ? (
-        <Configuration onTermine={charger} />
-      ) : session ? (
-        <FournisseurSession session={session} onDeconnexion={() => setSession(null)}>
-          <Coque />
-        </FournisseurSession>
-      ) : (
-        <Connexion nomPharmacie={etat.pharmacie?.nom ?? ''} onConnecte={setSession} />
-      )}
-      </FournisseurNotifications>
-    </FournisseurImpression>
+    <FournisseurNotifications>
+      <FournisseurImpression>
+        {etat.besoinConfiguration ? (
+          <Configuration onTermine={charger} />
+        ) : session ? (
+          <FournisseurSession session={session} onDeconnexion={() => setSession(null)}>
+            <VerrouPoste>
+              <Coque />
+            </VerrouPoste>
+          </FournisseurSession>
+        ) : (
+          <Connexion nomPharmacie={etat.pharmacie?.nom ?? ''} onConnecte={setSession} />
+        )}
+      </FournisseurImpression>
+    </FournisseurNotifications>
   )
 }

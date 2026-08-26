@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
+import { appeler } from '../lib/api'
+import { useNotifications } from './Notifications'
 
 /**
  * Formats de sortie.
@@ -18,8 +20,21 @@ export const FORMATS: { valeur: FormatImpression; libelle: string; description: 
 ]
 
 interface Contexte {
-  /** Rend `contenu` dans la zone d'impression puis ouvre la boîte de dialogue. */
+  /**
+   * Rend `contenu` dans la zone d'impression puis l'envoie à l'imprimante.
+   *
+   * Le document part directement sur l'imprimante réglée pour son format.
+   * Si l'impression directe est désactivée, impossible ou refusée, la boîte
+   * de dialogue du système prend le relais : on n'avale jamais un document.
+   */
   imprimer: (contenu: ReactNode, format?: FormatImpression) => void
+}
+
+interface ResultatImpression {
+  imprime: boolean
+  imprimante: string | null
+  repliDialogue: boolean
+  motif?: string
 }
 
 const ContexteImpression = createContext<Contexte | null>(null)
@@ -36,6 +51,7 @@ const REGLES: Record<FormatImpression, string> = {
 }
 
 export function FournisseurImpression({ children }: { children: ReactNode }) {
+  const notifications = useNotifications()
   const [contenu, setContenu] = useState<ReactNode>(null)
   const [format, setFormat] = useState<FormatImpression>('ticket')
 
@@ -54,11 +70,38 @@ export function FournisseurImpression({ children }: { children: ReactNode }) {
     feuille.textContent = REGLES[formatVoulu]
 
     // Deux images successives : la première monte le contenu, la seconde
-    // garantit qu'il est peint avant l'ouverture du dialogue. Le document
-    // reste ensuite monté — il est masqué à l'écran — ce qui permet de
-    // relancer l'impression sans tout reconstruire.
-    requestAnimationFrame(() => requestAnimationFrame(() => window.print()))
-  }, [])
+    // garantit qu'il est peint avant l'envoi. Le document reste ensuite monté
+    // — il est masqué à l'écran — ce qui permet de relancer l'impression sans
+    // tout reconstruire.
+    requestAnimationFrame(() =>
+      requestAnimationFrame(() => {
+        // Hauteur réellement occupée : une imprimante à rouleau n'a pas de
+        // format de page, et sans cette mesure elle déroulerait une feuille
+        // entière pour un ticket de trois lignes.
+        const zone = document.getElementById('impression')
+        const hauteurPx = zone ? Math.ceil(zone.getBoundingClientRect().height) : undefined
+
+        appeler<ResultatImpression>('impression.imprimer', { format: formatVoulu, hauteurPx })
+          .then((resultat) => {
+            if (resultat.imprime) {
+              if (resultat.imprimante) {
+                notifications.succes('Document envoyé', resultat.imprimante)
+              }
+              return
+            }
+            if (resultat.motif) {
+              notifications.attention('Impression directe impossible', resultat.motif)
+            }
+            if (resultat.repliDialogue) window.print()
+          })
+          .catch(() => {
+            // Le processus principal n'a pas répondu : la boîte de dialogue
+            // reste le dernier recours, et elle fonctionne toujours.
+            window.print()
+          })
+      })
+    )
+  }, [notifications])
 
   return (
     <ContexteImpression.Provider value={{ imprimer }}>

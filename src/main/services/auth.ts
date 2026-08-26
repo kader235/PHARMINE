@@ -210,6 +210,65 @@ export function deconnecter(sessionId: string, utilisateurId: number, motif = 'd
   })
 }
 
+/**
+ * Contrôle le mot de passe d'un utilisateur déjà connecté.
+ *
+ * Sert au déverrouillage du poste : la session n'est pas rouverte, elle est
+ * seulement rendue à celui qui l'avait laissée. On ne repasse donc pas par
+ * `connecter`, qui journaliserait une nouvelle connexion et remettrait à zéro
+ * le compteur de tentatives.
+ *
+ * Les tentatives ratées sont malgré tout comptées et verrouillent le compte :
+ * un poste abandonné ne doit pas devenir un terrain d'essai tranquille.
+ */
+export function controlerMotDePasse(utilisateurId: number, motDePasse: string): boolean {
+  const ligne = base()
+    .prepare(
+      `SELECT mot_de_passe_hash, mot_de_passe_sel, mot_de_passe_iter, tentatives_echouees
+       FROM utilisateurs WHERE id = ? AND actif = 1`
+    )
+    .get(utilisateurId) as unknown as
+    | {
+        mot_de_passe_hash: string
+        mot_de_passe_sel: string
+        mot_de_passe_iter: number
+        tentatives_echouees: number
+      }
+    | undefined
+
+  if (!ligne) return false
+
+  const bon = verifier(motDePasse, ligne.mot_de_passe_hash, ligne.mot_de_passe_sel, ligne.mot_de_passe_iter)
+
+  if (bon) {
+    base().prepare('UPDATE utilisateurs SET tentatives_echouees = 0 WHERE id = ?').run(utilisateurId)
+    return true
+  }
+
+  const tentatives = ligne.tentatives_echouees + 1
+  const maxTentatives = parametreEntier('securite.tentatives_max', 5)
+
+  if (tentatives >= maxTentatives) {
+    const minutes = parametreEntier('securite.verrouillage_minutes', 15)
+    base()
+      .prepare(
+        `UPDATE utilisateurs SET tentatives_echouees = ?, verrouille_jusqu_a = ? WHERE id = ?`
+      )
+      .run(tentatives, new Date(Date.now() + minutes * 60_000).toISOString(), utilisateurId)
+    journaliser({
+      utilisateurId,
+      action: 'Compte verrouillé',
+      entite: 'securite',
+      resume: `${tentatives} échecs de déverrouillage du poste`,
+      resultat: 'refuse'
+    })
+  } else {
+    base().prepare('UPDATE utilisateurs SET tentatives_echouees = ? WHERE id = ?').run(tentatives, utilisateurId)
+  }
+
+  return false
+}
+
 export function changerMotDePasse(
   utilisateurId: number,
   ancien: string | null,
