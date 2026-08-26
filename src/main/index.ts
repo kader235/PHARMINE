@@ -1,13 +1,27 @@
 import { app, BrowserWindow, shell } from 'electron'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fermerBase, ouvrirBase } from './db'
 import { chemins, contexteActuel, enregistrerCanaux, terminerSession } from './ipc'
 import { creerSauvegarde } from './services/configuration'
 import { parametreBooleen } from './services/commun'
 import { rafraichirAlertes } from './services/alertes'
 
-const dossierDonnees = app.getPath('userData')
-const cheminBase = join(dossierDonnees, 'donnees', 'pharmina.db')
+/**
+ * Emplacement des données.
+ *
+ * Par défaut, le dossier de l'utilisateur : c'est là que vivent les données de
+ * l'officine, et elles y survivent à une réinstallation.
+ *
+ * `PHARMINA_BASE` permet de pointer ailleurs — démonstration commerciale,
+ * formation du personnel, reproduction d'un incident au support. Ces
+ * instances-là ne doivent jamais écrire dans la base de production, et le
+ * script de démonstration utilise déjà la même variable.
+ */
+const cheminBase =
+  process.env.PHARMINA_BASE ?? join(app.getPath('userData'), 'donnees', 'pharmina.db')
+const dossierDonnees = process.env.PHARMINA_BASE
+  ? dirname(dirname(cheminBase))
+  : app.getPath('userData')
 const dossierSauvegardes = join(dossierDonnees, 'sauvegardes')
 
 let fenetre: BrowserWindow | null = null

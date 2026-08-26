@@ -940,6 +940,15 @@ table.tableau th:last-child {
   border-right: 0;
 }
 
+/* Un en-tête doit être aligné comme sa colonne. Sans cette règle, la
+   déclaration générale `text-align: left` du `th` l'emportait sur
+   `.cellule-nombre`, et « PRIX DE VENTE » se lisait à gauche d'une colonne de
+   montants alignés à droite. */
+table.tableau th.cellule-nombre,
+table.tableau th.cellule-actions {
+  text-align: right;
+}
+
 table.tableau th.triable {
   cursor: pointer;
   -webkit-user-select: none;
@@ -1037,43 +1046,81 @@ table.tableau tbody tr.selectionnee td {
    Étiquettes d'état
    ============================================================================= */
 
-/* Étiquette d'état : un aplat très pâle, un texte lisible, pas de pastille.
-   La couleur suffit à porter l'information. */
+/* Étiquette d'état.
+   
+   Un point de couleur et du texte noir, pas une pastille remplie. Les aplats
+   pastel arrondis sont la signature des interfaces produites en série ; les
+   logiciels d'officine, eux, signalent un état par une pastille de six pixels
+   et laissent le texte lisible. La couleur reste porteuse d'information sans
+   devenir un élément de décor. */
 .etiquette {
   display: inline-flex;
   align-items: center;
-  padding: 1px 6px;
-  border: 1px solid transparent;
-  border-radius: 2px;
-  font-size: 11px;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--texte);
+  font-size: 11.5px;
   font-weight: 500;
   white-space: nowrap;
 }
 
-.etiquette.succes {
-  background: var(--succes-fond);
-  border-color: #bfdcc9;
-  color: var(--succes);
+.etiquette::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--texte-faible);
 }
-.etiquette.attention {
-  background: var(--attention-fond);
-  border-color: #e6d0a4;
-  color: var(--attention);
+
+.etiquette.succes::before {
+  background: var(--succes);
 }
-.etiquette.danger {
-  background: var(--danger-fond);
-  border-color: #e6bdb6;
+.etiquette.attention::before {
+  background: var(--attention);
+}
+.etiquette.danger::before {
+  background: var(--danger);
+}
+.etiquette.info::before {
+  background: var(--info);
+}
+
+/* Sans point : une valeur, pas un état. C'est la couleur du texte qui porte
+   alors la gravité — un montant dû ne mérite pas une gommette. */
+.etiquette.sans-point {
+  gap: 0;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.etiquette.sans-point::before {
+  display: none;
+}
+
+.etiquette.sans-point.danger {
   color: var(--danger);
 }
-.etiquette.info {
-  background: var(--info-fond);
-  border-color: #c2d4e6;
-  color: var(--info);
+.etiquette.sans-point.attention {
+  color: var(--attention);
 }
-.etiquette.neutre {
-  background: var(--neutre-fond);
-  border-color: var(--bordure);
+.etiquette.sans-point.neutre {
   color: var(--texte-attenue);
+}
+
+/* Marqueur d'ordonnance : discret, à côté du nom du produit. Une mention en
+   petites capitales se lit comme une précision réglementaire ; une pastille
+   bleue se lit comme un badge d'application. */
+.marque-ordonnance {
+  margin-left: 7px;
+  color: var(--texte-faible);
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  vertical-align: 1px;
 }
 
 /* =============================================================================
@@ -2251,31 +2298,40 @@ table.tableau tbody tr.selectionnee td {
   background: var(--surface-attenuee);
 }
 
+/* L'icône porte la couleur ; elle n'a pas besoin d'une plaque derrière elle.
+   Six carrés pastel alignés en colonne font un tableau de bord de maquette. */
 .alerte-marque {
   display: grid;
   place-items: center;
-  width: 21px;
-  height: 21px;
-  flex: 0 0 21px;
-  border-radius: var(--rayon);
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
 }
 
 .alerte-marque.urgent {
-  background: var(--danger-fond);
   color: var(--danger);
 }
 .alerte-marque.important {
-  background: var(--attention-fond);
   color: var(--attention);
 }
 .alerte-marque.information {
-  background: var(--info-fond);
-  color: var(--info);
+  color: var(--texte-attenue);
 }
 
 .alerte-texte {
   flex: 1;
   min-width: 0;
+}
+
+/* Alerte non lue : un point devant le titre, comme un courrier non ouvert. */
+.point-non-lu {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  vertical-align: 1px;
 }
 
 .alerte-texte strong {

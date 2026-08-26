@@ -721,13 +721,17 @@ app.whenReady().then(async () => {
   // On se place au comptoir : c'est la que le lecteur remplit un panier, donc
   // le seul endroit ou « le scan ne passe pas » veut dire quelque chose.
   await fenetre.webContents.executeJavaScript(`document.querySelectorAll('.nav-lien')[1].click()`)
-  await new Promise((r) => setTimeout(r, 900))
+  await new Promise((r) => setTimeout(r, 1200))
 
   // Temoin : dans cet etat precis, un scan ajoute bien une ligne. Sans ce
   // controle, verifier plus bas que rien ne s'ajoute ne prouverait rien.
+  // On attend le résultat au lieu de dormir un délai fixe : un banc qui échoue
+  // une fois sur cinq pour cause de lenteur ne sert plus à rien — on finit par
+  // ignorer ce qu'il dit.
   const temoinScan = (await fenetre.webContents.executeJavaScript(`
     (async () => {
-      const avant = document.querySelectorAll('.panier-ligne').length
+      const compter = () => document.querySelectorAll('.panier-ligne').length
+      const avant = compter()
       for (const c of '3400930000001') {
         window.dispatchEvent(new KeyboardEvent('keydown', {
           key: c, code: 'Digit' + c, bubbles: true, cancelable: true
@@ -736,8 +740,10 @@ app.whenReady().then(async () => {
       window.dispatchEvent(new KeyboardEvent('keydown', {
         key: 'Enter', code: 'Enter', bubbles: true, cancelable: true
       }))
-      await new Promise((r) => setTimeout(r, 700))
-      return { avant, apres: document.querySelectorAll('.panier-ligne').length }
+      for (let essai = 0; essai < 30 && compter() === avant; essai++) {
+        await new Promise((r) => setTimeout(r, 100))
+      }
+      return { avant, apres: compter() }
     })()`)) as { avant: number; apres: number }
 
   console.log(`  temoin : scan poste ouvert -> ${JSON.stringify(temoinScan)}`)

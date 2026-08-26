@@ -28,6 +28,7 @@ import * as ventes from '../src/main/services/ventes'
 import * as finances from '../src/main/services/finances'
 import * as auth from '../src/main/services/auth'
 import * as alertes from '../src/main/services/alertes'
+import * as configuration from '../src/main/services/configuration'
 import { aujourdhui, decalerJours } from '../src/main/services/commun'
 
 // Lancé par `npx electron`, le processus s'appelle « Electron » et son dossier
@@ -99,10 +100,27 @@ function main(): void {
   )?.id
 
   if (!admin) {
-    console.error('\nAucun utilisateur : configurez d’abord le logiciel.\n')
-    fermerBase()
-    app.exit(1)
-    return
+    // Base neuve : on la configure plutôt que d'exiger un passage préalable
+    // par l'assistant. Un outil de démonstration qui réclame d'abord une
+    // installation manuelle n'est un outil de démonstration qu'à moitié.
+    console.log('Base neuve : configuration d’une officine de démonstration.')
+    configuration.configurerPharmacie({
+      pharmacie: {
+        nom: 'Pharmacie du Plateau',
+        ville: 'Abidjan',
+        pays: "Côte d'Ivoire",
+        telephone: '+225 27 20 30 40 50',
+        devise: 'XOF',
+        deviseSymbole: 'FCFA',
+        deviseDecimales: 0
+      },
+      administrateur: {
+        nomComplet: 'Marie Dupont',
+        identifiant: 'marie',
+        motDePasse: 'Officine2026'
+      }
+    })
+    return main()
   }
 
   // Une session de caisse laissée ouverte lors d'un essai empêcherait

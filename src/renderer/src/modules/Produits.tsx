@@ -105,9 +105,9 @@ export default function Produits({ destination }: { destination: Destination }) 
                   <>
                     {p.nom_commercial} {p.dosage ?? ''}
                     {p.ordonnance_requise ? (
-                      <Etiquette ton="info" sansPoint>
+                      <span className="marque-ordonnance" title="Délivrance sur ordonnance">
                         Ordonnance
-                      </Etiquette>
+                      </span>
                     ) : null}
                   </>
                 }

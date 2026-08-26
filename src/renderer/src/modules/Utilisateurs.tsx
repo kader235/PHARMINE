@@ -104,7 +104,7 @@ export default function Utilisateurs() {
               cle: 'role',
               entete: 'Rôle',
               largeur: '160px',
-              rendu: (u: Utilisateur) => <Etiquette ton="info">{u.role}</Etiquette>,
+              rendu: (u: Utilisateur) => u.role,
               triSur: (u: Utilisateur) => u.role
             },
             { cle: 'telephone', entete: 'Téléphone', rendu: (u: Utilisateur) => u.telephone ?? '—' },

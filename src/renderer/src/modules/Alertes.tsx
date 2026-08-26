@@ -171,20 +171,11 @@ export default function Alertes() {
                   </span>
                   <span className="alerte-texte">
                     <strong>
+                      {/* Marqueur de lecture, devant le titre comme dans une
+                          boîte de réception : placé derrière, il se lisait
+                          comme une gravité, ce qu'il n'est pas. */}
+                      {!a.lue_at ? <span className="point-non-lu" title="Non lue" /> : null}
                       {a.titre}
-                      {!a.lue_at ? (
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            width: 6,
-                            height: 6,
-                            borderRadius: '50%',
-                            background: 'var(--accent)',
-                            marginLeft: 6,
-                            verticalAlign: 'middle'
-                          }}
-                        />
-                      ) : null}
                     </strong>
                     <span>{a.message}</span>
                   </span>
