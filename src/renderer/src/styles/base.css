@@ -1662,6 +1662,198 @@ table.tableau tbody tr.selectionnee td {
 }
 
 /* =============================================================================
+   Connexion
+
+   Une carte unique, posée sur un fond calme. Le premier essai remplissait
+   l'écran de deux blocs pleine hauteur : c'était massif, et un panneau de
+   couleur de six cents pixels de large pour trois lignes de texte n'a l'air
+   de rien d'autre que d'un panneau de couleur.
+
+   Ici, le soin est dans les proportions — le formulaire domine, l'identité
+   accompagne — et dans la typographie. Aucune forme ajoutée, aucun aplat
+   décoratif : le seul dégradé est un voile de quelques pour cent sur le
+   panneau d'identité, qui empêche une grande surface pleine de paraître
+   plate à l'écran.
+   ============================================================================= */
+
+.connexion {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: var(--fond);
+  overflow-y: auto;
+}
+
+.connexion-carte {
+  width: min(860px, 100%);
+  display: grid;
+  /* Le formulaire prend plus de place que l'identité : c'est lui qu'on vient
+     utiliser. */
+  grid-template-columns: 1.32fr 1fr;
+  min-height: 452px;
+  border: 1px solid var(--bordure);
+  border-radius: 14px;
+  background: var(--surface);
+  box-shadow: 0 22px 54px rgba(15, 30, 25, 0.11), 0 2px 6px rgba(15, 30, 25, 0.05);
+  overflow: hidden;
+}
+
+/* --- Accès ------------------------------------------------------------------- */
+
+.connexion-acces {
+  display: grid;
+  place-items: center;
+  padding: 40px 44px;
+}
+
+.connexion-formulaire {
+  width: 100%;
+  max-width: 306px;
+  display: grid;
+  gap: 14px;
+}
+
+.connexion-formulaire h1 {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.022em;
+  color: var(--texte-fort);
+}
+
+.connexion-invite {
+  margin: -9px 0 6px;
+  color: var(--texte-attenue);
+  font-size: 13px;
+}
+
+/* Champs un peu plus hauts qu'ailleurs : sur cet écran, il n'y en a que deux,
+   et ils gagnent à être confortables — y compris sur un poste tactile. */
+.connexion-formulaire .champ input {
+  height: 40px;
+  font-size: 14px;
+}
+
+.connexion-formulaire .bouton {
+  height: 42px;
+  margin-top: 2px;
+  font-size: 13.5px;
+}
+
+.connexion-note {
+  margin-top: 2px;
+  color: var(--texte-faible);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+/* --- Identité ----------------------------------------------------------------- */
+
+.connexion-marque {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 32px 30px 26px;
+  background: linear-gradient(168deg, var(--accent) 0%, var(--accent-fonce) 100%);
+  color: #fff;
+}
+
+.connexion-identite {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.connexion-croix {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.connexion-produit {
+  font-size: 14.5px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+}
+
+.connexion-metier {
+  margin-top: 1px;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Un filet fin au-dessus du nom : il structure le panneau sans rien ajouter
+   qui ne soit là pour séparer deux idées. */
+.connexion-officine {
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.connexion-officine-nom {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.26;
+  letter-spacing: -0.018em;
+}
+
+.connexion-officine-lieu {
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.connexion-pied-marque {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: rgba(255, 255, 255, 0.46);
+}
+
+/* Fenêtre étroite : l'identité se replie en bandeau au-dessus du formulaire
+   plutôt que d'écraser les deux colonnes. */
+@media (max-width: 760px) {
+  .connexion-carte {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    min-height: 0;
+  }
+
+  .connexion-marque {
+    order: -1;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px 22px;
+  }
+
+  .connexion-officine {
+    padding-top: 0;
+    border-top: 0;
+    text-align: right;
+  }
+
+  .connexion-officine-nom {
+    font-size: 16px;
+  }
+
+  .connexion-pied-marque {
+    display: none;
+  }
+
+  .connexion-acces {
+    padding: 30px 24px 34px;
+  }
+}
+
+/* =============================================================================
    Écrans d'accueil : connexion et première configuration
    ============================================================================= */
 
@@ -2352,4 +2544,25 @@ table.tableau tbody tr.selectionnee td {
   .verrou {
     display: none;
   }
+}
+
+/* Marche à suivre : une liste numérotée lisible, pour les écrans où l'on
+   explique une procédure avant de la lancer. */
+.marche-a-suivre {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding-left: 20px;
+  color: var(--texte-attenue);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.marche-a-suivre li::marker {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.marche-a-suivre strong {
+  color: var(--texte);
 }

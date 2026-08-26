@@ -16,6 +16,7 @@ interface EtatApplication {
   besoinConfiguration: boolean
   pharmacie: Pharmacie | null
   dateDuJour: string
+  version: string
 }
 
 /**
@@ -79,7 +80,12 @@ export default function App() {
             </VerrouPoste>
           </FournisseurSession>
         ) : (
-          <Connexion nomPharmacie={etat.pharmacie?.nom ?? ''} onConnecte={setSession} />
+          <Connexion
+            pharmacie={etat.pharmacie}
+            dateDuJour={etat.dateDuJour}
+            version={etat.version}
+            onConnecte={setSession}
+          />
         )}
       </FournisseurImpression>
     </FournisseurNotifications>

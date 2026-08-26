@@ -1,4 +1,7 @@
 import { dialog, ipcMain, type IpcMainInvokeEvent, type WebContents } from 'electron'
+
+/** Injectée à la compilation depuis package.json (voir electron.vite.config.ts). */
+declare const __VERSION_PHARMINA__: string
 import { writeFileSync } from 'node:fs'
 import { ErreurMetier, journaliser } from '../services/commun'
 import * as auth from '../services/auth'
@@ -15,6 +18,7 @@ import * as pilotage from '../services/pilotage'
 import * as alertes from '../services/alertes'
 import * as configuration from '../services/configuration'
 import * as impression from '../services/impression'
+import * as reprise from '../services/reprise'
 
 /** Session courante. Une seule à la fois : c'est un poste de travail, pas un serveur. */
 interface Contexte {
@@ -64,6 +68,7 @@ const CANAUX: Record<string, Canal> = {
     besoinConfiguration: auth.besoinConfiguration(),
     pharmacie: auth.pharmacie(),
     dateDuJour: configuration.dateDuJour(),
+    version: __VERSION_PHARMINA__,
     // Lu avant toute connexion : l'écran d'accueil doit déjà porter le thème
     // de l'officine, sans quoi l'interface changerait de couleur au moment de
     // la connexion.
@@ -116,6 +121,20 @@ const CANAUX: Record<string, Canal> = {
     produits.archiverProduit(p.id, p.archiver, ctx.utilisateurId)
   ),
   'produits.creerLaboratoire': c('produits.creer', (p: { nom: string }) => produits.creerLaboratoire(p.nom)),
+
+  // --- Reprise de donnees ----------------------------------------------------
+  // Réservée à l'administration : un import touche le catalogue, les stocks et
+  // les créances d'un seul geste.
+  'reprise.champs': c('parametres.modifier', (p: { type: reprise.TypeReprise }) =>
+    reprise.champs(p.type)
+  ),
+  'reprise.choisirFichier': c('parametres.modifier', (p: { type: reprise.TypeReprise }) =>
+    choisirFichierReprise(p.type)
+  ),
+  'reprise.simuler': c('parametres.modifier', (p: reprise.DemandeReprise) => reprise.simuler(p)),
+  'reprise.importer': c('parametres.modifier', (p: reprise.DemandeReprise, ctx) =>
+    reprise.importer(p, ctx.utilisateurId)
+  ),
 
   // --- Repertoire integre ----------------------------------------------------
   // Lecture seule : aucun canal n'ecrit dans le repertoire, par construction.
@@ -340,6 +359,30 @@ function exporter(nomFichier: string, contenu: string, utilisateurId: number): {
  * partage réseau monté en lecture seule se laisse ouvrir sans se laisser
  * écrire, et on ne veut pas le découvrir le jour de la panne.
  */
+/**
+ * Choix du fichier à reprendre.
+ *
+ * On analyse dans la foulée : l'utilisateur n'a pas à choisir un fichier puis
+ * cliquer « analyser », et une erreur de format se voit tout de suite.
+ */
+function choisirFichierReprise(
+  type: reprise.TypeReprise
+): (reprise.AnalyseFichier & { chemin: string }) | null {
+  const choix = dialog.showOpenDialogSync({
+    title: 'Fichier à reprendre',
+    properties: ['openFile'],
+    filters: [
+      { name: 'Fichiers tableur', extensions: ['csv', 'txt', 'tsv'] },
+      { name: 'Tous les fichiers', extensions: ['*'] }
+    ]
+  })
+
+  if (!choix || choix.length === 0) return null
+
+  const chemin = choix[0]!
+  return { chemin, ...reprise.analyser(chemin, type) }
+}
+
 function choisirDestinationSauvegarde(utilisateurId: number): {
   choisi: boolean
   destination?: string

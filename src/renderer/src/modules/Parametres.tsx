@@ -19,6 +19,7 @@ import {
   Segments
 } from '../ui/Composants'
 import Tableau, { CellulePrincipale } from '../ui/Tableau'
+import Reprise from './Reprise'
 import { FORMATS } from '../ui/Impression'
 import { THEMES } from '../app/themes'
 import { dateCourte, depuis, nombre } from '../lib/format'
@@ -74,7 +75,7 @@ const CATEGORIES: Record<string, string> = {
 export default function Parametres() {
   const session = useSession()
   const notifications = useNotifications()
-  const [onglet, setOnglet] = useState<'officine' | 'regles' | 'sauvegardes'>('officine')
+  const [onglet, setOnglet] = useState<'officine' | 'regles' | 'sauvegardes' | 'reprise'>('officine')
 
   return (
     <>
@@ -86,7 +87,10 @@ export default function Parametres() {
             options={[
               { valeur: 'officine', libelle: 'La pharmacie' },
               { valeur: 'regles', libelle: 'Règles' },
-              { valeur: 'sauvegardes', libelle: 'Sauvegardes' }
+              { valeur: 'sauvegardes', libelle: 'Sauvegardes' },
+              ...(session.peut('parametres.modifier')
+                ? [{ valeur: 'reprise' as const, libelle: 'Reprise' }]
+                : [])
             ]}
             onChange={setOnglet}
           />
@@ -96,6 +100,7 @@ export default function Parametres() {
       {onglet === 'officine' ? <Officine /> : null}
       {onglet === 'regles' ? <Regles modifiable={session.peut('parametres.modifier')} /> : null}
       {onglet === 'sauvegardes' ? <Sauvegardes onMessage={notifications.succes} /> : null}
+      {onglet === 'reprise' ? <Reprise /> : null}
     </>
   )
 }

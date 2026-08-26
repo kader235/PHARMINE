@@ -922,6 +922,62 @@ app.whenReady().then(async () => {
       erreurs.push('Sauvegardes : aucun moyen de choisir la destination externe')
     }
     await photographier(fenetre, 'parametres-sauvegardes', 1100)
+
+    // --- Reprise de donnees ---------------------------------------------------
+    // Le choix du fichier passe par une fenetre native que le banc ne peut pas
+    // piloter : on ecrit le fichier nous-memes et on appelle le canal reel,
+    // ce qui exerce toute la chaine sauf le selecteur.
+    const fichierReprise = join(dossierTravail, 'ancien-logiciel.csv')
+    writeFileSync(
+      fichierReprise,
+      [
+        'Designation;Dosage;Prix achat;Prix vente;Qte;Peremption',
+        'Metformine;850 mg;1 200;2 100;24;06/2028',
+        'Losartan;50 mg;1.850,00;3 200;18;31/10/2027',
+        'Ligne fautive;;100;xxx;2;'
+      ].join('\n'),
+      'utf8'
+    )
+
+    await fenetre.webContents.executeJavaScript(onglet('Reprise'))
+    await new Promise((r) => setTimeout(r, 800))
+    await photographier(fenetre, 'parametres-reprise', 1100)
+
+    const simulation = (await fenetre.webContents.executeJavaScript(`
+      window.pharmina.appeler('reprise.simuler', {
+        chemin: ${JSON.stringify(fichierReprise)},
+        type: 'produits',
+        correspondance: { nom: 0, dosage: 1, prixAchat: 2, prixVente: 3, stock: 4, peremption: 5 },
+        mettreAJour: false
+      })`)) as {
+      lignesLues: number
+      crees: number
+      refuses: number
+      lotsCrees: number
+      anomalies: { ligne: number; motif: string }[]
+    }
+
+    console.log(`  simulation de reprise -> ${JSON.stringify(simulation)}`)
+
+    if (simulation.crees !== 2) {
+      erreurs.push(`Reprise : 2 creations attendues, ${simulation.crees} obtenue(s)`)
+    }
+    if (simulation.refuses !== 1) {
+      erreurs.push(`Reprise : 1 ligne fautive attendue, ${simulation.refuses} obtenue(s)`)
+    }
+    if (!simulation.anomalies.some((a) => a.ligne === 4)) {
+      erreurs.push('Reprise : la ligne fautive n est pas designee par son numero')
+    }
+
+    // Une simulation ne doit rien ecrire : le catalogue est inchange.
+    const catalogueApres = (await fenetre.webContents.executeJavaScript(
+      `window.pharmina.appeler('produits.lister', { parPage: 1 }).then((p) => p.total)`
+    )) as number
+    console.log(`  catalogue apres simulation : ${catalogueApres} produits`)
+    if (catalogueApres !== 12) {
+      erreurs.push(`Reprise : la simulation a modifie le catalogue (${catalogueApres} produits)`)
+    }
+
   }
 
   // --- Les trois formats de document ----------------------------------------

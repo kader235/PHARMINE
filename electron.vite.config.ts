@@ -1,12 +1,24 @@
+import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { defineConfig, externalizeDepsPlugin } from 'electron-vite'
 import react from '@vitejs/plugin-react'
 
 const shared = resolve(__dirname, 'src/shared')
 
+/**
+ * Version du logiciel, figée à la compilation.
+ *
+ * `app.getVersion()` renvoie la version d'Electron tant que l'application
+ * n'est pas empaquetée : l'écran de connexion annonçait « Version 43.4.1 ».
+ * C'est le numéro qu'on demande au téléphone en assistance — il doit être
+ * juste partout, y compris en développement.
+ */
+const VERSION = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8')).version
+
 export default defineConfig({
   main: {
     plugins: [externalizeDepsPlugin()],
+    define: { __VERSION_PHARMINA__: JSON.stringify(VERSION) },
     resolve: {
       alias: { '@shared': shared, '@main': resolve(__dirname, 'src/main') }
     },

@@ -5,7 +5,7 @@
  * l'application. Aucune donnée n'est simulée : chaque chiffre vérifié est
  * calculé par le logiciel.
  */
-import { mkdtempSync, readdirSync, rmSync, statSync } from 'node:fs'
+import { mkdtempSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -14,6 +14,7 @@ import * as auth from '../src/main/services/auth'
 import * as configuration from '../src/main/services/configuration'
 import * as produits from '../src/main/services/produits'
 import * as repertoire from '../src/main/services/repertoire'
+import * as reprise from '../src/main/services/reprise'
 import * as stock from '../src/main/services/stock'
 import * as achats from '../src/main/services/achats'
 import * as caisse from '../src/main/services/caisse'
@@ -824,6 +825,210 @@ try {
   verifier(
     configuration.controlerSauvegarde(join(dossier, 'inexistant.db')).valide === false,
     'un fichier inexistant est rejeté'
+  )
+
+  // ==========================================================================
+  titre('Reprise de données')
+
+  // Les exports des anciens logiciels ne se ressemblent pas : point-virgule ou
+  // virgule, accents Windows-1252, montants a la francaise, dates a l'anglaise.
+  // On reprend ici un fichier volontairement retors.
+  const fichierProduits = join(dossier, 'ancien-catalogue.csv')
+  writeFileSync(
+    fichierProduits,
+    [
+      'Designation;Dosage;Molecule;Prix achat;Prix vente;Qte;Peremption;Code barre;Rayon;Ordonnance',
+      'Doliprane;500 mg;Paracetamol;900;1 500;12;31/12/2027;3400930000001;A-12;non',
+      'Zinnat;250 mg;Cefuroxime;3.100,50;5 400,75;8;03/2028;3400930000900;A-20;oui',
+      'Betadine;10%;Povidone iodee;1200;2000;5;2027-06-30;;C-01;non',
+      'Compresses;;;450;800;40;;;C-06;non',
+      // Ligne fautive : le prix de vente est illisible.
+      'Produit casse;;;100;abc;3;;;;',
+      // Doublon interne au fichier.
+      'Betadine;10%;Povidone iodee;1200;2000;5;2027-06-30;;C-01;non'
+    ].join('\n'),
+    'latin1'
+  )
+
+  const analyse = reprise.analyser(fichierProduits, 'produits')
+  verifier(analyse.separateur === ';', 'le séparateur point-virgule est détecté', analyse.separateur)
+  verifier(analyse.lignes === 6, 'les lignes de données sont comptées sans l’en-tête', analyse.lignes)
+  verifier(
+    analyse.colonnes.length === 10,
+    'toutes les colonnes sont reconnues',
+    analyse.colonnes.length
+  )
+
+  // Les en-têtes de l'ancien logiciel ne portent pas nos noms : la
+  // correspondance doit être devinée, sinon l'utilisateur associe dix colonnes
+  // à la main pour chaque fichier.
+  verifier(analyse.suggestion.nom === 0, 'la colonne « Designation » est reconnue comme le nom')
+  verifier(analyse.suggestion.prixAchat === 3, 'le prix d’achat est reconnu')
+  verifier(analyse.suggestion.prixVente === 4, 'le prix de vente est distingué du prix d’achat')
+  verifier(analyse.suggestion.stock === 5, 'la quantité est reconnue')
+  verifier(analyse.suggestion.codeBarres === 7, 'le code-barres est reconnu')
+
+  // Montants : la même valeur s'écrit de quatre façons selon le tableur.
+  verifier(reprise.lireMontant('1 500') === 1500, 'montant avec espace insécable')
+  verifier(reprise.lireMontant('3.100,50') === 3100.5, 'montant à la française')
+  verifier(reprise.lireMontant('3,100.50') === 3100.5, 'montant à l’anglaise')
+  verifier(reprise.lireMontant('2000 FCFA') === 2000, 'montant suivi de sa devise')
+  verifier(reprise.lireMontant('abc') === null, 'montant illisible signalé, pas remplacé par zéro')
+
+  verifier(reprise.lireDate('31/12/2027') === '2027-12-31', 'date jour/mois/année')
+  verifier(reprise.lireDate('2027-06-30') === '2027-06-30', 'date déjà en ISO')
+  // Une péremption au 03/2028 court jusqu'au dernier jour du mois.
+  verifier(reprise.lireDate('03/2028') === '2028-03-31', 'péremption au mois : dernier jour retenu')
+  verifier(reprise.lireDate('n’importe quoi') === null, 'date illisible signalée')
+
+  const correspondance = analyse.suggestion
+  const demande = { chemin: fichierProduits, type: 'produits' as const, correspondance, mettreAJour: false }
+
+  // La simulation lit tout, valide tout, et n'écrit rien.
+  const produitsAvantSimulation = (
+    base().prepare('SELECT COUNT(*) n FROM produits').get() as unknown as { n: number }
+  ).n
+  const simulation = reprise.simuler(demande)
+  const produitsApresSimulation = (
+    base().prepare('SELECT COUNT(*) n FROM produits').get() as unknown as { n: number }
+  ).n
+
+  verifier(
+    produitsAvantSimulation === produitsApresSimulation,
+    'une simulation n’écrit rien dans la base'
+  )
+  verifier(simulation.refuses === 2, 'la simulation compte les deux lignes fautives', simulation.refuses)
+  verifier(
+    simulation.anomalies.some((a) => a.ligne === 6 && a.motif.includes('Prix de vente')),
+    'la ligne au prix illisible est désignée par son numéro',
+    simulation.anomalies
+  )
+  verifier(
+    simulation.anomalies.some((a) => a.ligne === 7 && a.motif.includes('Doublon')),
+    'le doublon interne au fichier est repéré'
+  )
+
+  // Le Doliprane existe déjà au catalogue : sans « mettre à jour », il est ignoré.
+  verifier(simulation.ignores >= 1, 'un produit déjà présent est ignoré', simulation.ignores)
+
+  const importe = reprise.importer(demande, adminId)
+  verifier(importe.crees === 3, 'trois produits nouveaux sont créés', importe.crees)
+  verifier(importe.refuses === 2, 'les lignes fautives restent refusées', importe.refuses)
+
+  const zinnat = base()
+    .prepare("SELECT * FROM v_produit_etat WHERE nom_commercial = 'Zinnat'")
+    .get() as unknown as {
+    id: number
+    dosage: string
+    prix_achat: number
+    prix_vente: number
+    stock: number
+    ordonnance_requise: number
+    emplacement: string
+  }
+
+  verifier(!!zinnat, 'le produit repris existe au catalogue')
+  // « Cefuroxime » vient d'un fichier Windows-1252 : sans décodage, on lirait
+  // des caractères de remplacement à la place des accents.
+  verifier(zinnat.prix_achat === 3101, 'le prix à la française est repris et arrondi', zinnat.prix_achat)
+  verifier(zinnat.prix_vente === 5401, 'le prix de vente est repris', zinnat.prix_vente)
+  verifier(zinnat.stock === 8, 'le stock d’ouverture est créé', zinnat.stock)
+  verifier(zinnat.ordonnance_requise === 1, 'le « oui » de la colonne ordonnance est compris')
+  verifier(zinnat.emplacement === 'A-20', 'l’emplacement est repris')
+
+  const lotZinnat = base()
+    .prepare('SELECT date_peremption FROM lots WHERE produit_id = ?')
+    .get(zinnat.id) as unknown as { date_peremption: string }
+  verifier(
+    lotZinnat.date_peremption === '2028-03-31',
+    'la péremption au mois devient le dernier jour du mois',
+    lotZinnat.date_peremption
+  )
+
+  // Le stock repris est un mouvement tracé, pas un chiffre posé dans une colonne.
+  const mouvementReprise = base()
+    .prepare(
+      "SELECT COUNT(*) n FROM mouvements_stock WHERE motif = 'Reprise de données' AND produit_id = ?"
+    )
+    .get(zinnat.id) as unknown as { n: number }
+  verifier(mouvementReprise.n === 1, 'le stock d’ouverture apparaît dans les mouvements')
+
+  // Reprendre deux fois le même fichier ne doit rien doubler.
+  const secondPassage = reprise.importer(demande, adminId)
+  const stockApres = (
+    base().prepare('SELECT stock FROM v_produit_etat WHERE id = ?').get(zinnat.id) as unknown as {
+      stock: number
+    }
+  ).stock
+  verifier(secondPassage.crees === 0, 'un second import ne recrée aucun produit', secondPassage.crees)
+  verifier(stockApres === 8, 'un second import ne double pas le stock', stockApres)
+
+  // --- Clients et créances ---------------------------------------------------
+  const fichierClients = join(dossier, 'ancien-clients.csv')
+  writeFileSync(
+    fichierClients,
+    [
+      'Nom,Telephone,Ardoise',
+      'Awa Traore,+225 07 00 00 01,12500',
+      'Ibrahim Diallo,+225 07 00 00 02,0',
+      'Fatou Kone,+225 07 00 00 03,3 200'
+    ].join('\n'),
+    'utf8'
+  )
+
+  const analyseClients = reprise.analyser(fichierClients, 'clients')
+  verifier(analyseClients.separateur === ',', 'le séparateur virgule est détecté')
+  verifier(analyseClients.suggestion.solde === 2, 'la colonne « Ardoise » est reconnue comme la créance')
+
+  const importClients = reprise.importer(
+    {
+      chemin: fichierClients,
+      type: 'clients',
+      correspondance: analyseClients.suggestion,
+      mettreAJour: false
+    },
+    adminId
+  )
+  verifier(importClients.crees === 3, 'les trois clients sont créés', importClients.crees)
+  verifier(importClients.creancesReprises === 2, 'seules les créances non nulles sont reprises')
+
+  const awa = base()
+    .prepare("SELECT id FROM clients WHERE nom = 'Awa Traore'")
+    .get() as unknown as { id: number }
+  const compteAwa = partenaires.apercuCompte(awa.id)
+  verifier(compteAwa?.encours === 12500, 'la créance reprise apparaît au compte client', compteAwa?.encours)
+
+  // La créance n'est pas un chiffre posé a la main : c'est une opération, donc
+  // elle figure au relevé et le solde reste une somme d'operations.
+  const releveAwa = partenaires.releveCompte(awa.id)
+  verifier(releveAwa.length === 1, 'la reprise figure au relevé du client', releveAwa.length)
+
+  const doubleClients = reprise.importer(
+    {
+      chemin: fichierClients,
+      type: 'clients',
+      correspondance: analyseClients.suggestion,
+      mettreAJour: true
+    },
+    adminId
+  )
+  verifier(doubleClients.creancesReprises === 0, 'un second import ne double pas l’ardoise')
+  verifier(
+    partenaires.apercuCompte(awa.id)?.encours === 12500,
+    'le solde du client est inchangé après un second import'
+  )
+
+  // Une colonne obligatoire non associée doit être refusée avant toute écriture.
+  refuse(
+    'un import sans colonne « nom » est refusé',
+    () =>
+      reprise.simuler({
+        chemin: fichierClients,
+        type: 'clients',
+        correspondance: { telephone: 1 },
+        mettreAJour: false
+      }),
+    'obligatoires'
   )
 
   // ==========================================================================
