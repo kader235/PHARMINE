@@ -828,6 +828,76 @@ try {
   )
 
   // ==========================================================================
+  titre('Réglages attendus par le logiciel')
+
+  // Une migration déjà appliquée chez un client ne sera plus jamais rejouée :
+  // toute clé ajoutée après coup à un fichier publié n'atteint que les bases
+  // neuves. C'est arrivé pour « interface.theme », et cela s'est vu par un
+  // écran de paramètres incomplet, sans la moindre erreur.
+  //
+  // Ce contrôle relie le code à la base : chaque réglage que les services
+  // lisent doit exister après migration. Un réglage ajouté au code sans
+  // migration correspondante fait échouer ce test avant la livraison.
+  const REGLAGES_LUS = [
+    'caisse.ecart_tolere',
+    'caisse.exiger_ouverture',
+    'comptoir.avertir_scan_inconnu',
+    'comptoir.scan_ajoute_directement',
+    'impression.copies_facture',
+    'impression.format_defaut',
+    'impression.pied_ticket',
+    'impression.silencieuse',
+    'impression.ticket_automatique',
+    'interface.theme',
+    'peremption.avertir_vente_proche',
+    'peremption.bloquer_vente_expire',
+    'peremption.seuil_alerte_jours',
+    'produits.marge_par_defaut',
+    'sauvegarde.alerte_jours',
+    'sauvegarde.conserver_nombre',
+    'sauvegarde.destination_externe',
+    'securite.tentatives_max',
+    'securite.verrouillage_minutes',
+    'securite.verrouillage_poste_minutes',
+    'stock.avertir_quantite_inhabituelle',
+    'ventes.remise_max_pourcent'
+  ]
+
+  const declares = new Set(
+    (base().prepare('SELECT cle FROM parametres').all() as unknown as { cle: string }[]).map(
+      (p) => p.cle
+    )
+  )
+  const absents = REGLAGES_LUS.filter((cle) => !declares.has(cle))
+
+  verifier(
+    absents.length === 0,
+    'chaque réglage lu par le code existe en base après migration',
+    absents
+  )
+
+  // Les deux verrouillages portent des noms proches et des sens opposés :
+  // l'un ferme un compte après des échecs, l'autre ferme un écran laissé seul.
+  // Les confondre reviendrait à verrouiller un compte pendant dix minutes ou à
+  // laisser un poste ouvert un quart d'heure.
+  verifier(
+    declares.has('securite.verrouillage_minutes') && declares.has('securite.verrouillage_poste_minutes'),
+    'le verrouillage de compte et celui du poste sont deux réglages distincts'
+  )
+
+  // La dernière migration réaffirme l'ensemble des réglages : c'est elle qui
+  // fait converger une base ancienne vers une base neuve. Si elle en oublie,
+  // les officines mises à jour n'auront pas le même logiciel que les nouvelles.
+  const parametresConnus = (
+    base().prepare('SELECT COUNT(*) n FROM parametres').get() as unknown as { n: number }
+  ).n
+  verifier(
+    parametresConnus >= REGLAGES_LUS.length,
+    'la base déclare au moins autant de réglages que le code en lit',
+    parametresConnus
+  )
+
+  // ==========================================================================
   titre('Reprise de données')
 
   // Les exports des anciens logiciels ne se ressemblent pas : point-virgule ou
