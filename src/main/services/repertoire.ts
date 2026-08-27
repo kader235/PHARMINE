@@ -13,7 +13,7 @@
  * Son absence n'est jamais une erreur bloquante : la saisie manuelle reste
  * possible, simplement sans suggestions.
  */
-import { DatabaseSync } from 'node:sqlite'
+import Database from 'better-sqlite3-multiple-ciphers'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { app } from 'electron'
@@ -46,7 +46,7 @@ export interface EtatRepertoire {
   motif?: string
 }
 
-let connexion: DatabaseSync | null = null
+let connexion: Database.Database | null = null
 let etatConnu: EtatRepertoire | null = null
 
 /** Emplacements possibles, du plus probable au dernier recours. */
@@ -64,7 +64,7 @@ function emplacements(): string[] {
   return chemins
 }
 
-function ouvrir(): DatabaseSync | null {
+function ouvrir(): Database.Database | null {
   if (connexion) return connexion
   if (etatConnu && !etatConnu.disponible) return null
 
@@ -81,7 +81,7 @@ function ouvrir(): DatabaseSync | null {
   }
 
   try {
-    const db = new DatabaseSync(chemin, { readOnly: true })
+    const db = new Database(chemin, { readonly: true })
 
     // Un fichier tronqué ou remplacé se signale ici, pas au milieu d'une
     // saisie : on préfère désactiver la suggestion plutôt que de proposer
@@ -243,7 +243,7 @@ export function rechercher(saisie: string, limite = 12): FicheRepertoire[] {
 }
 
 function interroger(
-  db: DatabaseSync,
+  db: Database.Database,
   sql: string,
   parametres: (string | number)[]
 ): Record<string, unknown>[] | null {

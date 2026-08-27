@@ -1,5 +1,4 @@
-import type { SQLInputValue } from 'node:sqlite'
-import { base, transaction } from '../db'
+import { base, transaction, type ValeurSQL } from '../db'
 import type { Allocation, Lot, LotPeremption, MouvementStock, PalierPeremption } from '@shared/types'
 import {
   ErreurMetier,
@@ -354,7 +353,7 @@ export interface FiltreMouvements {
 
 export function mouvements(filtre: FiltreMouvements = {}): MouvementStock[] {
   const conditions: string[] = []
-  const params: Record<string, SQLInputValue> = {}
+  const params: Record<string, ValeurSQL> = {}
 
   if (filtre.produitId) (conditions.push('m.produit_id = :produitId'), (params.produitId = filtre.produitId))
   if (filtre.type) (conditions.push('m.type = :type'), (params.type = filtre.type))

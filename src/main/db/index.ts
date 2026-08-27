@@ -1,6 +1,19 @@
-import { DatabaseSync } from 'node:sqlite'
-import { existsSync, mkdirSync, copyFileSync, statSync } from 'node:fs'
+import Database from 'better-sqlite3-multiple-ciphers'
+import { existsSync, mkdirSync, copyFileSync, readFileSync, rmSync, statSync } from 'node:fs'
 import { dirname, join } from 'node:path'
+
+import { cleDuPoste } from './cles'
+
+/**
+ * Type des valeurs acceptees par une requete preparee.
+ *
+ * Declare ici plutot qu'importe du moteur : les services n'ont pas a savoir
+ * quel moteur SQLite est en dessous, et en changer ne doit pas se propager
+ * dans douze fichiers.
+ */
+export type ValeurSQL = string | number | bigint | Buffer | null
+
+export type Connexion = Database.Database
 
 import schemaSql from './schema.sql?raw'
 import seedSql from './seed.sql?raw'
@@ -31,14 +44,37 @@ const MIGRATIONS: { version: number; nom: string; sql: string }[] = [
 
 export const VERSION_SCHEMA = MIGRATIONS[MIGRATIONS.length - 1]!.version
 
-let db: DatabaseSync | null = null
+let db: Database.Database | null = null
+let cheminOuvert = ''
 
 /** Ouvre la base, applique les migrations manquantes, renvoie la connexion. */
-export function ouvrirBase(chemin: string): DatabaseSync {
+export function ouvrirBase(chemin: string): Connexion {
   if (db) return db
 
-  mkdirSync(dirname(chemin), { recursive: true })
-  const connexion = new DatabaseSync(chemin)
+  const dossier = dirname(chemin)
+  mkdirSync(dossier, { recursive: true })
+
+  const cle = cleDuPoste(dossier)
+
+  // Une base d'avant le chiffrement doit etre convertie avant tout usage :
+  // c'est le moment ou jamais, la connexion n'est pas encore etablie.
+  if (existsSync(chemin) && enClair(chemin)) chiffrerBaseExistante(chemin, cle)
+
+  const connexion = new Database(chemin)
+  connexion.pragma("cipher='sqlcipher'")
+  connexion.key(cle)
+
+  // Premiere requete : elle echoue si la cle ne correspond pas, et c'est la
+  // seule facon de le savoir — SQLite n'ouvre le fichier qu'a la demande.
+  try {
+    connexion.prepare('SELECT count(*) FROM sqlite_master').get()
+  } catch {
+    connexion.close()
+    throw new Error(
+      "Cette base appartient a un autre ordinateur : elle ne peut pas etre ouverte ici. " +
+        'Restaurez plutot une sauvegarde.'
+    )
+  }
 
   // WAL : lectures concurrentes pendant l'écriture, et surtout une base qui
   // survit à une coupure de courant — cas réel en officine.
@@ -50,10 +86,16 @@ export function ouvrirBase(chemin: string): DatabaseSync {
   appliquerMigrations(connexion)
 
   db = connexion
+  cheminOuvert = chemin
   return db
 }
 
-export function base(): DatabaseSync {
+/** Chemin du fichier actuellement ouvert. */
+export function cheminBaseOuvert(): string {
+  return cheminOuvert
+}
+
+export function base(): Connexion {
   if (!db) throw new Error("La base n'est pas ouverte.")
   return db
 }
@@ -63,7 +105,7 @@ export function fermerBase(): void {
   // Replie le WAL dans le fichier principal : une sauvegarde par copie
   // simple reste alors cohérente.
   try {
-    db.exec('PRAGMA wal_checkpoint(TRUNCATE)')
+    db.pragma('wal_checkpoint(TRUNCATE)')
   } catch {
     /* la base est peut-être déjà en cours de fermeture */
   }
@@ -71,7 +113,7 @@ export function fermerBase(): void {
   db = null
 }
 
-function appliquerMigrations(connexion: DatabaseSync): void {
+function appliquerMigrations(connexion: Connexion): void {
   connexion.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       version    INTEGER PRIMARY KEY,
@@ -84,7 +126,7 @@ function appliquerMigrations(connexion: DatabaseSync): void {
     connexion
       .prepare('SELECT version FROM schema_migrations')
       .all()
-      .map((r) => Number((r as { version: number }).version))
+      .map((r: unknown) => Number((r as { version: number }).version))
   )
 
   for (const migration of MIGRATIONS) {
@@ -105,6 +147,80 @@ function appliquerMigrations(connexion: DatabaseSync): void {
       )
     }
   }
+}
+
+/** Vrai si le fichier est une base SQLite ordinaire, donc lisible par tous. */
+export function enClair(chemin: string): boolean {
+  try {
+    const debut = Buffer.alloc(16)
+    const fichier = readFileSync(chemin)
+    fichier.copy(debut, 0, 0, Math.min(16, fichier.length))
+    return debut.subarray(0, 15).toString('latin1') === 'SQLite format 3'
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Chiffre sur place une base installée avant le chiffrement.
+ *
+ * Une copie de sécurité est posée à côté avant l'opération : si le courant
+ * saute au milieu, l'officine ne perd pas son historique. Elle est supprimée
+ * dès que la base chiffrée se relit correctement.
+ */
+function chiffrerBaseExistante(chemin: string, cle: Buffer): void {
+  const filet = `${chemin}.avant-chiffrement`
+  copyFileSync(chemin, filet)
+
+  try {
+    const connexion = new Database(chemin)
+    connexion.pragma("cipher='sqlcipher'")
+    connexion.rekey(cle)
+    connexion.close()
+
+    // Contrôle avant de retirer le filet : une base illisible après
+    // conversion serait une catastrophe silencieuse.
+    const controle = new Database(chemin, { readonly: true })
+    controle.pragma("cipher='sqlcipher'")
+    controle.key(cle)
+    controle.prepare('SELECT count(*) FROM sqlite_master').get()
+    controle.close()
+
+    rmSync(filet, { force: true })
+  } catch (erreur) {
+    // Retour à l'état d'avant : mieux vaut une base en clair qu'une base
+    // perdue.
+    copyFileSync(filet, chemin)
+    rmSync(filet, { force: true })
+    throw new Error(`Chiffrement de la base impossible : ${(erreur as Error).message}`)
+  }
+}
+
+/**
+ * Écrit une copie EN CLAIR de la base, pour une sauvegarde.
+ *
+ * Une sauvegarde doit pouvoir repartir sur un autre ordinateur : la recopier
+ * telle quelle, chiffrée avec la clé de ce poste-ci, la rendrait inutilisable
+ * là où on en aurait besoin. Elle est donc remise en clair puis aussitôt
+ * rechiffrée avec la clé du logiciel, par l'appelant.
+ */
+export function exporterEnClair(cheminBase: string, destination: string): void {
+  base().pragma('wal_checkpoint(TRUNCATE)')
+  copyFileSync(cheminBase, destination)
+
+  const copie = new Database(destination)
+  copie.pragma("cipher='sqlcipher'")
+  copie.key(cleDuPoste(dirname(cheminBase)))
+  copie.rekey(Buffer.alloc(0))
+  copie.close()
+}
+
+/** Rechiffre une base en clair avec la clé de CE poste : après restauration. */
+export function scellerPourCePoste(chemin: string, dossierBase: string): void {
+  const connexion = new Database(chemin)
+  connexion.pragma("cipher='sqlcipher'")
+  connexion.rekey(cleDuPoste(dossierBase))
+  connexion.close()
 }
 
 let profondeurTransaction = 0
@@ -150,10 +266,9 @@ export function transaction<T>(action: () => T): T {
  */
 export function sauvegarder(cheminBase: string, dossier: string, nom: string): { fichier: string; taille: number } {
   mkdirSync(dossier, { recursive: true })
-  base().exec('PRAGMA wal_checkpoint(TRUNCATE)')
 
   const fichier = join(dossier, nom)
-  copyFileSync(cheminBase, fichier)
+  exporterEnClair(cheminBase, fichier)
 
   return { fichier, taille: statSync(fichier).size }
 }
@@ -162,9 +277,9 @@ export function sauvegarder(cheminBase: string, dossier: string, nom: string): {
 export function verifierSauvegarde(fichier: string): { valide: boolean; version?: number; motif?: string } {
   if (!existsSync(fichier)) return { valide: false, motif: 'Fichier introuvable.' }
 
-  let controle: DatabaseSync | null = null
+  let controle: Database.Database | null = null
   try {
-    controle = new DatabaseSync(fichier, { readOnly: true })
+    controle = new Database(fichier, { readonly: true })
     const integrite = controle.prepare('PRAGMA integrity_check').get() as unknown as { integrity_check: string }
     if (integrite.integrity_check !== 'ok') {
       return { valide: false, motif: 'Le fichier est endommagé.' }

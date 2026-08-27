@@ -1,5 +1,4 @@
-import type { SQLInputValue } from 'node:sqlite'
-import { base, transaction } from '../db'
+import { base, transaction, type ValeurSQL } from '../db'
 import type { Depense } from '@shared/types'
 import { ErreurMetier, aujourdhui, debutDeJournee, finDeJournee, journaliser, prochaineReference } from './commun'
 import { sessionOuverte } from './caisse'
@@ -84,7 +83,7 @@ export interface FiltreDepenses {
 
 export function listerDepenses(filtre: FiltreDepenses = {}): Depense[] {
   const conditions = ['d.archived_at IS NULL']
-  const params: Record<string, SQLInputValue> = { limite: filtre.limite ?? 200 }
+  const params: Record<string, ValeurSQL> = { limite: filtre.limite ?? 200 }
 
   if (filtre.depuis) (conditions.push('d.date >= :depuis'), (params.depuis = filtre.depuis))
   if (filtre.jusqua) (conditions.push('d.date <= :jusqua'), (params.jusqua = filtre.jusqua))

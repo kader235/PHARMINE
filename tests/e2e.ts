@@ -5,14 +5,27 @@
  * l'application. Aucune donnée n'est simulée : chaque chiffre vérifié est
  * calculé par le logiciel.
  */
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import {
+  copyFileSync,
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync
+} from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
-import { VERSION_SCHEMA, base, fermerBase, ouvrirBase } from '../src/main/db'
+import { VERSION_SCHEMA, base, enClair, fermerBase, ouvrirBase } from '../src/main/db'
 import * as auth from '../src/main/services/auth'
 import * as configuration from '../src/main/services/configuration'
 import * as produits from '../src/main/services/produits'
+import Moteur from 'better-sqlite3-multiple-ciphers'
+import { randomBytes } from 'node:crypto'
+
 import * as coffre from '../src/main/services/coffre'
 import * as repertoire from '../src/main/services/repertoire'
 import * as reprise from '../src/main/services/reprise'
@@ -1216,65 +1229,59 @@ try {
   verifier(compteur === 0, 'un déverrouillage réussi remet le compteur d’essais à zéro', compteur)
 
   // ==========================================================================
-  titre('Sauvegardes chiffrées')
+  titre('Chiffrement de la base et des sauvegardes')
+
+  // La base vivante ne doit plus s'annoncer comme une base SQLite : c'est le
+  // premier reflexe de quiconque ouvre le fichier avec un outil tiers.
+  verifier(!enClair(cheminBase), 'le fichier de l’officine est chiffré')
+
+  const octetsBase = readFileSync(cheminBase)
+  verifier(
+    !octetsBase.includes(Buffer.from('SQLite format 3')),
+    'le fichier ne porte pas l’en-tête SQLite'
+  )
+  verifier(
+    !octetsBase.includes(Buffer.from('Doliprane')),
+    'aucun nom de produit n’est lisible dans la base'
+  )
+  verifier(
+    !octetsBase.includes(Buffer.from('Kouadio')),
+    'aucun nom de client n’est lisible dans la base'
+  )
 
   const dossierCoffre = join(dossier, 'coffre')
   const scellee = configuration.creerSauvegarde(cheminBase, dossierCoffre, 'manuelle', adminId)
 
-  verifier(scellee.fichier.endsWith('.pharmina'), 'la sauvegarde porte l’extension chiffrée', scellee.fichier)
+  verifier(scellee.fichier.endsWith('.pharmina'), 'la sauvegarde porte l’extension chiffrée')
   verifier(coffre.estChiffre(scellee.fichier), 'le fichier porte la signature du coffre')
   verifier(
     !existsSync(scellee.fichier.replace(/\.pharmina$/, '.db')),
-    'la version en clair ne subsiste pas à côté'
+    'aucune version en clair ne subsiste à côté'
   )
 
-  // Le point décisif : le fichier ne doit rien livrer à un outil tiers.
   const octets = readFileSync(scellee.fichier)
   verifier(
     !octets.includes(Buffer.from('SQLite format 3')),
-    'le fichier ne s’annonce plus comme une base SQLite'
+    'la sauvegarde ne s’annonce pas comme une base SQLite'
   )
   verifier(
     !octets.includes(Buffer.from('Doliprane')),
-    'aucun nom de produit n’est lisible dans le fichier'
-  )
-  verifier(
-    !octets.includes(Buffer.from('Kouadio')),
-    'aucun nom de client n’est lisible dans le fichier'
+    'aucun nom de produit n’est lisible dans la sauvegarde'
   )
 
-  // Et il doit rester exploitable par le logiciel, lui.
+  // Et elle doit rester exploitable par le logiciel, sans que personne n'ait
+  // rien a saisir : c'est tout l'objet du modele retenu.
   const controleScelle = configuration.controlerSauvegarde(scellee.fichier)
-  verifier(controleScelle.valide, 'le logiciel relit sa propre sauvegarde chiffrée', controleScelle.motif)
+  verifier(controleScelle.valide, 'le logiciel relit la sauvegarde sans rien demander', controleScelle.motif)
   verifier(controleScelle.chiffree === true, 'le contrôle signale que la sauvegarde est chiffrée')
 
-  // Clé de secours : c'est elle qui sauve une officine dont la machine a brûlé.
-  const secours = configuration.cleDeSecoursSauvegardes()
-  verifier(secours.chiffrementActif, 'le chiffrement est actif par défaut')
-  verifier(secours.cle.includes('-'), 'la clé de secours est découpée pour être recopiée à la main')
+  // Deux sauvegardes du meme contenu ne doivent pas se ressembler : sinon on
+  // deduit du fichier ce qui a change entre deux jours.
+  const seconde = configuration.creerSauvegarde(cheminBase, dossierCoffre, 'manuelle', adminId)
+  const octetsSeconde = readFileSync(seconde.fichier)
   verifier(
-    configuration.controlerSauvegarde(scellee.fichier, secours.cle).valide,
-    'la clé de secours ouvre la sauvegarde'
-  )
-
-  // Une clé étrangère ne doit rien ouvrir.
-  const cleEtrangere = coffre.cleDeSecours().replace(/[0-9A-Z]/, (c) => (c === 'Z' ? 'Y' : 'Z'))
-  const avecMauvaiseCle = configuration.controlerSauvegarde(scellee.fichier, cleEtrangere)
-  verifier(!avecMauvaiseCle.valide, 'une clé erronée est refusée')
-
-  verifier(
-    configuration.controlerSauvegarde(scellee.fichier, secours.cle.toLowerCase()).valide,
-    'la clé de secours fonctionne quelle que soit la casse'
-  )
-  verifier(
-    configuration.controlerSauvegarde(scellee.fichier, secours.cle.replace(/-/g, ' ')).valide,
-    'la clé de secours fonctionne avec des espaces au lieu des tirets'
-  )
-
-  refuse(
-    'une clé de secours tronquée est refusée avant tout déchiffrement',
-    () => coffre.cleDepuisSecours('ABCD-EFGH'),
-    'incomplète'
+    !octets.subarray(0, 200).equals(octetsSeconde.subarray(0, 200)),
+    'deux sauvegardes successives ne se ressemblent pas'
   )
 
   // Intégrité : GCM doit refuser un fichier retouché, même d'un seul octet.
@@ -1282,24 +1289,35 @@ try {
   const copieOctets = Buffer.from(octets)
   copieOctets[copieOctets.length - 5] ^= 0x01
   writeFileSync(falsifiee, copieOctets)
-  const controleFalsifie = configuration.controlerSauvegarde(falsifiee)
   verifier(
-    !controleFalsifie.valide,
+    !configuration.controlerSauvegarde(falsifiee).valide,
     'une sauvegarde modifiée d’un octet est refusée, pas restaurée en silence'
+  )
+
+  // Un fichier etranger ne doit pas passer pour une sauvegarde.
+  const etranger = join(dossierCoffre, 'etranger.pharmina')
+  writeFileSync(etranger, Buffer.from('ceci n’est pas une sauvegarde PHARMINA'))
+  verifier(
+    !configuration.controlerSauvegarde(etranger).valide,
+    'un fichier étranger est refusé'
   )
 
   // Les sauvegardes d'avant le chiffrement doivent rester restaurables :
   // refuser l'historique d'une officine parce que le format a change serait
   // inacceptable.
   configuration.definirParametres({ 'sauvegarde.chiffrement': '0' }, adminId)
-  const enClair = configuration.creerSauvegarde(cheminBase, dossierCoffre, 'manuelle', adminId)
-  verifier(enClair.fichier.endsWith('.db'), 'le chiffrement se désactive quand on le demande')
-  verifier(!coffre.estChiffre(enClair.fichier), 'la sauvegarde est alors en clair')
+  const enClairSauvegarde = configuration.creerSauvegarde(cheminBase, dossierCoffre, 'manuelle', adminId)
+  verifier(enClairSauvegarde.fichier.endsWith('.db'), 'le chiffrement se désactive quand on le demande')
+  verifier(!coffre.estChiffre(enClairSauvegarde.fichier), 'la sauvegarde est alors en clair')
   verifier(
-    configuration.controlerSauvegarde(enClair.fichier).valide,
+    configuration.controlerSauvegarde(enClairSauvegarde.fichier).valide,
     'une sauvegarde en clair reste contrôlable'
   )
   configuration.definirParametres({ 'sauvegarde.chiffrement': '1' }, adminId)
+
+  const protection = configuration.etatProtection()
+  verifier(protection.baseChiffree, 'l’écran de protection annonce une base chiffrée')
+  verifier(protection.sauvegardesChiffrees, 'l’écran de protection annonce des sauvegardes chiffrées')
 
   // ==========================================================================
   titre('Restauration')
@@ -1373,6 +1391,81 @@ try {
     configuration.controlerSauvegarde(restauration.copieDeSecurite).valide,
     'la copie de sécurité est elle-même relisible'
   )
+
+  // ==========================================================================
+  titre('La base n’appartient qu’à cet ordinateur')
+
+  // Le scenario redoute : quelqu'un copie pharmina.db sur une cle et l'emporte.
+  // Sur l'autre machine, PHARMINA cree sa propre cle de poste — et le fichier
+  // recopie ne s'ouvre pas. On le reproduit ici en copiant la base dans un
+  // dossier neuf, ou aucun sceau n'existe.
+  fermerBase()
+
+  const ailleurs = join(dossier, 'autre-ordinateur')
+  mkdirSync(ailleurs, { recursive: true })
+  const baseVolee = join(ailleurs, 'pharmina.db')
+  copyFileSync(cheminBase, baseVolee)
+
+  verifier(!enClair(baseVolee), 'la base emportée est bien chiffrée')
+
+  // Et le fichier lui-meme ne livre rien a un outil tiers.
+  const octetsVoles = readFileSync(baseVolee)
+  verifier(
+    !octetsVoles.includes(Buffer.from('SQLite format 3')) &&
+      !octetsVoles.includes(Buffer.from('Doliprane')),
+    'la base emportée ne livre ni en-tête ni données lisibles'
+  )
+
+  // Une base scellée par une AUTRE clé — c'est ce qu'est une base venue d'un
+  // autre ordinateur — doit être refusée au lieu de s'ouvrir vide ou de
+  // planter au milieu d'un écran.
+  const baseEtrangere = join(ailleurs, 'etrangere.db')
+  const etrangere = new Moteur(baseEtrangere)
+  etrangere.pragma("cipher='sqlcipher'")
+  etrangere.key(randomBytes(32))
+  etrangere.exec('CREATE TABLE t (v TEXT)')
+  etrangere.close()
+
+  let ouvertureEtrangere = 'refusée'
+  try {
+    ouvrirBase(baseEtrangere)
+    ouvertureEtrangere = 'ACCEPTÉE'
+    fermerBase()
+  } catch {
+    /* refus attendu */
+  }
+  verifier(
+    ouvertureEtrangere === 'refusée',
+    'une base scellée par une autre clé est refusée',
+    ouvertureEtrangere
+  )
+
+  // En revanche, une SAUVEGARDE doit repartir sur cet « autre ordinateur » :
+  // c'est toute la distinction demandee entre une copie et une sauvegarde.
+  const baseAilleurs = join(ailleurs, 'restauree', 'pharmina.db')
+  mkdirSync(join(ailleurs, 'restauree'), { recursive: true })
+
+  // On simule l'installation neuve : aucun sceau, donc une autre cle de poste.
+  ouvrirBase(baseAilleurs)
+  const restaurationAilleurs = configuration.restaurerSauvegarde(
+    { fichier: scellee.fichier },
+    baseAilleurs,
+    join(ailleurs, 'sauvegardes'),
+    1
+  )
+  fermerBase()
+  verifier(restaurationAilleurs.restaure, 'une sauvegarde se restaure sur un autre poste')
+
+  ouvrirBase(baseAilleurs)
+  const produitsAilleurs = (
+    base().prepare('SELECT COUNT(*) n FROM produits').get() as unknown as { n: number }
+  ).n
+  verifier(produitsAilleurs > 0, 'les données sont bien là après restauration ailleurs', produitsAilleurs)
+  verifier(!enClair(baseAilleurs), 'la base restaurée est rescellée à son nouveau poste')
+  fermerBase()
+
+  // Retour a la base de l'essai pour la suite des controles.
+  ouvrirBase(cheminBase)
 
   // ==========================================================================
   titre('Intégrité finale de la base')

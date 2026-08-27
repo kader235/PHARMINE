@@ -1,5 +1,4 @@
-import type { SQLInputValue } from 'node:sqlite'
-import { base, transaction } from '../db'
+import { base, transaction, type ValeurSQL } from '../db'
 import type { Achat, LigneReception } from '@shared/types'
 import { ErreurMetier, aujourdhui, journaliser, maintenant, prochaineReference } from './commun'
 import { entrerStock } from './stock'
@@ -198,7 +197,7 @@ export interface FiltreAchats {
 
 export function listerAchats(filtre: FiltreAchats = {}): Achat[] {
   const conditions: string[] = []
-  const params: Record<string, SQLInputValue> = { limite: filtre.limite ?? 100 }
+  const params: Record<string, ValeurSQL> = { limite: filtre.limite ?? 100 }
 
   if (filtre.fournisseurId) (conditions.push('a.fournisseur_id = :fournisseurId'), (params.fournisseurId = filtre.fournisseurId))
   if (filtre.statut) (conditions.push('a.statut = :statut'), (params.statut = filtre.statut))

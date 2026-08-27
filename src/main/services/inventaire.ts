@@ -1,5 +1,4 @@
-import type { SQLInputValue } from 'node:sqlite'
-import { base, transaction } from '../db'
+import { base, transaction, type ValeurSQL } from '../db'
 import type { Inventaire, InventaireLigne } from '@shared/types'
 import { ErreurMetier, journaliser, maintenant, prochaineReference } from './commun'
 import { ajusterLot } from './stock'
@@ -42,7 +41,7 @@ export function ouvrirInventaire(demande: DemandeInventaire, utilisateurId: numb
     const inventaireId = Number(resultat.lastInsertRowid)
 
     const conditions = ['p.archived_at IS NULL', 'l.quantite_restante > 0']
-    const params: Record<string, SQLInputValue> = { inv: inventaireId }
+    const params: Record<string, ValeurSQL> = { inv: inventaireId }
 
     if (demande.perimetre === 'categorie' && demande.perimetreRef) {
       conditions.push('p.categorie_id = :ref')

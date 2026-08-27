@@ -617,10 +617,16 @@ app.whenReady().then(async () => {
       await photographier(fenetre, 'produit-assistant', 400)
 
       await fenetre.webContents.executeJavaScript(`(${SAISIR})('.assistant-saisie', 'parac')`)
-      await new Promise((r) => setTimeout(r, 800))
 
+      // On attend que les propositions arrivent plutot que de dormir un delai
+      // fixe : la premiere recherche charge le moteur, et un banc qui echoue
+      // par intermittence finit par etre ignore.
       const propositions = (await fenetre.webContents.executeJavaScript(`
-        (() => {
+        (async () => {
+          const compter = () => document.querySelectorAll('.suggestion').length
+          for (let essai = 0; essai < 40 && compter() === 0; essai++) {
+            await new Promise((r) => setTimeout(r, 100))
+          }
           const s = Array.from(document.querySelectorAll('.suggestion'))
           return {
             nombre: s.length,

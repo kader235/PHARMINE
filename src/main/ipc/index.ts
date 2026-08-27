@@ -313,10 +313,10 @@ const CANAUX: Record<string, Canal> = {
   'sauvegardes.creer': c('sauvegardes.creer', (_, ctx) =>
     configuration.creerSauvegarde(cheminBaseCourant, dossierSauvegardesCourant, 'manuelle', ctx.utilisateurId)
   ),
-  'sauvegardes.controler': c('sauvegardes.restaurer', (p: { fichier: string; cleSecours?: string }) =>
-    configuration.controlerSauvegarde(p.fichier, p.cleSecours)
+  'sauvegardes.controler': c('sauvegardes.restaurer', (p: { fichier: string }) =>
+    configuration.controlerSauvegarde(p.fichier)
   ),
-  'sauvegardes.cleDeSecours': c('parametres.voir', () => configuration.cleDeSecoursSauvegardes()),
+  'sauvegardes.protection': c('parametres.voir', () => configuration.etatProtection()),
   'sauvegardes.choisirFichier': c('sauvegardes.restaurer', () => choisirSauvegarde()),
   'sauvegardes.restaurer': c('sauvegardes.restaurer', (p: configuration.RestaurationDemandee, ctx) =>
     restaurerPuisRedemarrer(p, ctx.utilisateurId)

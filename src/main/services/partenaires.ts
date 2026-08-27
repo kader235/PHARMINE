@@ -1,5 +1,4 @@
-import type { SQLInputValue } from 'node:sqlite'
-import { base, transaction } from '../db'
+import { base, transaction, type ValeurSQL } from '../db'
 import type { ApercuCompte, Client, Fournisseur, LigneReleve } from '@shared/types'
 import { ErreurMetier, debutDeJournee, journaliser, maintenant, prochaineReference } from './commun'
 
@@ -9,7 +8,7 @@ import { ErreurMetier, debutDeJournee, journaliser, maintenant, prochaineReferen
 
 export function listerFournisseurs(recherche?: string, inclureArchives = false): Fournisseur[] {
   const conditions: string[] = []
-  const params: Record<string, SQLInputValue> = {}
+  const params: Record<string, ValeurSQL> = {}
   if (!inclureArchives) conditions.push('f.archived_at IS NULL')
   if (recherche?.trim()) {
     conditions.push('(f.nom LIKE :q OR f.telephone LIKE :q OR f.contact_principal LIKE :q)')
@@ -154,7 +153,7 @@ export function archiverFournisseur(id: number, archiver: boolean, utilisateurId
 
 export function listerClients(recherche?: string, inclureArchives = false): Client[] {
   const conditions: string[] = []
-  const params: Record<string, SQLInputValue> = {}
+  const params: Record<string, ValeurSQL> = {}
   if (!inclureArchives) conditions.push('c.archived_at IS NULL')
   if (recherche?.trim()) {
     conditions.push('(c.nom LIKE :q OR c.telephone LIKE :q OR c.code = :exact)')
@@ -371,7 +370,7 @@ export function apercuCompte(clientId: number): ApercuCompte | null {
  */
 export function releveCompte(clientId: number, depuis?: string): LigneReleve[] {
   const conditions = depuis ? 'AND at >= :depuis' : ''
-  const params: Record<string, SQLInputValue> = { clientId }
+  const params: Record<string, ValeurSQL> = { clientId }
   if (depuis) params.depuis = debutDeJournee(depuis)
 
   const lignes = base()

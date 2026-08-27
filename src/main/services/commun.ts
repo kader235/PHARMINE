@@ -124,7 +124,7 @@ export function journaliser(entree: EntreeJournal): void {
     )
 }
 
-/** Convertit les `undefined` en `null` : node:sqlite refuse `undefined`. */
+/** Convertit les `undefined` en `null` : le moteur SQLite refuse `undefined`. */
 export function n<T>(valeur: T | undefined | null): T | null {
   return valeur === undefined ? null : valeur
 }

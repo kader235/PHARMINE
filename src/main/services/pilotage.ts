@@ -1,5 +1,4 @@
-import type { SQLInputValue } from 'node:sqlite'
-import { base } from '../db'
+import { base, type ValeurSQL } from '../db'
 import type { Indicateur, ResultatRecherche, TableauDeBord } from '@shared/types'
 import { aujourdhui, debutDeJournee, decalerJours, finDeJournee, parametreEntier } from './commun'
 import { etatCaisse } from './caisse'
@@ -427,7 +426,7 @@ export function journal(filtre: { depuis?: string; utilisateurId?: number; entit
   utilisateur: string | null
 }[] {
   const conditions: string[] = []
-  const params: Record<string, SQLInputValue> = { limite: filtre.limite ?? 200 }
+  const params: Record<string, ValeurSQL> = { limite: filtre.limite ?? 200 }
 
   if (filtre.depuis) (conditions.push('j.at >= :depuis'), (params.depuis = filtre.depuis))
   if (filtre.utilisateurId) (conditions.push('j.utilisateur_id = :uid'), (params.uid = filtre.utilisateurId))

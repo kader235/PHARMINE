@@ -9,10 +9,19 @@ import {
   unlinkSync,
   writeFileSync
 } from 'node:fs'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { tmpdir } from 'node:os'
-import { base, fermerBase, sauvegarder, transaction, verifierSauvegarde } from '../db'
+import {
+  base,
+  cheminBaseOuvert,
+  enClair,
+  fermerBase,
+  sauvegarder,
+  scellerPourCePoste,
+  transaction,
+  verifierSauvegarde
+} from '../db'
 import type { Pharmacie } from '@shared/types'
 import {
   ErreurMetier,
@@ -24,14 +33,8 @@ import {
   parametreEntier
 } from './commun'
 import { creerUtilisateur, type DemandeUtilisateur } from './auth'
-import {
-  chiffrerFichier,
-  cleDeSecours,
-  cleDepuisSecours,
-  cleMaitresse,
-  dechiffrerFichier,
-  estChiffre
-} from './coffre'
+import { chiffrerFichier, dechiffrerFichier, estChiffre } from './coffre'
+import { scellementDisponible } from '../db/cles'
 
 export interface DemandeConfiguration {
   pharmacie: {
@@ -288,7 +291,7 @@ function sceller(clair: { fichier: string; taille: number }): {
   const scelle = `${clair.fichier.replace(/\.db$/, '')}.pharmina`
 
   try {
-    chiffrerFichier(clair.fichier, scelle, cleMaitresse())
+    chiffrerFichier(clair.fichier, scelle)
     rmSync(clair.fichier, { force: true })
     return { fichier: scelle, taille: statSync(scelle).size, chiffree: true }
   } catch (erreur) {
@@ -454,27 +457,29 @@ function fichierTemporaire(suffixe: string): string {
  * restaurer l'historique d'une officine parce que le format a changé serait
  * inacceptable.
  */
-function ouvrirSauvegarde(
-  fichier: string,
-  cleFournie?: Buffer
-): { chemin: string; temporaire: boolean; chiffree: boolean } {
+function ouvrirSauvegarde(fichier: string): {
+  chemin: string
+  temporaire: boolean
+  chiffree: boolean
+} {
   if (!estChiffre(fichier)) return { chemin: fichier, temporaire: false, chiffree: false }
 
   const destination = fichierTemporaire('.db')
-  const cle = cleFournie ?? cleMaitresse()
-  dechiffrerFichier(fichier, destination, cle)
+  dechiffrerFichier(fichier, destination)
   return { chemin: destination, temporaire: true, chiffree: true }
 }
 
-export function controlerSauvegarde(
-  fichier: string,
-  cleSecours?: string
-): { valide: boolean; version?: number; motif?: string; chiffree?: boolean } {
+export function controlerSauvegarde(fichier: string): {
+  valide: boolean
+  version?: number
+  motif?: string
+  chiffree?: boolean
+} {
   if (!existsSync(fichier)) return { valide: false, motif: 'Fichier introuvable.' }
 
   let ouverte: { chemin: string; temporaire: boolean; chiffree: boolean } | null = null
   try {
-    ouverte = ouvrirSauvegarde(fichier, cleSecours ? cleDepuisSecours(cleSecours) : undefined)
+    ouverte = ouvrirSauvegarde(fichier)
     return { ...verifierSauvegarde(ouverte.chemin), chiffree: ouverte.chiffree }
   } catch (erreur) {
     return { valide: false, motif: (erreur as Error).message, chiffree: true }
@@ -483,18 +488,26 @@ export function controlerSauvegarde(
   }
 }
 
-/** Clé de secours à noter hors de l'ordinateur. */
-export function cleDeSecoursSauvegardes(): { cle: string; chiffrementActif: boolean } {
+/**
+ * Ce qui est protégé, et par quoi.
+ *
+ * Le pharmacien doit pouvoir répondre en deux secondes à « si on me prend cet
+ * ordinateur, que peut-on lire ? ». Ce panneau le dit sans jargon.
+ */
+export function etatProtection(): {
+  baseChiffree: boolean
+  scellementMachine: boolean
+  sauvegardesChiffrees: boolean
+} {
   return {
-    cle: cleDeSecours(),
-    chiffrementActif: parametreBooleen('sauvegarde.chiffrement', true)
+    baseChiffree: !enClair(cheminBaseOuvert()),
+    scellementMachine: scellementDisponible(),
+    sauvegardesChiffrees: parametreBooleen('sauvegarde.chiffrement', true)
   }
 }
 
 export interface RestaurationDemandee {
   fichier: string
-  /** Nécessaire seulement si la sauvegarde vient d'une autre installation. */
-  cleSecours?: string
 }
 
 /**
@@ -517,7 +530,7 @@ export function restaurerSauvegarde(
   dossierSauvegardes: string,
   utilisateurId: number
 ): { restaure: boolean; copieDeSecurite: string; version: number } {
-  const controle = controlerSauvegarde(demande.fichier, demande.cleSecours)
+  const controle = controlerSauvegarde(demande.fichier)
   if (!controle.valide) {
     throw new ErreurMetier(
       `Restauration refusée : ${controle.motif ?? 'sauvegarde illisible'}.`,
@@ -525,8 +538,16 @@ export function restaurerSauvegarde(
     )
   }
 
+  // Restaurer sur une installation neuve est le scénario normal après un
+  // sinistre : la base d'accueil est vide, l'utilisateur qui demande la
+  // restauration n'y existe pas encore. Journaliser à son nom violerait la
+  // clé étrangère et ferait échouer la seule opération qui sauve l'officine.
+  const auteurConnu = base()
+    .prepare('SELECT 1 x FROM utilisateurs WHERE id = ?')
+    .get(utilisateurId)
+
   journaliser({
-    utilisateurId,
+    utilisateurId: auteurConnu ? utilisateurId : null,
     action: 'Restauration de sauvegarde',
     entite: 'sauvegarde',
     resume: `${basename(demande.fichier)} (schéma ${controle.version})`
@@ -534,16 +555,20 @@ export function restaurerSauvegarde(
 
   // La copie de sécurité est prise pendant que la base est encore ouverte et
   // saine : c'est le dernier point de retour.
+  //
+  // Elle emprunte le chemin d'une sauvegarde ordinaire — remise en clair puis
+  // chiffrée avec la clé du logiciel — et non une simple copie du fichier.
+  // Recopiée telle quelle, elle resterait scellée à CE poste : inutilisable
+  // le jour où c'est précisément le poste qui a lâché.
   const horodatage = maintenant().replace(/[:.]/g, '-').slice(0, 19)
-  const copie = join(dossierSauvegardes, `avant-restauration-${horodatage}.db`)
   mkdirSync(dossierSauvegardes, { recursive: true })
-  base().exec('PRAGMA wal_checkpoint(TRUNCATE)')
-  copyFileSync(cheminBase, copie)
 
-  const ouverte = ouvrirSauvegarde(
-    demande.fichier,
-    demande.cleSecours ? cleDepuisSecours(demande.cleSecours) : undefined
-  )
+  const brute = sauvegarder(cheminBase, dossierSauvegardes, `avant-restauration-${horodatage}.db`)
+  const copie = parametreBooleen('sauvegarde.chiffrement', true)
+    ? sceller(brute).fichier
+    : brute.fichier
+
+  const ouverte = ouvrirSauvegarde(demande.fichier)
 
   try {
     fermerBase()
@@ -553,6 +578,11 @@ export function restaurerSauvegarde(
       rmSync(reste, { force: true })
     }
     copyFileSync(ouverte.chemin, cheminBase)
+
+    // La sauvegarde vient peut-être d'un autre ordinateur : elle est remise
+    // sous la clé de celui-ci, sans quoi elle ne s'ouvrirait pas au
+    // redémarrage.
+    scellerPourCePoste(cheminBase, dirname(cheminBase))
   } finally {
     if (ouverte.temporaire) rmSync(ouverte.chemin, { force: true })
   }

@@ -1,5 +1,4 @@
-import type { SQLInputValue } from 'node:sqlite'
-import { base, transaction } from '../db'
+import { base, transaction, type ValeurSQL } from '../db'
 import type { Page, Produit, ProduitEtat } from '@shared/types'
 import { ErreurMetier, journaliser, maintenant, prochaineReference } from './commun'
 
@@ -27,7 +26,7 @@ export interface FiltreProduits {
 
 export function listerProduits(filtre: FiltreProduits = {}): Page<ProduitEtat> {
   const conditions: string[] = []
-  const params: Record<string, SQLInputValue> = {}
+  const params: Record<string, ValeurSQL> = {}
 
   if (!filtre.inclureArchives) conditions.push('p.archived_at IS NULL')
   if (filtre.categorieId) (conditions.push('p.categorie_id = :categorieId'), (params.categorieId = filtre.categorieId))
@@ -64,7 +63,7 @@ export function listerProduits(filtre: FiltreProduits = {}): Page<ProduitEtat> {
   const parPage = Math.min(filtre.parPage ?? 50, 500)
   const page = Math.max(filtre.page ?? 1, 1)
 
-  // Deux jeux de paramètres distincts : node:sqlite refuse un paramètre nommé
+  // Deux jeux de paramètres distincts : le moteur refuse un paramètre nommé
   // qui n'apparaît pas dans la requête, et le comptage ignore la pagination.
   const total = (
     base().prepare(`SELECT COUNT(*) n FROM v_produit_etat p ${where}`).get(params) as unknown as { n: number }

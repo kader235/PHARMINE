@@ -1,5 +1,4 @@
-import type { SQLInputValue } from 'node:sqlite'
-import { base, transaction } from '../db'
+import { base, transaction, type ValeurSQL } from '../db'
 import type {
   Allocation,
   Avertissement,
@@ -555,7 +554,7 @@ export interface FiltreVentes {
 
 export function listerVentes(filtre: FiltreVentes = {}): Vente[] {
   const conditions: string[] = []
-  const params: Record<string, SQLInputValue> = { limite: filtre.limite ?? 100 }
+  const params: Record<string, ValeurSQL> = { limite: filtre.limite ?? 100 }
 
   if (filtre.depuis) (conditions.push('v.at >= :depuis'), (params.depuis = filtre.depuis))
   if (filtre.jusqua) (conditions.push('v.at <= :jusqua'), (params.jusqua = filtre.jusqua))

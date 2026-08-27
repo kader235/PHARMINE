@@ -21,7 +21,7 @@ import {
 } from '../ui/Composants'
 import Tableau, { CellulePrincipale } from '../ui/Tableau'
 import Reprise from './Reprise'
-import { FORMATS, useImpression } from '../ui/Impression'
+import { FORMATS } from '../ui/Impression'
 import { THEMES } from '../app/themes'
 import { dateCourte, depuis, nombre } from '../lib/format'
 
@@ -395,7 +395,7 @@ function Sauvegardes({ onMessage }: { onMessage: (titre: string, message?: strin
 
       <div className="pile" style={{ marginBottom: 14 }}>
         <CopieExterne modifiable={session.peut('parametres.modifier')} onMessage={onMessage} />
-        <CleDeSecours />
+        <Protection />
         {session.peut('sauvegardes.restaurer') ? <Restauration onMessage={onMessage} /> : null}
       </div>
 
@@ -657,86 +657,63 @@ function TestImpression({ enregistre }: { enregistre: boolean }) {
 }
 
 /**
- * Clé de secours.
+ * Protection des données.
  *
- * Les sauvegardes sont chiffrées avec une clé rangée dans la base. Tant que la
- * machine fonctionne, le logiciel restaure ses sauvegardes sans rien demander.
- * Le jour où la machine disparaît, cette clé disparaît avec elle — et le
- * disque de sauvegarde retrouvé ne sert plus à rien.
- *
- * D'où ce panneau : la clé s'affiche à la demande, s'imprime, et se recopie à
- * la main sans ambiguïté. Elle est masquée par défaut, car un secret affiché
- * en permanence sur un écran de comptoir n'est plus un secret.
+ * Le pharmacien doit pouvoir répondre en deux secondes à une question simple :
+ * « si on me prend cet ordinateur, que peut-on lire ? ». Ce panneau y répond
+ * sans jargon, et sans rien lui demander — c'est le logiciel qui s'occupe des
+ * clés.
  */
-function CleDeSecours() {
-  const etat = useRequete<{ cle: string; chiffrementActif: boolean }>('sauvegardes.cleDeSecours')
-  const [visible, setVisible] = useState(false)
-  const { imprimer } = useImpression()
-  const session = useSession()
+function Protection() {
+  const etat = useRequete<{
+    baseChiffree: boolean
+    scellementMachine: boolean
+    sauvegardesChiffrees: boolean
+  }>('sauvegardes.protection')
 
   if (!etat.donnees) return null
-
-  const { cle, chiffrementActif } = etat.donnees
+  const { baseChiffree, scellementMachine, sauvegardesChiffrees } = etat.donnees
 
   return (
-    <Panneau
-      titre="Clé de secours"
-      description="À noter sur papier, hors de cet ordinateur."
-      pied={
-        <div className="rangee espace">
-          <span style={{ fontSize: 11.5, color: 'var(--texte-faible)' }}>
-            Elle ne change jamais. Une seule copie conservée en lieu sûr suffit.
-          </span>
-          <div className="rangee">
-            <Bouton compact onClick={() => setVisible((v) => !v)}>
-              {visible ? 'Masquer' : 'Afficher la clé'}
-            </Bouton>
-            <Bouton
-              compact
-              icone="imprimer"
-              disabled={!visible}
-              onClick={() =>
-                imprimer(
-                  <div className="document">
-                    <h1>PHARMINA — Clé de secours des sauvegardes</h1>
-                    <p>{session.pharmacie.nom}</p>
-                    <p className="cle-secours" style={{ marginTop: 18 }}>
-                      {cle}
-                    </p>
-                    <p style={{ marginTop: 18, fontSize: 11 }}>
-                      Sans cette clé, une sauvegarde restaurée sur un autre ordinateur restera
-                      illisible. Conservez ce papier hors de l’officine.
-                    </p>
-                  </div>,
-                  'a4'
-                )
-              }
-            >
-              Imprimer
-            </Bouton>
-          </div>
-        </div>
-      }
-    >
-      {!chiffrementActif ? (
-        <Bandeau ton="attention" titre="Le chiffrement est désactivé">
-          Vos sauvegardes sont enregistrées en clair : n’importe quel outil peut les ouvrir.
-          Réactivez le chiffrement dans l’onglet Règles.
+    <Panneau titre="Protection de vos données" description="Rien à configurer : le logiciel s’en charge.">
+      {baseChiffree && sauvegardesChiffrees ? (
+        <Bandeau ton="succes" titre="Vos données ne sortent pas d’ici">
+          Le fichier de votre officine est chiffré et lié à cet ordinateur : recopié ailleurs, il
+          est illisible. Vos sauvegardes, elles, restent restaurables — mais uniquement dans
+          PHARMINA.
         </Bandeau>
       ) : (
-        <>
-          <p style={{ marginBottom: 12, fontSize: 12.5, color: 'var(--texte-attenue)', lineHeight: 1.6 }}>
-            Vos sauvegardes sont chiffrées : copiées sur une clé USB perdue ou volée, elles
-            restent illisibles. Cette clé de secours est le seul moyen de les rouvrir depuis un
-            autre ordinateur — après un vol, un incendie, un disque mort.
-          </p>
-          {visible ? (
-            <p className="cle-secours">{cle}</p>
-          ) : (
-            <p className="cle-secours masquee">{cle.replace(/[^-]/g, '•')}</p>
-          )}
-        </>
+        <Bandeau ton="danger" titre="Protection incomplète">
+          {!baseChiffree ? 'Le fichier de votre officine n’est pas chiffré. ' : ''}
+          {!sauvegardesChiffrees ? 'Vos sauvegardes sont enregistrées en clair.' : ''}
+        </Bandeau>
       )}
+
+      <dl className="liste-definitions" style={{ marginTop: 12 }}>
+        <dt>Fichier de l’officine</dt>
+        <dd>
+          <Etiquette ton={baseChiffree ? 'succes' : 'danger'}>
+            {baseChiffree ? 'Chiffré, lié à cet ordinateur' : 'En clair'}
+          </Etiquette>
+        </dd>
+        <dt>Sauvegardes</dt>
+        <dd>
+          <Etiquette ton={sauvegardesChiffrees ? 'succes' : 'danger'}>
+            {sauvegardesChiffrees ? 'Chiffrées, restaurables dans PHARMINA' : 'En clair'}
+          </Etiquette>
+        </dd>
+        <dt>Scellement par Windows</dt>
+        <dd>
+          <Etiquette ton={scellementMachine ? 'succes' : 'attention'}>
+            {scellementMachine ? 'Actif' : 'Indisponible — protection réduite'}
+          </Etiquette>
+        </dd>
+      </dl>
+
+      <p style={{ marginTop: 12, fontSize: 11.5, color: 'var(--texte-faible)', lineHeight: 1.6 }}>
+        Une sauvegarde restaurée sur un autre ordinateur y est automatiquement rattachée à cette
+        machine-là. Vous n’avez aucune clé à noter ni à retenir.
+      </p>
     </Panneau>
   )
 }
@@ -757,24 +734,13 @@ function Restauration({ onMessage }: { onMessage: (titre: string, message?: stri
     motif?: string
     chiffree?: boolean
   } | null>(null)
-  const [cleSecours, setCleSecours] = useState('')
 
   async function choisir(): Promise<void> {
     const choix = await action.executer<{ fichier: string } | null>('sauvegardes.choisirFichier')
     if (!choix) return
     setCandidat(choix)
-    setCleSecours('')
     const verdict = await action.executer<typeof controle>('sauvegardes.controler', {
       fichier: choix.fichier
-    })
-    setControle(verdict ?? null)
-  }
-
-  async function reverifier(): Promise<void> {
-    if (!candidat) return
-    const verdict = await action.executer<typeof controle>('sauvegardes.controler', {
-      fichier: candidat.fichier,
-      cleSecours: cleSecours.trim() || undefined
     })
     setControle(verdict ?? null)
   }
@@ -782,8 +748,7 @@ function Restauration({ onMessage }: { onMessage: (titre: string, message?: stri
   async function restaurer(): Promise<void> {
     if (!candidat) return
     const r = await action.executer<{ copieDeSecurite: string }>('sauvegardes.restaurer', {
-      fichier: candidat.fichier,
-      cleSecours: cleSecours.trim() || undefined
+      fichier: candidat.fichier
     })
     if (!r) return
     setCandidat(null)
@@ -841,23 +806,10 @@ function Restauration({ onMessage }: { onMessage: (titre: string, message?: stri
                 La base actuelle sera conservée sous « avant-restauration ». Le logiciel redémarrera.
               </Bandeau>
             ) : (
-              <>
-                <Bandeau ton="danger" titre="Sauvegarde illisible">
-                  {controle?.motif ?? 'Fichier non reconnu.'}
-                </Bandeau>
-                <Champ
-                  libelle="Clé de secours"
-                  value={cleSecours}
-                  onChange={(e) => setCleSecours(e.target.value)}
-                  placeholder="XXXX-XXXX-XXXX-…"
-                  aide="Nécessaire si la sauvegarde vient d’une autre installation."
-                />
-                <div className="rangee" style={{ justifyContent: 'flex-end' }}>
-                  <Bouton enCours={action.enCours} disabled={!cleSecours.trim()} onClick={reverifier}>
-                    Réessayer avec cette clé
-                  </Bouton>
-                </div>
-              </>
+              <Bandeau ton="danger" titre="Sauvegarde illisible">
+                {controle?.motif ?? 'Fichier non reconnu.'} Vérifiez qu’il s’agit bien d’une
+                sauvegarde produite par PHARMINA.
+              </Bandeau>
             )}
           </div>
         </Modale>

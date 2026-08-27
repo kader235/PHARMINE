@@ -18,7 +18,7 @@
  *
  * Exécution : npm run repertoire
  */
-const { DatabaseSync } = require('node:sqlite')
+const Database = require('better-sqlite3-multiple-ciphers')
 const { createHash } = require('node:crypto')
 const { readFileSync, mkdirSync, rmSync, existsSync, statSync } = require('node:fs')
 const { join } = require('node:path')
@@ -134,7 +134,7 @@ function construire() {
     rmSync(reste, { force: true })
   }
 
-  const db = new DatabaseSync(SORTIE)
+  const db = new Database(SORTIE)
 
   // Pas de WAL : le fichier sera ouvert en lecture seule, et le mode WAL
   // exige de pouvoir écrire deux fichiers voisins.

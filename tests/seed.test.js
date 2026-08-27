@@ -1,6 +1,6 @@
 const fs = require('node:fs')
-const { DatabaseSync } = require('node:sqlite')
-const db = new DatabaseSync(':memory:')
+const Database = require('better-sqlite3-multiple-ciphers')
+const db = new Database(':memory:')
 db.exec('PRAGMA foreign_keys = ON')
 db.exec(fs.readFileSync('src/main/db/schema.sql', 'utf8'))
 try { db.exec(fs.readFileSync('src/main/db/seed.sql', 'utf8')) }
