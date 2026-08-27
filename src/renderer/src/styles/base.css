@@ -2729,3 +2729,26 @@ table.tableau tbody tr.selectionnee td {
 .liste-limites strong {
   color: var(--texte);
 }
+
+/* Mention d'une mise a jour dans la barre d'etat. Discrete par construction :
+   une nouveaute logicielle n'a jamais la priorite sur un client au comptoir. */
+.etat-maj {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: none;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.etat-maj:hover {
+  text-decoration: underline;
+}
+
+.etat-pastille.disponible {
+  background: var(--accent);
+}

@@ -1,6 +1,7 @@
 import type { EtatCaisse } from '@shared/types'
 import { useBarreFonctions } from './fonctions'
 import { useSession } from './Session'
+import { useRequete } from '../lib/hooks'
 import { heure, montant } from '../lib/format'
 
 /**
@@ -44,9 +45,23 @@ export function BarreFonctions() {
  * ce sont les deux informations qu'un responsable veut pouvoir vérifier d'un
  * coup d'œil, sans naviguer.
  */
-export function BarreEtat({ caisse, horloge }: { caisse: EtatCaisse | null; horloge: string }) {
+export function BarreEtat({
+  caisse,
+  horloge,
+  onMiseAJour
+}: {
+  caisse: EtatCaisse | null
+  horloge: string
+  onMiseAJour?: () => void
+}) {
   const session = useSession()
   const ouverte = !!caisse?.session
+
+  // Mention d'une version disponible : une ligne dans la barre d'état, jamais
+  // une fenetre. Un pharmacien qui sert un client ne doit pas etre interrompu
+  // par une nouveaute logicielle.
+  const maj = useRequete<{ versionDisponible: string | null; prete: boolean }>('majLogiciel.etat')
+  const versionDisponible = maj.donnees?.versionDisponible ?? null
 
   return (
     <div className="barre-etat">
@@ -75,7 +90,14 @@ export function BarreEtat({ caisse, horloge }: { caisse: EtatCaisse | null; horl
         </div>
       ) : null}
 
-      <div className="etat-bloc a-droite">
+      {versionDisponible ? (
+        <button type="button" className="etat-bloc etat-maj a-droite" onClick={onMiseAJour}>
+          <span className="etat-pastille disponible" />
+          {maj.donnees?.prete ? 'Mise à jour prête' : `Version ${versionDisponible} disponible`}
+        </button>
+      ) : null}
+
+      <div className={`etat-bloc${versionDisponible ? '' : ' a-droite'}`}>
         {session.utilisateur.role} · <strong>{session.utilisateur.nom_complet}</strong>
       </div>
       <div className="etat-bloc">

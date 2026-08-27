@@ -264,7 +264,11 @@ export default function Coque() {
           ) : null}
 
           <BarreFonctions />
-          <BarreEtat caisse={caisse.donnees} horloge={horloge} />
+          <BarreEtat
+            caisse={caisse.donnees}
+            horloge={horloge}
+            onMiseAJour={() => naviguer({ module: 'parametres', filtre: 'sauvegardes' })}
+          />
         </div>
       </div>
 

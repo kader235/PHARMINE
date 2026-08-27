@@ -6,6 +6,7 @@ import { creerSauvegarde } from './services/configuration'
 import { parametreBooleen } from './services/commun'
 import { rafraichirAlertes } from './services/alertes'
 import { definirDossierLicence } from './services/licence'
+import { verifier as verifierMiseAJour } from './services/miseAJour'
 
 /**
  * Emplacement des données.
@@ -30,6 +31,29 @@ const dossierSauvegardes = join(dossierDonnees, 'sauvegardes')
 definirDossierLicence(dirname(cheminBase))
 
 let fenetre: BrowserWindow | null = null
+
+/**
+ * Contrôle des mises à jour.
+ *
+ * Une minute après le démarrage — pas au moment où le pharmacien ouvre son
+ * logiciel et attend son écran — puis une fois par jour. Le contrôle est
+ * silencieux : il ne télécharge rien, n'affiche aucune fenêtre, et échoue sans
+ * bruit si la ligne est coupée. Tout ce qu'il fait, c'est permettre à la barre
+ * d'état de mentionner qu'une version existe.
+ */
+function surveillerLesMisesAJour(): void {
+  const UNE_MINUTE = 60_000
+  const UN_JOUR = 24 * 60 * UNE_MINUTE
+
+  const controler = (): void => {
+    void verifierMiseAJour().catch(() => {
+      /* jamais bloquant : une officine hors ligne travaille normalement */
+    })
+  }
+
+  setTimeout(controler, UNE_MINUTE).unref?.()
+  setInterval(controler, UN_JOUR).unref?.()
+}
 
 function creerFenetre(): void {
   fenetre = new BrowserWindow({
@@ -100,6 +124,7 @@ if (!app.requestSingleInstanceLock()) {
     }
 
     creerFenetre()
+    surveillerLesMisesAJour()
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) creerFenetre()
