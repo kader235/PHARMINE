@@ -11,6 +11,7 @@ import {
   ErreurMetier,
   aujourdhui,
   debutDeJournee,
+  finDeJournee,
   decalerJours,
   journaliser,
   maintenant,
@@ -21,6 +22,7 @@ import {
 import { allouerFEFO, consommerAllocation, ecrireMouvement, stockDisponible } from './stock'
 import { encaisser, sessionOuverte } from './caisse'
 import { rafraichirAlertes } from './alertes'
+import { exigerVenteAutorisee, jourEffectif } from './licence'
 
 interface LignePreparee {
   produitId: number
@@ -339,6 +341,24 @@ export function verifierVente(
   }
 }
 
+/**
+ * Ventes finalisées du jour effectif.
+ *
+ * Le jour vient du service de licence, pas de l'horloge : c'est ce qui rend le
+ * quota de démonstration insensible à un changement de date.
+ */
+export function ventesDuJourEffectif(): number {
+  const jour = jourEffectif()
+  return (
+    base()
+      .prepare(
+        `SELECT COUNT(*) n FROM ventes
+         WHERE statut = 'finalisee' AND at BETWEEN ? AND ?`
+      )
+      .get(debutDeJournee(jour), finDeJournee(jour)) as unknown as { n: number }
+  ).n
+}
+
 export function enregistrerVente(
   demande: DemandeVente,
   utilisateurId: number,
@@ -350,6 +370,10 @@ export function enregistrerVente(
   if (bloquants.length) {
     throw new ErreurMetier(bloquants[0]!.message, bloquants[0]!.code, bloquants[0]!.detail)
   }
+
+  // Quota de la démonstration. Le contrôle porte sur le JOUR EFFECTIF, pas sur
+  // l'horloge : reculer la date de l'ordinateur ne rouvre pas la journée.
+  exigerVenteAutorisee(ventesDuJourEffectif())
 
   const session = sessionOuverte()
 

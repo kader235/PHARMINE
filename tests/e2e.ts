@@ -24,9 +24,11 @@ import * as auth from '../src/main/services/auth'
 import * as configuration from '../src/main/services/configuration'
 import * as produits from '../src/main/services/produits'
 import Moteur from 'better-sqlite3-multiple-ciphers'
-import { randomBytes } from 'node:crypto'
+import { createHash, createPrivateKey, randomBytes, sign } from 'node:crypto'
+import { homedir, hostname, userInfo } from 'node:os'
 
 import * as coffre from '../src/main/services/coffre'
+import * as licence from '../src/main/services/licence'
 import * as repertoire from '../src/main/services/repertoire'
 import * as reprise from '../src/main/services/reprise'
 import * as stock from '../src/main/services/stock'
@@ -840,6 +842,181 @@ try {
     configuration.controlerSauvegarde(join(dossier, 'inexistant.db')).valide === false,
     'un fichier inexistant est rejeté'
   )
+
+  // ==========================================================================
+  titre('Démonstration et licences')
+
+  licence.definirDossierLicence(join(dossier, 'licence'))
+  mkdirSync(join(dossier, 'licence'), { recursive: true })
+
+  // Vendre exige une caisse ouverte : la clôture a eu lieu plus haut, on en
+  // rouvre une pour éprouver le quota dans les conditions réelles.
+  caisse.ouvrirCaisse(0, adminId)
+
+  verifier(!licence.activee(), 'le logiciel démarre en démonstration')
+  verifier(
+    licence.codeInstallation().split('-').length === 4,
+    'le code d’installation tient en quatre groupes dictables',
+    licence.codeInstallation()
+  )
+
+  // Le quota du jour. On compte ce qui existe deja, puis on pousse jusqu'a la
+  // limite : c'est le comportement reel, pas une simulation.
+  const dejaVendu = ventes.ventesDuJourEffectif()
+  const encorePossibles = licence.VENTES_PAR_JOUR_DEMO - dejaVendu
+  verifier(encorePossibles > 0, 'la démonstration laisse encore vendre', encorePossibles)
+
+  const venteDemo = (): void => {
+    ventes.enregistrerVente(
+      {
+        lignes: [{ produitId: doliprane, quantite: 1 }],
+        paiements: [{ mode: 'especes', montant: 1500 }]
+      },
+      adminId,
+      auth.permissionsDe(adminId)
+    )
+  }
+
+  for (let i = 0; i < encorePossibles; i++) venteDemo()
+
+  verifier(
+    ventes.ventesDuJourEffectif() === licence.VENTES_PAR_JOUR_DEMO,
+    'la démonstration accepte exactement dix ventes dans la journée',
+    ventes.ventesDuJourEffectif()
+  )
+
+  refuse(
+    'la onzième vente du jour est refusée en démonstration',
+    () => venteDemo(),
+    'démonstration permet'
+  )
+
+  // Reculer l'horloge est le contournement evident : il ne doit rien donner.
+  const jourAvant = licence.jourEffectif()
+
+  // Trois jours en arrière, comme le ferait quelqu'un qui veut rouvrir son
+  // quota en changeant la date de Windows.
+  const troisJoursAvant = decalerJours(jourAvant, -3)
+  verifier(
+    licence.jourEffectif(troisJoursAvant) === jourAvant,
+    'reculer la date de l’ordinateur ne fait pas revenir la veille',
+    licence.jourEffectif(troisJoursAvant)
+  )
+
+  // Le quota reste celui du jour retenu : la journée ne recommence pas.
+  refuse(
+    'le quota reste atteint malgré l’horloge reculée',
+    () => venteDemo(),
+    'démonstration permet'
+  )
+
+  const etatHorloge = licence.etat(ventes.ventesDuJourEffectif())
+  verifier(etatHorloge.horlogeSuspecte, 'le recul d’horloge est enregistré et signalé')
+  verifier(etatHorloge.reculs >= 1, 'le nombre de reculs est compté', etatHorloge.reculs)
+
+  // Les fonctions reservees.
+  refuse(
+    'les rapports sont refusés en démonstration',
+    () => licence.exigerLicence('rapports'),
+    'démonstration'
+  )
+  refuse(
+    'l’export est refusé en démonstration',
+    () => licence.exigerLicence('export'),
+    'démonstration'
+  )
+
+  // Une cle inventee ne doit rien ouvrir.
+  refuse(
+    'une clé d’activation inventée est refusée',
+    () => licence.activer('ABCDE-FGHJK-MNPQR-STVWX-YZ012-34567-89ABC-DEFGH-JKMNP-QRSTV-WXYZ0', adminId),
+    'pas valable'
+  )
+  refuse('une clé vide est refusée', () => licence.activer('', adminId), 'pas valable')
+  verifier(!licence.activee(), 'une clé refusée n’active rien')
+
+  // Activation reelle, avec une licence signee par la cle privee de l'editeur.
+  // Sans ce fichier — sur une machine de compilation, par exemple — le
+  // contrôle est annoncé comme non exécuté plutôt que silencieusement absent.
+  const clePrivee = join(process.cwd(), 'licence-privee.pem')
+
+  if (!existsSync(clePrivee)) {
+    console.log('  NOTE  | activation non vérifiée : licence-privee.pem absent de ce poste')
+  } else {
+    const empreinte = createHash('sha256')
+      .update(
+        'PHARMINA-poste ' +
+          [
+            hostname(),
+            userInfo().username,
+            homedir(),
+            process.env.COMPUTERNAME ?? '',
+            process.env.USERDOMAIN ?? ''
+          ].join(' ')
+      )
+      .digest()
+      .subarray(0, 10)
+
+    const entete = Buffer.from([1, 0, 0, 0])
+    const signature = sign(
+      null,
+      Buffer.concat([Buffer.from('PHARMINA-LICENCE-1'), entete, empreinte]),
+      createPrivateKey(readFileSync(clePrivee))
+    )
+
+    const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+    const encoder = (octets: Buffer): string => {
+      let tampon = 0
+      let bits = 0
+      let sortie = ''
+      for (const octet of octets) {
+        tampon = (tampon << 8) | octet
+        bits += 8
+        while (bits >= 5) {
+          sortie += ALPHABET[(tampon >>> (bits - 5)) & 31]
+          bits -= 5
+        }
+      }
+      if (bits > 0) sortie += ALPHABET[(tampon << (5 - bits)) & 31]
+      return sortie
+    }
+
+    const cle = encoder(Buffer.concat([entete, signature]))
+
+    // Une licence signée pour un AUTRE poste ne doit pas passer.
+    const pourAutrePoste = sign(
+      null,
+      Buffer.concat([Buffer.from('PHARMINA-LICENCE-1'), entete, Buffer.alloc(10, 7)]),
+      createPrivateKey(readFileSync(clePrivee))
+    )
+    refuse(
+      'une licence signée pour un autre ordinateur est refusée',
+      () => licence.activer(encoder(Buffer.concat([entete, pourAutrePoste])), adminId),
+      'pas valable'
+    )
+
+    const apresActivation = licence.activer(cle, adminId)
+    verifier(apresActivation.activee, 'une licence valable active le logiciel')
+    verifier(licence.activee(), 'l’activation est retenue')
+    verifier(apresActivation.expiration === null, 'une licence sans durée est perpétuelle')
+
+    // Et les limites tombent.
+    venteDemo()
+    verifier(
+      ventes.ventesDuJourEffectif() > licence.VENTES_PAR_JOUR_DEMO,
+      'le quota de ventes ne s’applique plus une fois activé',
+      ventes.ventesDuJourEffectif()
+    )
+    licence.exigerLicence('rapports')
+    verifier(true, 'les rapports redeviennent accessibles')
+
+    // La clé est conservée telle quelle : on doit pouvoir redémarrer sans
+    // ressaisir quoi que ce soit.
+    licence.definirDossierLicence(join(dossier, 'licence'))
+    verifier(licence.activee(), 'l’activation survit à un redémarrage')
+  }
+
+  caisse.cloturerCaisse(caisse.etatCaisse().theoriqueEspeces, null, adminId)
 
   // ==========================================================================
   titre('Réglages attendus par le logiciel')

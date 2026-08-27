@@ -2642,3 +2642,90 @@ table.tableau tbody tr.selectionnee td {
 .cle-secours.masquee {
   color: var(--texte-faible);
 }
+
+/* =============================================================================
+   Démonstration et activation
+
+   Le bandeau est discret mais permanent : il rappelle la limite du jour sans
+   occuper l'écran. Il se durcit quand le quota approche — c'est le moment où
+   l'on décide d'acheter, pas trois jours plus tard.
+   ============================================================================= */
+
+.bandeau-demo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+  padding: 5px 14px;
+  border-top: 1px solid var(--bordure);
+  background: var(--surface-attenuee);
+  font-size: 11.5px;
+  color: var(--texte-attenue);
+}
+
+.bandeau-demo.serre {
+  background: var(--attention-fond);
+  color: var(--attention);
+}
+
+.bandeau-demo-marque {
+  padding: 1px 7px;
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.bandeau-demo-texte {
+  flex: 1;
+  min-width: 0;
+}
+
+.bandeau-demo-action {
+  border: 0;
+  background: none;
+  padding: 0;
+  color: var(--accent);
+  font-family: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.activation-explication {
+  color: var(--texte-attenue);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+/* Le code d'installation se dicte au téléphone : gros, espacé, sans
+   ambiguïté possible entre un zéro et un O. */
+.activation-code {
+  padding: 14px;
+  border: 1px dashed var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface-attenuee);
+  color: var(--texte-fort);
+  font-family: var(--police-mono, ui-monospace, 'Cascadia Mono', Consolas, monospace);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-align: center;
+}
+
+.liste-limites {
+  display: grid;
+  gap: 9px;
+  margin: 0;
+  padding-left: 18px;
+  color: var(--texte-attenue);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.liste-limites strong {
+  color: var(--texte);
+}

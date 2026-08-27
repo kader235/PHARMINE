@@ -5,6 +5,7 @@ import { chemins, contexteActuel, enregistrerCanaux, terminerSession } from './i
 import { creerSauvegarde } from './services/configuration'
 import { parametreBooleen } from './services/commun'
 import { rafraichirAlertes } from './services/alertes'
+import { definirDossierLicence } from './services/licence'
 
 /**
  * Emplacement des données.
@@ -23,6 +24,10 @@ const dossierDonnees = process.env.PHARMINA_BASE
   ? dirname(dirname(cheminBase))
   : app.getPath('userData')
 const dossierSauvegardes = join(dossierDonnees, 'sauvegardes')
+
+// L'etat de licence est scelle a cote de la cle de la base : effacer la base
+// de donnees ne remet donc pas la demonstration a zero.
+definirDossierLicence(dirname(cheminBase))
 
 let fenetre: BrowserWindow | null = null
 

@@ -19,6 +19,7 @@ import * as alertes from '../services/alertes'
 import * as configuration from '../services/configuration'
 import * as impression from '../services/impression'
 import * as reprise from '../services/reprise'
+import * as licence from '../services/licence'
 
 /** Session courante. Une seule à la fois : c'est un poste de travail, pas un serveur. */
 interface Contexte {
@@ -54,6 +55,22 @@ interface Canal {
 const c = (permission: string | null, gestionnaire: Gestionnaire): Canal => ({ permission, gestionnaire })
 /** Canal accessible à tout utilisateur connecté, sans permission particulière. */
 const connecte = (gestionnaire: Gestionnaire): Canal => ({ permission: '', gestionnaire })
+
+/**
+ * Canal réservé à la version complète.
+ *
+ * La restriction se lit dans la déclaration du canal, à côté de la permission :
+ * c'est le seul endroit où l'on peut vérifier d'un coup d'œil ce que la
+ * démonstration laisse faire. Un contrôle dispersé dans les services finirait
+ * par en oublier un.
+ */
+const reserve = (permission: string, domaine: string, gestionnaire: Gestionnaire): Canal => ({
+  permission,
+  gestionnaire: (charge, ctx, source) => {
+    licence.exigerLicence(domaine)
+    return gestionnaire(charge, ctx, source)
+  }
+})
 
 export function chemins(cheminBase: string, dossierSauvegardes: string): void {
   cheminBaseCourant = cheminBase
@@ -97,6 +114,12 @@ const CANAUX: Record<string, Canal> = {
     sessionId: ctx.sessionId,
     pharmacie: auth.pharmacie()
   })),
+  // --- Licence ---------------------------------------------------------------
+  'licence.etat': c(null, () => licence.etat(ventesDuJourSansEchouer())),
+  'licence.activer': c(null, (p: { cle: string }) =>
+    licence.activer(p.cle, contexte?.utilisateurId ?? null)
+  ),
+
   'app.reglages': connecte(() => configuration.reglagesInterface()),
   'auth.changerMotDePasse': connecte((p: { ancien: string | null; nouveau: string }, ctx) =>
     auth.changerMotDePasse(ctx.utilisateurId, p.ancien, p.nouveau)
@@ -250,13 +273,15 @@ const CANAUX: Record<string, Canal> = {
   ),
 
   // --- Rapports --------------------------------------------------------------
-  'rapports.ventes': c('rapports.voir', (p: { depuis: string; jusqua: string; granularite: never }) =>
+  // Réservés à la version complète : analyser son activité et sortir ses
+  // données, c'est exploiter une officine — pas l'essayer.
+  'rapports.ventes': reserve('rapports.voir', 'rapports', (p: { depuis: string; jusqua: string; granularite: never }) =>
     pilotage.rapportVentes(p.depuis, p.jusqua, p.granularite)
   ),
-  'rapports.produits': c('rapports.voir', (p: { depuis: string; jusqua: string; sens: never }) =>
+  'rapports.produits': reserve('rapports.voir', 'rapports', (p: { depuis: string; jusqua: string; sens: never }) =>
     pilotage.rapportProduits(p.depuis, p.jusqua, p.sens)
   ),
-  'rapports.stock': c('rapports.voir', () => pilotage.rapportStock()),
+  'rapports.stock': reserve('rapports.voir', 'rapports', () => pilotage.rapportStock()),
 
   // --- Alertes ---------------------------------------------------------------
   'alertes.lister': c('alertes.voir', (p) => alertes.listerAlertes(p?.inclureResolues)),
@@ -323,7 +348,7 @@ const CANAUX: Record<string, Canal> = {
   ),
 
   // --- Export de fichiers ----------------------------------------------------
-  'exports.enregistrer': c('rapports.exporter', (p: { nomFichier: string; contenu: string }, ctx) =>
+  'exports.enregistrer': reserve('rapports.exporter', 'export', (p: { nomFichier: string; contenu: string }, ctx) =>
     exporter(p.nomFichier, p.contenu, ctx.utilisateurId)
   )
 }
@@ -370,6 +395,22 @@ function exporter(nomFichier: string, contenu: string, utilisateurId: number): {
  * On analyse dans la foulée : l'utilisateur n'a pas à choisir un fichier puis
  * cliquer « analyser », et une erreur de format se voit tout de suite.
  */
+/**
+ * Ventes du jour, sans jamais faire échouer l'écran d'activation.
+ *
+ * Celui-ci peut s'afficher avant qu'une base soit ouverte — première
+ * installation, licence expirée. Le compteur vaut alors zéro plutôt que de
+ * remonter une erreur technique à quelqu'un qui veut simplement activer son
+ * logiciel.
+ */
+function ventesDuJourSansEchouer(): number {
+  try {
+    return ventes.ventesDuJourEffectif()
+  } catch {
+    return 0
+  }
+}
+
 function choisirFichierReprise(
   type: reprise.TypeReprise
 ): (reprise.AnalyseFichier & { chemin: string }) | null {

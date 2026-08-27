@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
 import { useSession } from './Session'
 import { useVerrou } from './Verrou'
+import { BandeauDemonstration, FenetreActivation, useLicence } from './Licence'
 import { CroixPharmacie } from './Connexion'
 import {
   ContexteNavigation,
@@ -85,6 +86,8 @@ export default function Coque() {
   })
   const [reduite, setReduite] = useState(false)
   const [menuOuvert, setMenuOuvert] = useState(false)
+  const [activationOuverte, setActivationOuverte] = useState(false)
+  const licence = useLicence()
   const [changementMdp, setChangementMdp] = useState(false)
   const [themeCourant, setThemeCourant] = useState<CleTheme>(() => themeDuPoste())
   const [dispositionCourante, setDispositionCourante] = useState<CleDisposition>(() =>
@@ -256,10 +259,25 @@ export default function Coque() {
             </div>
           </main>
 
+          {licence.etat ? (
+            <BandeauDemonstration etat={licence.etat} onActiver={() => setActivationOuverte(true)} />
+          ) : null}
+
           <BarreFonctions />
           <BarreEtat caisse={caisse.donnees} horloge={horloge} />
         </div>
       </div>
+
+      {activationOuverte && licence.etat ? (
+        <FenetreActivation
+          etat={licence.etat}
+          onFermer={() => setActivationOuverte(false)}
+          onActive={() => {
+            setActivationOuverte(false)
+            licence.recharger()
+          }}
+        />
+      ) : null}
 
       {menuOuvert ? (
         <MenuUtilisateur
