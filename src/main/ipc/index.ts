@@ -20,6 +20,7 @@ import * as configuration from '../services/configuration'
 import * as impression from '../services/impression'
 import * as reprise from '../services/reprise'
 import * as licence from '../services/licence'
+import * as miseAJour from '../services/miseAJour'
 
 /** Session courante. Une seule à la fois : c'est un poste de travail, pas un serveur. */
 interface Contexte {
@@ -114,6 +115,18 @@ const CANAUX: Record<string, Canal> = {
     sessionId: ctx.sessionId,
     pharmacie: auth.pharmacie()
   })),
+  // --- Mises a jour ----------------------------------------------------------
+  // Consultables par tout utilisateur connecte : le caissier doit pouvoir dire
+  // au responsable qu'une version l'attend. Declencher, en revanche, releve des
+  // parametres.
+  'majLogiciel.etat': connecte(() => miseAJour.etat()),
+  'majLogiciel.verifier': c('parametres.voir', () => miseAJour.verifier()),
+  'majLogiciel.telecharger': c('parametres.modifier', () => miseAJour.telecharger()),
+  'majLogiciel.installer': c('parametres.modifier', () => {
+    miseAJour.installer()
+    return { demarre: true }
+  }),
+
   // --- Licence ---------------------------------------------------------------
   'licence.etat': c(null, () => licence.etat(ventesDuJourSansEchouer())),
   'licence.activer': c(null, (p: { cle: string }) =>

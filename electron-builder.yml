@@ -15,6 +15,16 @@ files:
 
 asar: true
 
+# Ou le logiciel va chercher ses mises a jour.
+#
+# Les Releases doivent etre PUBLIQUES : electron-updater telecharge sans
+# authentification. Si le code doit rester prive, publiez les installateurs
+# dans un second depot public qui ne contient qu'eux.
+publish:
+  provider: github
+  owner: kader235
+  repo: PHARMINE
+
 # Le repertoire des produits voyage a cote de l'application, hors de l'archive :
 # il est ouvert en lecture seule par le processus principal, et le remplacer
 # suffit a mettre le catalogue a jour.

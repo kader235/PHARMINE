@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import type { EtatCopieExterne, EtatRepertoire } from '@shared/types'
+import type { EtatCopieExterne, EtatMiseAJour, EtatRepertoire } from '@shared/types'
 import type { Imprimante } from '@shared/types'
+import { appeler } from '../lib/api'
 import { useAction, useRequete } from '../lib/hooks'
 import { useSession } from '../app/Session'
 import { useNotifications } from '../ui/Notifications'
@@ -282,6 +283,8 @@ function Regles({ modifiable }: { modifiable: boolean }) {
   return (
     <div className="pile">
       {action.erreur ? <Bandeau ton="danger">{action.erreur.message}</Bandeau> : null}
+
+      <PanneauMiseAJour />
 
       <PanneauRepertoire />
 
@@ -815,5 +818,94 @@ function Restauration({ onMessage }: { onMessage: (titre: string, message?: stri
         </Modale>
       ) : null}
     </>
+  )
+}
+
+/**
+ * Mises à jour du logiciel.
+ *
+ * Rien ne se déclenche tout seul : on regarde, on télécharge quand la
+ * connexion le permet, on installe quand le comptoir est vide. Trois gestes
+ * distincts, parce qu'ils se font rarement au même moment.
+ */
+function PanneauMiseAJour() {
+  const session = useSession()
+  const action = useAction()
+  const [etat, setEtat] = useState<EtatMiseAJour | null>(null)
+  const initial = useRequete<EtatMiseAJour>('majLogiciel.etat')
+
+  const courant = etat ?? initial.donnees
+  if (!courant) return null
+
+  const modifiable = session.peut('parametres.modifier')
+
+  async function verifier(): Promise<void> {
+    const r = await action.executer<EtatMiseAJour>('majLogiciel.verifier')
+    if (r) setEtat(r)
+  }
+
+  async function telecharger(): Promise<void> {
+    const r = await action.executer<EtatMiseAJour>('majLogiciel.telecharger')
+    if (r) setEtat(r)
+  }
+
+  return (
+    <Panneau
+      titre="Version du logiciel"
+      description="Les mises à jour ne s’installent jamais sans votre accord."
+    >
+      <dl className="liste-definitions">
+        <dt>Version installée</dt>
+        <dd>{courant.versionInstallee}</dd>
+        <dt>Dernière vérification</dt>
+        <dd>{courant.verifieLe ? depuis(courant.verifieLe) : 'jamais'}</dd>
+      </dl>
+
+      {courant.prete ? (
+        <div style={{ marginTop: 12 }}>
+          <Bandeau ton="succes" titre={`Version ${courant.versionDisponible} prête à installer`}>
+            L’installation ferme le logiciel quelques instants. Choisissez un moment où le
+            comptoir est libre — vos données ne sont pas touchées.
+          </Bandeau>
+        </div>
+      ) : courant.versionDisponible ? (
+        <div style={{ marginTop: 12 }}>
+          <Bandeau ton="info" titre={`Version ${courant.versionDisponible} disponible`}>
+            {courant.notes ?? 'Seules les parties modifiées seront téléchargées.'}
+          </Bandeau>
+        </div>
+      ) : courant.motif ? (
+        <p style={{ marginTop: 12, fontSize: 11.5, color: 'var(--texte-faible)', lineHeight: 1.6 }}>
+          {courant.motif} Vous pouvez continuer à travailler : une mise à jour peut toujours être
+          installée depuis un fichier fourni par votre fournisseur.
+        </p>
+      ) : (
+        <p style={{ marginTop: 12, fontSize: 12, color: 'var(--texte-attenue)' }}>
+          Votre logiciel est à jour.
+        </p>
+      )}
+
+      {courant.progression !== null && !courant.prete ? (
+        <p style={{ marginTop: 10, fontSize: 12, color: 'var(--texte-attenue)' }}>
+          Téléchargement : {courant.progression} %
+        </p>
+      ) : null}
+
+      <div className="rangee" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+        <Bouton enCours={action.enCours} onClick={verifier}>
+          Vérifier maintenant
+        </Bouton>
+        {courant.versionDisponible && !courant.prete && modifiable ? (
+          <Bouton variante="principal" enCours={action.enCours} onClick={telecharger}>
+            Télécharger
+          </Bouton>
+        ) : null}
+        {courant.prete && modifiable ? (
+          <Bouton variante="principal" onClick={() => void appeler('majLogiciel.installer')}>
+            Installer et redémarrer
+          </Bouton>
+        ) : null}
+      </div>
+    </Panneau>
   )
 }

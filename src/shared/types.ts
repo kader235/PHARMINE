@@ -500,6 +500,16 @@ export interface EtatCopieExterne {
   motif?: string
 }
 
+export interface EtatMiseAJour {
+  versionInstallee: string
+  versionDisponible: string | null
+  notes: string | null
+  progression: number | null
+  prete: boolean
+  motif: string | null
+  verifieLe: string | null
+}
+
 export interface EtatRepertoire {
   disponible: boolean
   produits: number
