@@ -144,3 +144,7 @@ function main() {
 }
 
 main()
+
+// Lance par `npm run licence`, Electron resterait ouvert sans fenetre :
+// on rend la main explicitement.
+process.exit(0)
