@@ -1,7 +1,7 @@
 {
   "name": "pharmina",
   "productName": "PHARMINA",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Logiciel de gestion de pharmacie : ventes, stock, lots, comptes clients et caisse.",
   "author": {
     "name": "PHARMINA"
