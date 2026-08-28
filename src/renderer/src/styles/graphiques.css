@@ -453,3 +453,43 @@
 .fait-baisse {
   color: var(--danger);
 }
+
+/* =============================================================================
+   Tableau de bord : une seule encre
+
+   La couleur y attirait l'oeil sur des montants qui ne demandent aucune
+   action — une depense normale n'est pas une alerte. Textes et icones sont
+   donc noirs : ce qui distingue une ligne d'une autre, c'est ce qu'elle dit,
+   pas sa teinte. Les graphiques gardent leurs couleurs : elles y portent une
+   information qu'aucun mot ne remplace.
+   ============================================================================= */
+
+.contenu:has(.pilotage) .alerte-marque,
+.contenu:has(.pilotage) .alerte-marque.urgent,
+.contenu:has(.pilotage) .alerte-marque.important,
+.contenu:has(.pilotage) .alerte-marque.information {
+  color: var(--texte);
+}
+
+.contenu:has(.pilotage) .alerte-ligne .icone,
+.contenu:has(.pilotage) .panneau .icone {
+  color: var(--texte);
+}
+
+.contenu:has(.pilotage) .etiquette,
+.contenu:has(.pilotage) .etiquette.succes,
+.contenu:has(.pilotage) .etiquette.attention,
+.contenu:has(.pilotage) .etiquette.danger,
+.contenu:has(.pilotage) .etiquette.info,
+.contenu:has(.pilotage) .etiquette.neutre {
+  color: var(--texte);
+}
+
+.contenu:has(.pilotage) .etiquette::before {
+  background: var(--texte);
+}
+
+.contenu:has(.pilotage) .indicateur-valeur,
+.contenu:has(.pilotage) .faits dd {
+  color: var(--texte-fort);
+}

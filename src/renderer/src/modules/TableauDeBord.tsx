@@ -204,7 +204,6 @@ export default function TableauDeBord() {
         <Indicateur
           libelle="Caisse"
           valeur={donnees.caisse.ouverte ? montant(donnees.caisse.theorique) : 'Fermée'}
-          ton={donnees.caisse.ouverte ? undefined : 'danger'}
         />
       </div>
 
@@ -275,7 +274,7 @@ export default function TableauDeBord() {
             {ecart !== null ? (
               <div>
                 <dt>Écart sur hier</dt>
-                <dd className={ecart >= 0 ? 'fait-hausse' : 'fait-baisse'}>
+                <dd>
                   {ecart >= 0 ? '+' : ''}
                   {pourcentage(ecart)}
                 </dd>
@@ -324,9 +323,7 @@ export default function TableauDeBord() {
                       {ligne.montant === null ? (
                         '—'
                       ) : (
-                        <span style={ligne.montant < 0 ? { color: 'var(--danger)' } : undefined}>
-                          {montant(ligne.montant)}
-                        </span>
+                        <span>{montant(ligne.montant)}</span>
                       )}
                     </td>
                     <td style={{ color: 'var(--texte-attenue)' }}>{ligne.utilisateur ?? '—'}</td>
