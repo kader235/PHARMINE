@@ -32,6 +32,9 @@ import { autoUpdater } from 'electron-updater'
 
 import { journaliser } from './commun'
 
+/** Version du produit, injectee a la compilation depuis package.json. */
+declare const __VERSION_PHARMINA__: string
+
 export interface EtatMiseAJour {
   versionInstallee: string
   /** Version disponible en ligne, si elle est plus récente. */
@@ -46,7 +49,9 @@ export interface EtatMiseAJour {
 }
 
 let etatCourant: EtatMiseAJour = {
-  versionInstallee: app.getVersion(),
+  // Pas `app.getVersion()` : hors application empaquetee, il renvoie la
+  // version d'Electron. Le pharmacien lirait « 41.10.7 » au lieu de la sienne.
+  versionInstallee: __VERSION_PHARMINA__,
   versionDisponible: null,
   notes: null,
   progression: null,

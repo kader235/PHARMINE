@@ -912,7 +912,7 @@ app.whenReady().then(async () => {
     }
     await photographier(fenetre, 'parametres-regles', 1100)
 
-    await fenetre.webContents.executeJavaScript(onglet('Sauvegardes'))
+    await fenetre.webContents.executeJavaScript(onglet('Licence et données'))
     await new Promise((r) => setTimeout(r, 900))
 
     // Aucune destination externe n'est configuree dans le jeu de demonstration :
@@ -990,6 +990,57 @@ app.whenReady().then(async () => {
       erreurs.push(`Reprise : la simulation a modifie le catalogue (${catalogueApres} produits)`)
     }
 
+  }
+
+  // --- La licence doit etre trouvable ----------------------------------------
+  // Un ecran d'activation accessible seulement depuis un bandeau en bas
+  // d'ecran n'existe pas : personne ne cherche sa licence a cet endroit, et le
+  // bandeau disparait des que le poste est active. Le code d'installation doit
+  // rester lisible dans les parametres, y compris des annees plus tard, le
+  // jour ou l'officine change d'ordinateur.
+  const indexReglages = (await fenetre.webContents.executeJavaScript(`
+    Array.from(document.querySelectorAll('.nav-lien'))
+      .findIndex((b) => b.textContent && b.textContent.trim().startsWith('Param'))`)) as number
+
+  if (indexReglages < 0) {
+    erreurs.push('Module Parametres introuvable')
+  } else {
+    await fenetre.webContents.executeJavaScript(
+      `document.querySelectorAll('.nav-lien')[${indexReglages}].click()`
+    )
+    await new Promise((r) => setTimeout(r, 900))
+
+    const surOnglet = await fenetre.webContents.executeJavaScript(`
+      (() => {
+        const b = Array.from(document.querySelectorAll('.segments button'))
+          .find((e) => e.textContent && e.textContent.includes('Licence'))
+        if (b) { b.click(); return true }
+        return false
+      })()`)
+    await new Promise((r) => setTimeout(r, 900))
+
+    if (!surOnglet) {
+      erreurs.push('Parametres : onglet « Licence et donnees » introuvable')
+    } else {
+      const licenceVisible = (await fenetre.webContents.executeJavaScript(`
+        (() => {
+          const texte = document.body.innerText
+          const bouton = Array.from(document.querySelectorAll('button'))
+            .find((b) => b.textContent && b.textContent.includes('activation'))
+          return {
+            panneau: texte.includes('Licence du logiciel'),
+            code: /[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}-[0-9A-Z]{4}/.test(texte),
+            bouton: !!bouton
+          }
+        })()`)) as { panneau: boolean; code: boolean; bouton: boolean }
+
+      console.log(`  licence dans les parametres -> ${JSON.stringify(licenceVisible)}`)
+      if (!licenceVisible.panneau) erreurs.push('Licence : le panneau est absent des parametres')
+      if (!licenceVisible.code) erreurs.push('Licence : le code d installation n est pas affiche')
+      if (!licenceVisible.bouton) erreurs.push('Licence : aucun bouton pour saisir la cle')
+
+      await photographier(fenetre, 'licence-parametres', 400)
+    }
   }
 
   // --- Les trois formats de document ----------------------------------------

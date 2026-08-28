@@ -24,6 +24,7 @@ import Tableau, { CellulePrincipale } from '../ui/Tableau'
 import Reprise from './Reprise'
 import { FORMATS } from '../ui/Impression'
 import { THEMES } from '../app/themes'
+import { FenetreActivation, useLicence } from '../app/Licence'
 import { dateCourte, depuis, nombre } from '../lib/format'
 
 interface Parametre {
@@ -89,7 +90,7 @@ export default function Parametres() {
             options={[
               { valeur: 'officine', libelle: 'La pharmacie' },
               { valeur: 'regles', libelle: 'Règles' },
-              { valeur: 'sauvegardes', libelle: 'Sauvegardes' },
+              { valeur: 'sauvegardes', libelle: 'Licence et données' },
               ...(session.peut('parametres.modifier')
                 ? [{ valeur: 'reprise' as const, libelle: 'Reprise' }]
                 : [])
@@ -284,10 +285,6 @@ function Regles({ modifiable }: { modifiable: boolean }) {
     <div className="pile">
       {action.erreur ? <Bandeau ton="danger">{action.erreur.message}</Bandeau> : null}
 
-      <PanneauMiseAJour />
-
-      <PanneauRepertoire />
-
       {Object.entries(groupes).map(([categorie, liste]) => (
         <Panneau
           key={categorie}
@@ -384,6 +381,13 @@ function Sauvegardes({ onMessage }: { onMessage: (titre: string, message?: strin
 
   return (
     <>
+      {/* La licence en tête : c'est ce qu'on vient chercher dans cet onglet, et
+          on ne doit pas avoir à faire défiler pour la trouver. */}
+      <div className="pile" style={{ marginBottom: 14 }}>
+        <PanneauLicence />
+        <PanneauMiseAJour />
+      </div>
+
       <div className="indicateurs">
         <Indicateur
           libelle="Dernière sauvegarde"
@@ -399,6 +403,7 @@ function Sauvegardes({ onMessage }: { onMessage: (titre: string, message?: strin
       <div className="pile" style={{ marginBottom: 14 }}>
         <CopieExterne modifiable={session.peut('parametres.modifier')} onMessage={onMessage} />
         <Protection />
+        <PanneauRepertoire />
         {session.peut('sauvegardes.restaurer') ? <Restauration onMessage={onMessage} /> : null}
       </div>
 
@@ -907,5 +912,98 @@ function PanneauMiseAJour() {
         ) : null}
       </div>
     </Panneau>
+  )
+}
+
+/**
+ * Licence du poste.
+ *
+ * Placée ici parce que c'est ici qu'on la cherche. Le bandeau de démonstration
+ * en bas d'écran est un raccourci, pas un emplacement : une fois le logiciel
+ * activé il disparaît, et plus personne ne sait où retrouver son code
+ * d'installation — celui qu'il faudra redonner le jour d'un changement
+ * d'ordinateur.
+ */
+function PanneauLicence() {
+  const [ouverte, setOuverte] = useState(false)
+  const [copie, setCopie] = useState(false)
+  const licence = useLicence()
+
+  if (!licence.etat) return null
+  const etat = licence.etat
+
+  return (
+    <>
+      <Panneau
+        titre="Licence du logiciel"
+        description={
+          etat.activee
+            ? 'Ce poste est activé.'
+            : 'Ce poste fonctionne en démonstration.'
+        }
+      >
+        {etat.activee ? (
+          <Bandeau ton="succes" titre="Logiciel activé">
+            {etat.expiration
+              ? `Licence valable jusqu’au ${etat.expiration}` +
+                (etat.joursRestants !== null ? ` — ${etat.joursRestants} jours restants.` : '.')
+              : 'Licence perpétuelle, sans date de fin.'}
+          </Bandeau>
+        ) : (
+          <Bandeau ton="attention" titre="Démonstration">
+            {etat.ventesMaximum} ventes par jour, rapports et exports indisponibles.
+            {' '}
+            {Math.max(0, etat.ventesMaximum - etat.ventesDuJour)} vente(s) encore possible(s)
+            aujourd’hui.
+          </Bandeau>
+        )}
+
+        <dl className="liste-definitions" style={{ marginTop: 12 }}>
+          <dt>Code d’installation</dt>
+          <dd style={{ letterSpacing: '0.08em', fontWeight: 600 }}>{etat.codeInstallation}</dd>
+          <dt>État</dt>
+          <dd>{etat.activee ? 'Activé' : 'Démonstration'}</dd>
+          {etat.horlogeSuspecte ? (
+            <>
+              <dt>Horloge</dt>
+              <dd style={{ color: 'var(--attention)' }}>
+                reculée {etat.reculs} fois — le logiciel compte depuis le {etat.jourEffectif}
+              </dd>
+            </>
+          ) : null}
+        </dl>
+
+        <p style={{ marginTop: 12, fontSize: 11.5, color: 'var(--texte-faible)', lineHeight: 1.6 }}>
+          Communiquez le code d’installation à votre fournisseur pour obtenir votre clé. Ce même
+          code vous sera redemandé si vous changez d’ordinateur.
+        </p>
+
+        <div className="rangee" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+          <Bouton
+            compact
+            onClick={() => {
+              void navigator.clipboard.writeText(etat.codeInstallation)
+              setCopie(true)
+            }}
+          >
+            {copie ? 'Code copié' : 'Copier le code'}
+          </Bouton>
+          <Bouton variante={etat.activee ? undefined : 'principal'} onClick={() => setOuverte(true)}>
+            {etat.activee ? 'Changer de licence' : 'Saisir ma clé d’activation'}
+          </Bouton>
+        </div>
+      </Panneau>
+
+      {ouverte ? (
+        <FenetreActivation
+          etat={etat}
+          onFermer={() => setOuverte(false)}
+          onActive={() => {
+            setOuverte(false)
+            licence.recharger()
+          }}
+        />
+      ) : null}
+    </>
   )
 }

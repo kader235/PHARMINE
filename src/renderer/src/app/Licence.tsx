@@ -95,7 +95,7 @@ export function FenetreActivation({
   }
 
   return (
-    <Modale titre="Activer PHARMINA" large onFermer={onFermer}>
+    <Modale titre={etat.activee ? 'Licence du logiciel' : 'Activer PHARMINA'} large onFermer={onFermer}>
       <div className="panneau-corps pile">
         {etat.activee ? (
           <Bandeau ton="succes" titre="Ce poste est activé">
@@ -103,81 +103,82 @@ export function FenetreActivation({
               ? `Licence valable jusqu’au ${etat.expiration}.`
               : 'Licence perpétuelle.'}
           </Bandeau>
-        ) : (
-          <>
-            <p className="activation-explication">
-              Communiquez le code ci-dessous à votre fournisseur — par téléphone, message ou
-              courriel. Il vous renverra une clé à coller ici. Aucune connexion Internet n’est
-              nécessaire.
-            </p>
+        ) : null}
 
-            <Panneau titre="Code d’installation de ce poste">
-              <p className="activation-code">{etat.codeInstallation}</p>
-              <div className="rangee" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
-                <Bouton
-                  compact
-                  onClick={() => {
-                    void navigator.clipboard.writeText(etat.codeInstallation)
-                    setCopie(true)
-                  }}
-                >
-                  {copie ? 'Copié' : 'Copier le code'}
-                </Bouton>
-              </div>
-            </Panneau>
+        <p className="activation-explication">
+          Communiquez le code ci-dessous à votre fournisseur — par téléphone, message ou courriel.
+          Il vous renverra une clé à coller ici. Aucune connexion Internet n’est nécessaire.
+        </p>
 
-            <Champ
-              libelle="Clé d’activation reçue"
-              large
-              value={cle}
-              onChange={(e) => setCle(e.target.value)}
-              placeholder="Collez ici la clé communiquée par votre fournisseur"
-              aide="Les tirets, espaces et majuscules n’ont pas d’importance."
-            />
-
-            {erreur ? <Bandeau ton="danger">{erreur}</Bandeau> : null}
-
-            <div className="rangee" style={{ justifyContent: 'flex-end' }}>
-              <Bouton
-                variante="principal"
-                enCours={enCours}
-                disabled={cle.trim().length < 20}
-                onClick={activer}
-              >
-                Activer
-              </Bouton>
-            </div>
-          </>
-        )}
-
-        <Panneau titre="Ce que permet la démonstration">
-          <ul className="liste-limites">
-            <li>
-              <strong>{etat.ventesMaximum} ventes par jour.</strong> Tout le reste du comptoir
-              fonctionne : recherche, lecteur de codes-barres, crédits, impression.
-            </li>
-            <li>
-              <strong>Catalogue, stock, achats, clients, caisse et inventaire</strong> sans
-              limite : c’est là qu’on juge un logiciel de pharmacie.
-            </li>
-            <li>
-              <strong>Rapports et exports réservés</strong> à la version complète.
-            </li>
-            <li>
-              <strong>Vos sauvegardes fonctionnent</strong> dès la démonstration. La sécurité de
-              vos données n’est pas une option payante.
-            </li>
-          </ul>
-
-          {etat.horlogeSuspecte ? (
-            <div style={{ marginTop: 12 }}>
-              <Bandeau ton="attention" titre="Horloge modifiée">
-                La date de cet ordinateur a été reculée {etat.reculs} fois. Le logiciel continue de
-                compter à partir du {etat.jourEffectif}.
-              </Bandeau>
-            </div>
-          ) : null}
+        <Panneau titre="Code d’installation de ce poste">
+          <p className="activation-code">{etat.codeInstallation}</p>
+          <div className="rangee" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
+            <Bouton
+              compact
+              onClick={() => {
+                void navigator.clipboard.writeText(etat.codeInstallation)
+                setCopie(true)
+              }}
+            >
+              {copie ? 'Copié' : 'Copier le code'}
+            </Bouton>
+          </div>
         </Panneau>
+
+        {/* Le champ reste disponible même une fois activé : on remplace une
+            licence annuelle arrivée à terme sans désinstaller quoi que ce soit. */}
+        <Champ
+          libelle="Clé d’activation reçue"
+          large
+          value={cle}
+          onChange={(e) => setCle(e.target.value)}
+          placeholder="Collez ici la clé communiquée par votre fournisseur"
+          aide="Les tirets, espaces et majuscules n’ont pas d’importance."
+        />
+
+        {erreur ? <Bandeau ton="danger">{erreur}</Bandeau> : null}
+
+        <div className="rangee" style={{ justifyContent: 'flex-end' }}>
+          <Bouton
+            variante="principal"
+            enCours={enCours}
+            disabled={cle.trim().length < 20}
+            onClick={activer}
+          >
+            {etat.activee ? 'Remplacer la licence' : 'Activer'}
+          </Bouton>
+        </div>
+
+        {etat.activee ? null : (
+          <Panneau titre="Ce que permet la démonstration">
+            <ul className="liste-limites">
+              <li>
+                <strong>{etat.ventesMaximum} ventes par jour.</strong> Tout le reste du comptoir
+                fonctionne : recherche, lecteur de codes-barres, crédits, impression.
+              </li>
+              <li>
+                <strong>Catalogue, stock, achats, clients, caisse et inventaire</strong> sans
+                limite : c’est là qu’on juge un logiciel de pharmacie.
+              </li>
+              <li>
+                <strong>Rapports et exports réservés</strong> à la version complète.
+              </li>
+              <li>
+                <strong>Vos sauvegardes fonctionnent</strong> dès la démonstration. La sécurité de
+                vos données n’est pas une option payante.
+              </li>
+            </ul>
+
+            {etat.horlogeSuspecte ? (
+              <div style={{ marginTop: 12 }}>
+                <Bandeau ton="attention" titre="Horloge modifiée">
+                  La date de cet ordinateur a été reculée {etat.reculs} fois. Le logiciel continue
+                  de compter à partir du {etat.jourEffectif}.
+                </Bandeau>
+              </div>
+            ) : null}
+          </Panneau>
+        )}
       </div>
     </Modale>
   )
