@@ -20,6 +20,7 @@
     "icone": "electron scripts/icone.js",
     "repertoire": "electron scripts/repertoire.js",
     "licence": "electron scripts/licence.js",
+    "manuel": "electron-vite build && electron out/main/manuel.js",
     "demo": "electron-vite build && electron out/main/demonstration.js"
   },
   "devDependencies": {

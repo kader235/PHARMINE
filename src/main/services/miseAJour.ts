@@ -98,10 +98,33 @@ function configurer(): void {
   })
 
   autoUpdater.on('error', (erreur) => {
-    // Ligne coupée, dépôt injoignable, version non publiée : aucun de ces cas
-    // n'est une panne du logiciel de l'officine.
-    etatCourant = { ...etatCourant, motif: erreur.message, progression: null }
+    // Ligne coupée, serveur injoignable, version non publiée : aucun de ces cas
+    // n'est une panne du logiciel de l'officine — et aucun ne regarde le
+    // pharmacien. Le message brut cite des adresses et des codes qui ne lui
+    // apprennent rien et l'inquiètent pour rien.
+    etatCourant = { ...etatCourant, motif: enClairPourLUtilisateur(erreur), progression: null }
   })
+}
+
+/**
+ * Traduit une panne technique en phrase utile.
+ *
+ * L'utilisateur n'a pas à lire une adresse de serveur ni un code d'erreur. Il a
+ * besoin de savoir une seule chose : est-ce que ça vient de lui, et que faire.
+ */
+function enClairPourLUtilisateur(erreur: Error): string {
+  const brut = (erreur.message ?? '').toLowerCase()
+
+  if (/enotfound|eai_again|getaddrinfo|econnrefused|network|timed? ?out|etimedout/.test(brut)) {
+    return 'Pas de connexion Internet pour le moment. Vous pouvez continuer à travailler normalement.'
+  }
+  if (/404|no published versions|cannot find/.test(brut)) {
+    return 'Aucune nouvelle version n’est proposée pour l’instant.'
+  }
+  if (/eacces|eperm|permission/.test(brut)) {
+    return 'Le logiciel n’a pas les droits nécessaires. Demandez à la personne qui gère l’ordinateur.'
+  }
+  return 'La vérification n’a pas abouti. Réessayez plus tard, ou contactez votre fournisseur.'
 }
 
 /** Interroge le dépôt. Ne lève jamais : l'absence de réseau n'est pas une erreur. */
@@ -114,7 +137,7 @@ export async function verifier(): Promise<EtatMiseAJour> {
   if (!app.isPackaged) {
     etatCourant = {
       ...etatCourant,
-      motif: 'Les mises à jour ne s’appliquent qu’à une application installée.'
+      motif: 'Les mises à jour sont disponibles une fois le logiciel installé.'
     }
     return etatCourant
   }
@@ -122,7 +145,7 @@ export async function verifier(): Promise<EtatMiseAJour> {
   try {
     await autoUpdater.checkForUpdates()
   } catch (erreur) {
-    etatCourant = { ...etatCourant, motif: (erreur as Error).message }
+    etatCourant = { ...etatCourant, motif: enClairPourLUtilisateur(erreur as Error) }
   }
   return etatCourant
 }
@@ -136,7 +159,7 @@ export async function telecharger(): Promise<EtatMiseAJour> {
     etatCourant = { ...etatCourant, progression: 0, motif: null }
     await autoUpdater.downloadUpdate()
   } catch (erreur) {
-    etatCourant = { ...etatCourant, motif: (erreur as Error).message, progression: null }
+    etatCourant = { ...etatCourant, motif: enClairPourLUtilisateur(erreur as Error), progression: null }
   }
   return etatCourant
 }

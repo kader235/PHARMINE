@@ -221,7 +221,7 @@ function Officine() {
           </p>
         </Panneau>
 
-        <Panneau titre="Votre base de données">
+        <Panneau titre="Votre activité enregistrée">
           {stats.chargement ? (
             <Chargement />
           ) : (
@@ -236,8 +236,6 @@ function Officine() {
               <dd>{nombre(stats.donnees?.mouvements ?? 0)}</dd>
               <dt>Première vente</dt>
               <dd>{stats.donnees?.depuis ? dateCourte(stats.donnees.depuis) : '—'}</dd>
-              <dt>Version du schéma</dt>
-              <dd>{stats.donnees?.version ?? '—'}</dd>
             </dl>
           )}
         </Panneau>
@@ -492,9 +490,8 @@ function Sauvegardes({ onMessage }: { onMessage: (titre: string, message?: strin
  * État du répertoire intégré.
  *
  * Le pharmacien doit pouvoir constater que le fichier livré avec le logiciel
- * est bien celui qui l'assiste : combien de fiches, quelle empreinte, quelle
- * date de compilation. Rien n'est modifiable ici — le répertoire est ouvert
- * en lecture seule, et c'est précisément ce que ce panneau atteste.
+ * est bien là pour l'aider, et combien de produits il connaît. Rien n'est
+ * modifiable ici : le répertoire est livré avec le logiciel.
  */
 function PanneauRepertoire() {
   const etat = useRequete<EtatRepertoire>('repertoire.etat')
@@ -505,20 +502,24 @@ function PanneauRepertoire() {
   return (
     <Panneau titre="Répertoire des produits" description="Aide à la saisie, livrée avec le logiciel.">
       {r.disponible ? (
-        <dl className="liste-definitions">
-          <dt>Fiches disponibles</dt>
-          <dd>{nombre(r.produits)}</dd>
-          <dt>Compilé le</dt>
-          <dd>{r.compileLe ?? '—'}</dd>
-          <dt>Empreinte</dt>
-          <dd>{r.empreinte?.slice(0, 16) ?? '—'}</dd>
-          <dt>Accès</dt>
-          <dd>Lecture seule</dd>
-        </dl>
+        <>
+          <p style={{ fontSize: 12.5, color: 'var(--texte-attenue)', lineHeight: 1.6 }}>
+            {nombre(r.produits)} médicaments et articles sont déjà connus du logiciel. Tapez les
+            premières lettres d’un produit et sa fiche se remplit toute seule : nom, principe
+            actif, dosage, forme. Il ne vous reste que vos prix.
+          </p>
+          <dl className="liste-definitions" style={{ marginTop: 10 }}>
+            <dt>Produits connus</dt>
+            <dd>{nombre(r.produits)}</dd>
+            <dt>Mis à jour le</dt>
+            <dd>{r.compileLe ?? '—'}</dd>
+          </dl>
+        </>
       ) : (
         <Bandeau ton="attention">
-          Le répertoire n’est pas disponible sur ce poste{r.motif ? ` : ${r.motif}` : ''}. La saisie
-          des produits reste possible, sans suggestions.
+          Le répertoire n’est pas disponible sur cet ordinateur. Vous pouvez continuer à créer vos
+          produits à la main ; seules les suggestions automatiques manquent. Signalez-le à votre
+          fournisseur.
         </Bandeau>
       )}
     </Panneau>
@@ -683,48 +684,52 @@ function Protection() {
   const { baseChiffree, scellementMachine, sauvegardesChiffrees } = etat.donnees
 
   return (
-    <Panneau titre="Protection de vos données" description="Rien à configurer : le logiciel s’en charge.">
+    <Panneau titre="Protection de vos données" description="Rien à régler : le logiciel s’en charge.">
       {baseChiffree && sauvegardesChiffrees ? (
         <Bandeau ton="succes" titre="Vos données ne sortent pas d’ici">
-          Le fichier de votre officine est chiffré et lié à cet ordinateur : recopié ailleurs, il
-          est illisible. Vos sauvegardes, elles, restent restaurables — mais uniquement dans
-          PHARMINA.
+          Vos données sont verrouillées sur cet ordinateur. Si quelqu’un copie le fichier et
+          l’emporte, il ne pourra rien en lire. Vos sauvegardes, elles, restent utilisables — mais
+          seulement dans PHARMINA.
         </Bandeau>
       ) : (
         <Bandeau ton="danger" titre="Protection incomplète">
-          {!baseChiffree ? 'Le fichier de votre officine n’est pas chiffré. ' : ''}
-          {!sauvegardesChiffrees ? 'Vos sauvegardes sont enregistrées en clair.' : ''}
+          {!baseChiffree ? 'Vos données ne sont pas verrouillées. ' : ''}
+          {!sauvegardesChiffrees ? 'Vos sauvegardes ne sont pas protégées. ' : ''}
+          Signalez-le à votre fournisseur.
         </Bandeau>
       )}
 
       <dl className="liste-definitions" style={{ marginTop: 12 }}>
-        <dt>Fichier de l’officine</dt>
+        <dt>Vos données</dt>
         <dd>
           <Etiquette ton={baseChiffree ? 'succes' : 'danger'}>
-            {baseChiffree ? 'Chiffré, lié à cet ordinateur' : 'En clair'}
+            {baseChiffree ? 'Verrouillées sur cet ordinateur' : 'Non protégées'}
           </Etiquette>
         </dd>
-        <dt>Sauvegardes</dt>
+        <dt>Vos sauvegardes</dt>
         <dd>
           <Etiquette ton={sauvegardesChiffrees ? 'succes' : 'danger'}>
-            {sauvegardesChiffrees ? 'Chiffrées, restaurables dans PHARMINA' : 'En clair'}
+            {sauvegardesChiffrees ? 'Protégées' : 'Non protégées'}
           </Etiquette>
         </dd>
-        <dt>Scellement par Windows</dt>
-        <dd>
-          <Etiquette ton={scellementMachine ? 'succes' : 'attention'}>
-            {scellementMachine ? 'Actif' : 'Indisponible — protection réduite'}
-          </Etiquette>
-        </dd>
+        {scellementMachine ? null : (
+          <>
+            <dt>Niveau de protection</dt>
+            <dd>
+              <Etiquette ton="attention">Réduit sur cet ordinateur</Etiquette>
+            </dd>
+          </>
+        )}
       </dl>
 
       <p style={{ marginTop: 12, fontSize: 11.5, color: 'var(--texte-faible)', lineHeight: 1.6 }}>
-        Une sauvegarde restaurée sur un autre ordinateur y est automatiquement rattachée à cette
-        machine-là. Vous n’avez aucune clé à noter ni à retenir.
+        Si vous changez d’ordinateur, restaurez simplement une sauvegarde : elle se rattache toute
+        seule au nouveau poste. Vous n’avez aucun mot de passe supplémentaire à retenir.
       </p>
     </Panneau>
   )
 }
+
 
 /**
  * Restauration.

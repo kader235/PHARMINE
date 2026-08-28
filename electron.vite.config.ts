@@ -34,6 +34,10 @@ export default defineConfig({
             : {
                 e2e: resolve(__dirname, 'tests/e2e.ts'),
                 apercu: resolve(__dirname, 'tests/apercu.ts'),
+                // Le guide en PDF est imprime depuis l'ecran d'aide du logiciel
+                // reel : le document remis au client et l'aide consultee a
+                // l'ecran ne peuvent pas diverger.
+                manuel: resolve(__dirname, 'tests/manuel.ts'),
                 // Outil de démonstration : utile au vendeur, inutile dans le
                 // logiciel livré au client.
                 demonstration: resolve(__dirname, 'scripts/demonstration.ts')

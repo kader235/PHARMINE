@@ -48,6 +48,7 @@ import Alertes from '../modules/Alertes'
 import Utilisateurs from '../modules/Utilisateurs'
 import Journal from '../modules/Journal'
 import Parametres from '../modules/Parametres'
+import Aide from '../modules/Aide'
 
 export interface ProprietesModule {
   destination: Destination
@@ -69,7 +70,8 @@ const ECRANS: Record<CleModule, (p: ProprietesModule) => ReactElement> = {
   alertes: Alertes,
   utilisateurs: Utilisateurs,
   journal: Journal,
-  parametres: Parametres
+  parametres: Parametres,
+  aide: Aide
 }
 
 export default function Coque() {
@@ -77,7 +79,13 @@ export default function Coque() {
   const notifications = useNotifications()
 
   const accessibles = useMemo(
-    () => MODULES.filter((m) => m.permissions.some((p) => session.peut(p))),
+    // Une liste de permissions vide signifie « visible par tout le monde » :
+    // c'est le cas du guide d'utilisation, que la personne embauchee hier doit
+    // pouvoir ouvrir.
+    () =>
+      MODULES.filter(
+        (m) => m.permissions.length === 0 || m.permissions.some((p) => session.peut(p))
+      ),
     [session]
   )
 

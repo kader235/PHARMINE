@@ -18,6 +18,7 @@ export type CleModule =
   | 'utilisateurs'
   | 'journal'
   | 'parametres'
+  | 'aide'
 
 export interface DefinitionModule {
   cle: CleModule
@@ -195,6 +196,18 @@ export const MODULES: DefinitionModule[] = [
     groupe: 'administration',
     fil: 'Administration',
     description: 'Configuration de la pharmacie et sauvegardes.'
+  },
+  {
+    cle: 'aide',
+    libelle: 'Guide',
+    icone: 'info',
+    couleur: '#4f6bed',
+    // Aucune permission : le guide doit rester lisible par tout le monde, y
+    // compris par la personne qui vient d'etre embauchee au comptoir.
+    permissions: [],
+    groupe: 'administration',
+    fil: 'Aide',
+    description: 'Comment utiliser PHARMINA.'
   }
 ]
 
