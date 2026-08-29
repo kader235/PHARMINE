@@ -15,9 +15,12 @@ apercu/
 
 # Sorties de construction
 release/
-build/icon.ico
 
 # Cle privee de signature des licences : elle ne doit JAMAIS partir avec le
 # logiciel ni etre publiee. Sauvegardez-la hors de cet ordinateur — sans elle,
 # plus aucune licence ne peut etre produite pour les installations existantes.
 licence-privee.pem
+
+# Jamais de jeton dans le depot, meme par accident.
+*token*.txt
+*TOKEN*.txt

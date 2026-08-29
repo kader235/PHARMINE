@@ -24,6 +24,10 @@ publish:
   provider: github
   owner: kader235
   repo: PHARMINE
+  # Sans cela, electron-builder cree un BROUILLON, invisible de tous : le
+  # logiciel installe ne verrait jamais la nouvelle version, et il faudrait
+  # penser a cliquer « Publish release » sur GitHub apres chaque publication.
+  releaseType: release
 
 # Le repertoire des produits voyage a cote de l'application, hors de l'archive :
 # il est ouvert en lecture seule par le processus principal, et le remplacer

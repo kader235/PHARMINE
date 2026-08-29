@@ -1,0 +1,89 @@
+# Construit et publie une version de PHARMINA.
+#
+# POURQUOI CE FICHIER EXISTE.
+#
+# Publier depuis l'officine, c'est envoyer cent mégaoctets par une connexion
+# tchadienne : plus d'une heure, et un échec en cours de route oblige à tout
+# reprendre. Ici, c'est GitHub qui construit et qui publie — la machine de
+# l'éditeur n'envoie que quelques kilo-octets d'étiquette.
+#
+# Trois autres bénéfices, moins visibles mais réels :
+#
+#   — aucun jeton personnel n'est nécessaire : GitHub en fournit un, valable
+#     le temps de la construction et pour ce dépôt seulement ;
+#   — la version publiée sort d'une machine propre, jamais d'un poste où
+#     traîne un fichier oublié ;
+#   — plus de disque saturé sur l'ordinateur de travail.
+#
+# COMMENT PUBLIER.
+#
+#     npm version 0.1.2 --no-git-tag-version
+#     git commit -am "Version 0.1.2"
+#     git tag v0.1.2
+#     git push origin master --tags
+#
+# C'est l'étiquette qui déclenche tout. Le numéro du fichier package.json et
+# celui de l'étiquette doivent concorder : sinon le logiciel installé comparera
+# des versions qui ne correspondent à rien.
+
+name: Publier une version
+
+on:
+  push:
+    tags:
+      - 'v*'
+  # Permet aussi de relancer une publication à la main depuis l'onglet Actions,
+  # quand un envoi a échoué pour une raison qui ne tient pas au code.
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+
+    # Le jeton fourni par GitHub doit pouvoir créer la release et y attacher
+    # les fichiers. Sans cette ligne, la construction réussit et la publication
+    # échoue à la dernière seconde.
+    permissions:
+      contents: write
+
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Vérifier que le code compile
+        run: npm run typecheck
+
+      - name: Construire l'application
+        run: npx electron-vite build
+        env:
+          # Les bancs d'essai et l'outil de démonstration ne partent jamais
+          # chez le client.
+          PHARMINA_SANS_TESTS: 1
+
+      - name: Construire l'installateur et publier
+        run: npx electron-builder --win --publish always
+        env:
+          # Jeton fourni par GitHub, jamais un jeton personnel.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PHARMINA_SANS_TESTS: 1
+
+      - name: Conserver l'installateur même si la publication a échoué
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: installateur-windows
+          path: |
+            release/*.exe
+            release/*.blockmap
+            release/latest.yml
+          if-no-files-found: ignore
+          retention-days: 14
