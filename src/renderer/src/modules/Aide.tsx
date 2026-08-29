@@ -854,7 +854,262 @@ const SECTIONS: Section[] = [
     )
   },
   {
-    partie: 'Au quotidien',
+    partie: 'Marches à suivre',
+    cle: 'faire-credit',
+    titre: 'Vendre à crédit, du début à la fin',
+    contenu: (
+      <>
+        <p>
+          <strong>1.</strong> Ouvrez <strong>Ventes</strong>, constituez le panier normalement.
+        </p>
+        <p>
+          <strong>2.</strong> Appuyez sur <strong>F4</strong> — <em>Associer un client</em> — et
+          choisissez-le. C’est obligatoire : sans client, le logiciel ne sait pas qui vous doit
+          l’argent, et il refusera la vente à crédit.
+        </p>
+        <p>
+          <strong>3.</strong> Appuyez sur <strong>F9</strong> pour encaisser. Saisissez ce que le
+          client vous donne réellement — s’il ne donne rien, laissez zéro.
+        </p>
+        <p>
+          <strong>4.</strong> Le <em>reste à payer</em> s’affiche. Validez : la différence devient
+          la dette du client.
+        </p>
+        <p>
+          Si son plafond de crédit est dépassé, le logiciel vous prévient. Vous restez libre de
+          passer outre — c’est vous qui connaissez votre client.
+        </p>
+        <p>
+          <strong>Quand il vient payer :</strong> ouvrez <strong>Clients</strong>, sa fiche, onglet
+          <strong> Compte</strong>. Enregistrez le règlement en indiquant le mode. Le solde se met
+          à jour aussitôt, et si c’est en espèces, l’argent entre dans votre caisse.
+        </p>
+        <p>
+          <strong>Pour savoir qui vous doit quoi :</strong> dans Clients, appuyez sur
+          <strong> F7</strong>. Seuls les débiteurs restent affichés. Imprimez le relevé d’un
+          client depuis l’onglet <strong>Relevé</strong> de sa fiche : chaque ligne, chaque
+          règlement, le solde. C’est le document qu’on lui remet.
+        </p>
+      </>
+    )
+  },
+  {
+    partie: 'Marches à suivre',
+    cle: 'faire-stock',
+    titre: 'Corriger un stock qui ne correspond pas',
+    contenu: (
+      <>
+        <p>
+          Le rayon dit 12, le logiciel dit 15. Trois façons de corriger, selon la cause.
+        </p>
+        <p>
+          <strong>Vous savez pourquoi</strong> — trois boîtes cassées, par exemple. Allez dans
+          <strong> Stock</strong>, trouvez le produit, cliquez sur <strong>Sortie</strong>.
+          Saisissez 3, choisissez le motif <em>Perte ou casse</em>, validez. Le motif est
+          obligatoire : c’est lui qui permettra, dans six mois, de comprendre où le stock est parti.
+        </p>
+        <p>
+          <strong>Vous avez reçu sans enregistrer</strong> — cliquez sur <strong>Entrée</strong>,
+          saisissez la quantité, le lot et la date de péremption. Mieux vaut cependant passer par
+          une réception dans <strong>Achats</strong> : le prix d’achat et la dette fournisseur y
+          sont suivis.
+        </p>
+        <p>
+          <strong>Vous ne savez pas pourquoi</strong> — faites un inventaire. C’est le seul moyen
+          propre. Ouvrez <strong>Inventaire</strong>, <strong>F2</strong>, choisissez
+          <em> Un emplacement</em> et sélectionnez le rayon concerné. Comptez, saisissez les
+          quantités réelles, validez. Le logiciel corrige et garde la trace de chaque écart.
+        </p>
+        <p>
+          Un inventaire par rayon prend un quart d’heure et ne demande pas de fermer l’officine.
+          Faites-en un par semaine plutôt qu’un grand une fois par an.
+        </p>
+      </>
+    )
+  },
+  {
+    partie: 'Marches à suivre',
+    cle: 'faire-reception',
+    titre: 'Enregistrer une livraison, pas à pas',
+    contenu: (
+      <>
+        <p>
+          <strong>1.</strong> <strong>Achats</strong> → <strong>F2</strong>. Choisissez le
+          fournisseur. S’il n’existe pas encore, créez-le d’abord dans
+          <strong> Fournisseurs</strong>.
+        </p>
+        <p>
+          <strong>2.</strong> Pour chaque ligne du bordereau : cherchez le produit, saisissez la
+          quantité reçue et le prix d’achat unitaire.
+        </p>
+        <p>
+          <strong>3.</strong> Saisissez le <strong>numéro de lot</strong> et la
+          <strong> date de péremption</strong> lus sur la boîte. Ne sautez jamais cette étape :
+          c’est elle qui vous fera prévenir avant qu’un produit ne périme.
+        </p>
+        <p>
+          <strong>4.</strong> Si un produit n’est pas encore au catalogue, créez-le sans quitter
+          l’écran : tapez trois lettres, le logiciel propose une fiche complète, vous n’ajoutez que
+          vos prix.
+        </p>
+        <p>
+          <strong>5.</strong> Indiquez ce que vous avez payé et comment. Validez.
+        </p>
+        <p>
+          Le stock est à jour, les lots sont créés, et le reste dû apparaît comme dette
+          fournisseur. Vous l’enregistrerez plus tard depuis la fiche du fournisseur, quand vous le
+          paierez.
+        </p>
+      </>
+    )
+  },
+  {
+    partie: 'Marches à suivre',
+    cle: 'faire-codebarres',
+    titre: 'Une boîte dont le code n’est pas reconnu',
+    contenu: (
+      <>
+        <p>
+          Cela arrive souvent : le même médicament arrive avec un code différent selon
+          l’importateur. Ce n’est pas une panne.
+        </p>
+        <p>
+          <strong>1.</strong> Vous scannez, le logiciel affiche <em>« Code-barres inconnu — à quel
+          produit correspond cette boîte ? »</em>
+        </p>
+        <p>
+          <strong>2.</strong> Le curseur est déjà dans le champ. Tapez trois lettres du nom.
+        </p>
+        <p>
+          <strong>3.</strong> Cliquez sur le bon produit. Il entre au panier, et le code est retenu
+          pour toujours.
+        </p>
+        <p>
+          La prochaine boîte portant ce code sera reconnue immédiatement. Au bout de quelques
+          semaines, le logiciel connaîtra les codes de vos fournisseurs.
+        </p>
+        <p>
+          Si le produit n’existe pas encore au catalogue, le bouton
+          <em> Créer le produit avec ce code</em> vous y mène directement.
+        </p>
+      </>
+    )
+  },
+  {
+    partie: 'Marches à suivre',
+    cle: 'faire-journee',
+    titre: 'Ouvrir et clôturer une journée',
+    contenu: (
+      <>
+        <p>
+          <strong>Le matin.</strong> Comptez l’argent dans le tiroir. Ouvrez
+          <strong> Caisse</strong>, saisissez ce montant, validez. Vous pouvez vendre.
+        </p>
+        <p>
+          <strong>Si vous sortez de l’argent</strong> pour payer un livreur ou faire de la
+          monnaie : <strong>Caisse</strong> → <strong>F3</strong> → <em>Sortie</em>, avec le motif.
+          Un apport se saisit de la même façon en <em>Entrée</em>. Sans cela, l’argent manquera le
+          soir sans explication.
+        </p>
+        <p>
+          <strong>Le soir.</strong> Comptez le tiroir. Ouvrez <strong>Caisse</strong>, cliquez sur
+          clôturer, saisissez le montant compté.
+        </p>
+        <p>
+          Le logiciel affiche l’écart entre ce qu’il attendait et ce que vous avez compté. S’il
+          dépasse votre tolérance, écrivez la raison — « erreur de monnaie sur la vente de 18 h ».
+          C’est enregistré à votre nom.
+        </p>
+        <p>
+          <strong>Un écart qui revient chaque jour</strong> n’est pas une fatalité : consultez
+          l’historique des sessions (<strong>F7</strong>) et le journal d’activité. Ils montrent qui
+          tenait le comptoir et ce qui s’est passé.
+        </p>
+      </>
+    )
+  },
+  {
+    partie: 'Marches à suivre',
+    cle: 'faire-commander',
+    titre: 'Savoir quoi commander',
+    contenu: (
+      <>
+        <p>
+          <strong>Achats</strong> → <strong>F8</strong> — <em>Produits à commander</em>. Le logiciel
+          liste ce qui est en rupture ou sous le seuil, avec une quantité conseillée d’après vos
+          ventes récentes.
+        </p>
+        <p>C’est votre bon de commande, déjà prêt. Vous l’ajustez et vous appelez le grossiste.</p>
+        <p>
+          Pour que cette liste soit juste, le <strong>seuil minimum</strong> de chaque produit doit
+          être réaliste. Corrigez-le au fil du temps : un produit que vous êtes toujours en train de
+          recommander a un seuil trop bas.
+        </p>
+        <p>
+          Regardez aussi <strong>Rapports → Produits → Produits peu vendus</strong> avant de
+          recommander. C’est là que dort votre argent.
+        </p>
+      </>
+    )
+  },
+  {
+    partie: 'Marches à suivre',
+    cle: 'faire-annuler',
+    titre: 'Annuler ou corriger une vente',
+    contenu: (
+      <>
+        <p>
+          <strong>Ventes</strong> → onglet <strong>Historique</strong>. Trouvez la vente, ouvrez-la.
+        </p>
+        <p>
+          Choisissez l’annulation et indiquez le motif. Le stock revient automatiquement dans les
+          lots d’origine, et si la vente était à crédit, la dette du client disparaît.
+        </p>
+        <p>
+          Une vente annulée reste visible dans l’historique, marquée comme telle. Rien n’est jamais
+          effacé : c’est ce qui protège votre comptabilité, et vous-même.
+        </p>
+        <p>
+          Il n’est pas possible de modifier une vente déjà enregistrée. Annulez-la et refaites-la —
+          c’est la seule façon de garder des comptes justes.
+        </p>
+      </>
+    )
+  },
+  {
+    partie: 'Marches à suivre',
+    cle: 'faire-peremption',
+    titre: 'Retirer un produit périmé',
+    contenu: (
+      <>
+        <p>
+          <strong>1.</strong> <strong>Péremptions</strong> → <strong>F7</strong> pour n’afficher que
+          les lots déjà périmés.
+        </p>
+        <p>
+          <strong>2.</strong> Retirez physiquement les boîtes du rayon.
+        </p>
+        <p>
+          <strong>3.</strong> Dans <strong>Stock</strong>, sur le produit concerné, cliquez sur
+          <strong> Sortie</strong>. Saisissez la quantité, motif <em>Retrait pour péremption</em>.
+        </p>
+        <p>
+          Sans cette sortie, le stock du logiciel restera faux et vous croirez avoir des produits
+          que vous n’avez plus.
+        </p>
+        <p>
+          Le logiciel refuse de vendre un lot périmé, même si vous insistez. C’est délibéré.
+        </p>
+        <p>
+          <strong>Pour ne plus en arriver là :</strong> consultez <strong>Péremptions</strong> une
+          fois par semaine et écoulez en priorité ce qui approche de la date. Le logiciel sert
+          toujours le lot le plus ancien en premier, mais il ne peut pas vendre à votre place.
+        </p>
+      </>
+    )
+  },
+  {
+    partie: 'En cas de souci',
     cle: 'soucis',
     titre: 'En cas de souci',
     contenu: (

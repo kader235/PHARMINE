@@ -38,7 +38,15 @@ extraResources:
 
 win:
   target:
+    # NSIS est l'installateur normal : c'est celui que le pharmacien execute, et
+    # le SEUL que la mise a jour automatique sait remplacer.
     - target: nsis
+      arch: [x64]
+    # MSI en plus, pour un deploiement par une direction informatique — une
+    # chaine de pharmacies qui installe par strategie de groupe. Une
+    # installation MSI ne se met PAS a jour toute seule : elle se remplace par
+    # un nouveau MSI. C'est le fonctionnement attendu en entreprise.
+    - target: msi
       arch: [x64]
   icon: build/icon.ico
   artifactName: ${productName}-Setup-${version}.${ext}
