@@ -156,6 +156,13 @@ const CANAUX: Record<string, Canal> = {
   'produits.archiver': c('produits.archiver', (p: { id: number; archiver: boolean }, ctx) =>
     produits.archiverProduit(p.id, p.archiver, ctx.utilisateurId)
   ),
+  // Rattacher un code lu a un produit existant : le geste du comptoir quand une
+  // boite arrive avec un code que l'officine ne connait pas encore.
+  'produits.rattacherCodeBarres': c(
+    'produits.modifier',
+    (p: { produitId: number; code: string }, ctx) =>
+      produits.rattacherCodeBarres(p.produitId, p.code, ctx.utilisateurId)
+  ),
   'produits.creerLaboratoire': c('produits.creer', (p: { nom: string }) => produits.creerLaboratoire(p.nom)),
 
   // --- Reprise de donnees ----------------------------------------------------

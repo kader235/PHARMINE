@@ -389,6 +389,70 @@ export function creerLaboratoire(nom: string): number {
   return Number(base().prepare('INSERT INTO laboratoires (nom) VALUES (?)').run(nom.trim()).lastInsertRowid)
 }
 
+/**
+ * Rattache un code-barres lu à un produit du catalogue.
+ *
+ * Au Tchad, une même référence arrive avec des codes différents selon
+ * l'importateur : deux boîtes du même paracétamol ne portent pas forcément le
+ * même code. Le catalogue prévoit donc plusieurs codes par produit, et c'est le
+ * PHARMACIEN qui décide que deux boîtes sont le même produit. Le logiciel ne
+ * rapproche jamais deux références de lui-même : dans une officine, se tromper
+ * de produit, c'est mettre le mauvais médicament dans le sachet.
+ *
+ * Le geste doit tenir en une fois, au comptoir, client devant : on scanne, on
+ * désigne, c'est retenu pour toujours.
+ */
+export function rattacherCodeBarres(
+  produitId: number,
+  code: string,
+  utilisateurId: number
+): { produitId: number; code: string } {
+  const propre = code.trim()
+  if (propre.length < 4) {
+    throw new ErreurMetier('Ce code est trop court pour être un code-barres.', 'code')
+  }
+
+  return transaction(() => {
+    const produit = base()
+      .prepare('SELECT id, nom_commercial FROM produits WHERE id = ? AND archived_at IS NULL')
+      .get(produitId) as unknown as { id: number; nom_commercial: string } | undefined
+
+    if (!produit) throw new ErreurMetier('Ce produit n’existe pas.', 'produit')
+
+    // Un code deja pris designe forcement autre chose : on nomme le produit
+    // concerne plutot que d'annoncer un conflit abstrait.
+    const occupe = base()
+      .prepare(
+        `SELECT p.id, p.nom_commercial, p.dosage
+         FROM produit_codes_barres c JOIN produits p ON p.id = c.produit_id
+         WHERE c.code = ?`
+      )
+      .get(propre) as unknown as { id: number; nom_commercial: string; dosage: string | null } | undefined
+
+    if (occupe) {
+      if (occupe.id === produitId) return { produitId, code: propre }
+      throw new ErreurMetier(
+        `Ce code est déjà celui de ${[occupe.nom_commercial, occupe.dosage].filter(Boolean).join(' ')}.`,
+        'code_pris'
+      )
+    }
+
+    base()
+      .prepare('INSERT INTO produit_codes_barres (code, produit_id, principal) VALUES (?, ?, 0)')
+      .run(propre, produitId)
+
+    journaliser({
+      utilisateurId,
+      action: 'Code-barres rattaché',
+      entite: 'produit',
+      entiteId: produitId,
+      resume: `${propre} → ${produit.nom_commercial}`
+    })
+
+    return { produitId, code: propre }
+  })
+}
+
 /** Historique complet d'un produit : mouvements, ventes, statistiques. */
 export function statistiquesProduit(id: number): {
   ventes30j: number

@@ -992,6 +992,117 @@ app.whenReady().then(async () => {
 
   }
 
+  // --- Un code inconnu ne bloque pas le comptoir -----------------------------
+  // Au Tchad, une meme reference arrive avec des codes differents selon
+  // l'importateur. Renvoyer le pharmacien dans la fiche produit, client devant,
+  // etait la mauvaise reponse : on scanne, on designe, c'est retenu.
+  await fenetre.webContents.executeJavaScript(`document.querySelectorAll('.nav-lien')[1].click()`)
+  await new Promise((r) => setTimeout(r, 1000))
+
+  const scannerInconnu = `
+    (async () => {
+      const code = '6161100999888'
+      for (const c of code) {
+        window.dispatchEvent(new KeyboardEvent('keydown', {
+          key: c, code: 'Digit' + c, bubbles: true, cancelable: true
+        }))
+      }
+      window.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'Enter', code: 'Enter', bubbles: true, cancelable: true
+      }))
+      for (let essai = 0; essai < 40 && !document.querySelector('.rattachement'); essai++) {
+        await new Promise((r) => setTimeout(r, 100))
+      }
+      return !!document.querySelector('.rattachement')
+    })()`
+
+  const panneauOuvert = await fenetre.webContents.executeJavaScript(scannerInconnu)
+  console.log(`  code inconnu -> panneau de rattachement : ${panneauOuvert ? 'oui' : 'NON'}`)
+  if (!panneauOuvert) erreurs.push('Code inconnu : aucun panneau de rattachement ne s ouvre')
+  else {
+    await photographier(fenetre, 'code-inconnu', 400)
+
+    // Le champ doit deja etre actif : au comptoir, on ne clique pas.
+    const pret = await fenetre.webContents.executeJavaScript(
+      `document.activeElement === document.querySelector('.rattachement-saisie')`
+    )
+    console.log(`  champ deja actif : ${pret ? 'oui' : 'NON'}`)
+    if (!pret) erreurs.push('Rattachement : le champ de recherche n est pas actif')
+
+    await fenetre.webContents.executeJavaScript(`(${SAISIR})('.rattachement-saisie', 'doli')`)
+
+    const propose = await fenetre.webContents.executeJavaScript(`
+      (async () => {
+        for (let essai = 0; essai < 40 && !document.querySelector('.rattachement-choix'); essai++) {
+          await new Promise((r) => setTimeout(r, 100))
+        }
+        return document.querySelectorAll('.rattachement-choix').length
+      })()`)
+    console.log(`  produits proposes : ${propose}`)
+    if (!propose) erreurs.push('Rattachement : aucun produit propose pour « doli »')
+
+    await photographier(fenetre, 'code-inconnu-choix', 300)
+
+    // On designe le produit : le code doit etre retenu ET le produit entrer au
+    // panier. Deux effets d'un seul geste.
+    const resultat = await fenetre.webContents.executeJavaScript(`
+      (async () => {
+        const avant = document.querySelectorAll('.panier-ligne').length
+        document.querySelector('.rattachement-choix').click()
+        for (let essai = 0; essai < 40; essai++) {
+          await new Promise((r) => setTimeout(r, 100))
+          if (!document.querySelector('.rattachement')) break
+        }
+        await new Promise((r) => setTimeout(r, 500))
+        return {
+          panneauFerme: !document.querySelector('.rattachement'),
+          avant,
+          apres: document.querySelectorAll('.panier-ligne').length
+        }
+      })()`)
+
+    console.log(`  apres designation -> ${JSON.stringify(resultat)}`)
+    if (!resultat.panneauFerme) erreurs.push('Rattachement : le panneau reste ouvert')
+    if (resultat.apres <= resultat.avant) {
+      erreurs.push('Rattachement : le produit n entre pas au panier')
+    }
+
+    // Et le code doit desormais etre connu : on le rescanne.
+    const reconnu = await fenetre.webContents.executeJavaScript(`
+      (async () => {
+        // Panier vide : rescanner incrementerait sinon la ligne existante, et
+        // on ne verrait pas si le code a ete retenu.
+        const vider = Array.from(document.querySelectorAll('button'))
+          .find((b) => b.textContent && b.textContent.includes('Vider'))
+        if (vider) vider.click()
+        await new Promise((r) => setTimeout(r, 400))
+
+        const avant = document.querySelectorAll('.panier-ligne').length
+        for (const c of '6161100999888') {
+          window.dispatchEvent(new KeyboardEvent('keydown', {
+            key: c, code: 'Digit' + c, bubbles: true, cancelable: true
+          }))
+        }
+        window.dispatchEvent(new KeyboardEvent('keydown', {
+          key: 'Enter', code: 'Enter', bubbles: true, cancelable: true
+        }))
+        for (let essai = 0; essai < 40; essai++) {
+          await new Promise((r) => setTimeout(r, 100))
+          if (document.querySelectorAll('.panier-ligne').length > avant) break
+        }
+        return {
+          sansPanneau: !document.querySelector('.rattachement'),
+          ajoute: document.querySelectorAll('.panier-ligne').length > avant
+        }
+      })()`) as { sansPanneau: boolean; ajoute: boolean }
+    console.log(`  code rescanne -> ${JSON.stringify(reconnu)}`)
+    if (!reconnu.sansPanneau || !reconnu.ajoute) {
+      erreurs.push('Rattachement : le code n est pas retenu, il redemande un rattachement')
+    }
+
+    await photographier(fenetre, 'code-retenu', 400)
+  }
+
   // --- La licence doit etre trouvable ----------------------------------------
   // Un ecran d'activation accessible seulement depuis un bandeau en bas
   // d'ecran n'existe pas : personne ne cherche sa licence a cet endroit, et le

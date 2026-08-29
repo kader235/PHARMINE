@@ -249,10 +249,15 @@ function Comptoir() {
       const produit = await appeler<ProduitEtat | null>('produits.parCodeBarres', { code })
 
       if (!produit) {
-        // Le code lu est reporté dans la recherche : le pharmacien voit ce que
-        // le lecteur a réellement transmis et peut chercher autrement.
-        setSaisie(code)
-        if (reglages.donnees?.avertirScanInconnu !== false) setScanInconnu(code)
+        // Le panneau de rattachement affiche déjà le code lu : le reporter
+        // aussi dans la recherche ferait doublon, avec un « aucun produit »
+        // sous les yeux pendant qu'on désigne le bon.
+        if (reglages.donnees?.avertirScanInconnu !== false) {
+          setSaisie('')
+          setScanInconnu(code)
+        } else {
+          setSaisie(code)
+        }
         return
       }
 
@@ -384,20 +389,27 @@ function Comptoir() {
       ) : null}
 
       {scanInconnu ? (
-        <div style={{ marginBottom: 12 }}>
-          <Bandeau
-            ton="attention"
-            titre={`Code-barres inconnu : ${scanInconnu}`}
-            action={
-              <Bouton compact onClick={() => setScanInconnu(null)}>
-                Fermer
-              </Bouton>
-            }
-          >
-            Aucun produit du catalogue ne porte ce code. Ouvrez la fiche du produit concerné pour
-            l’enregistrer, puis scannez à nouveau.
-          </Bandeau>
-        </div>
+        <RattacherCode
+          code={scanInconnu}
+          onRattache={(produit) => {
+            setScanInconnu(null)
+            setSaisie('')
+            if (produit.stock_disponible > 0) ajouter(produit)
+            else
+              notifications.attention(
+                'Produit en rupture',
+                `${produit.nom_commercial} est reconnu, mais son stock est épuisé.`
+              )
+          }}
+          onCreer={() => {
+            setScanInconnu(null)
+            naviguer({ module: 'produits', filtre: 'nouveau' })
+          }}
+          onFermer={() => {
+            setSaisie(scanInconnu)
+            setScanInconnu(null)
+          }}
+        />
       ) : null}
 
       <div className="vente">
@@ -1449,5 +1461,134 @@ function DetailVente({
         </div>
       </div>
     </Modale>
+  )
+}
+
+/**
+ * Rattacher un code-barres inconnu, sans quitter le comptoir.
+ *
+ * Une même référence arrive avec des codes différents selon l'importateur.
+ * Renvoyer le pharmacien dans la fiche produit, lui faire coller le code, puis
+ * lui demander de scanner à nouveau, c'est trois écrans avec un client qui
+ * attend. Ici : on scanne, on désigne le produit, il entre au panier et le code
+ * est retenu pour toujours.
+ *
+ * Le logiciel ne rapproche jamais deux références de lui-même. Dans une
+ * officine, se tromper de produit, c'est mettre le mauvais médicament dans le
+ * sachet : c'est le pharmacien qui décide, toujours.
+ */
+function RattacherCode({
+  code,
+  onRattache,
+  onCreer,
+  onFermer
+}: {
+  code: string
+  onRattache: (produit: ProduitEtat) => void
+  onCreer: () => void
+  onFermer: () => void
+}) {
+  const action = useAction()
+  const notifications = useNotifications()
+  const [saisie, setSaisie] = useState('')
+  const [surligne, setSurligne] = useState(0)
+  const champ = useRef<HTMLInputElement>(null)
+  const differee = useDifferee(saisie, 140)
+
+  const resultats = useRequete<ProduitEtat[]>(
+    'produits.rechercheRapide',
+    { saisie: differee },
+    differee.trim().length >= 2
+  )
+  const produits = resultats.donnees ?? []
+
+  useEffect(() => {
+    champ.current?.focus()
+  }, [])
+  useEffect(() => setSurligne(0), [differee])
+
+  async function rattacher(produit: ProduitEtat): Promise<void> {
+    const r = await action.executer('produits.rattacherCodeBarres', {
+      produitId: produit.id,
+      code
+    })
+    if (r === null) return
+
+    notifications.succes(
+      'Code-barres enregistré',
+      `${code} désigne désormais ${produit.nom_commercial}.`
+    )
+    onRattache(produit)
+  }
+
+  function auClavier(e: React.KeyboardEvent<HTMLInputElement>): void {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSurligne((i) => Math.min(i + 1, produits.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSurligne((i) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter' && produits[surligne]) {
+      e.preventDefault()
+      void rattacher(produits[surligne]!)
+    } else if (e.key === 'Escape') {
+      onFermer()
+    }
+  }
+
+  return (
+    <div className="rattachement">
+      <div className="rattachement-entete">
+        <div>
+          <strong>Code-barres inconnu</strong>
+          <span className="rattachement-code">{code}</span>
+        </div>
+        <Bouton compact onClick={onFermer}>
+          Fermer
+        </Bouton>
+      </div>
+
+      <p className="rattachement-question">À quel produit correspond cette boîte ?</p>
+
+      <input
+        ref={champ}
+        className="rattachement-saisie"
+        value={saisie}
+        onChange={(e) => setSaisie(e.target.value)}
+        onKeyDown={auClavier}
+        placeholder="Tapez le nom du produit…"
+        autoComplete="off"
+      />
+
+      {action.erreur ? <Bandeau ton="danger">{action.erreur.message}</Bandeau> : null}
+
+      {produits.length > 0 ? (
+        <div className="rattachement-liste">
+          {produits.slice(0, 6).map((p, index) => (
+            <button
+              key={p.id}
+              type="button"
+              className={`rattachement-choix${index === surligne ? ' surligne' : ''}`}
+              onMouseEnter={() => setSurligne(index)}
+              onClick={() => void rattacher(p)}
+            >
+              <span className="rattachement-nom">
+                {p.nom_commercial} {p.dosage ?? ''}
+              </span>
+              <span className="rattachement-detail">
+                {p.code_interne} · {nombre(p.stock_disponible)} en stock
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="rattachement-pied">
+        <span>Ce produit n’existe pas encore au catalogue ?</span>
+        <Bouton compact icone="plus" onClick={onCreer}>
+          Créer le produit avec ce code
+        </Bouton>
+      </div>
+    </div>
   )
 }

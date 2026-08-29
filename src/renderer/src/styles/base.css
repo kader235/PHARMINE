@@ -2754,6 +2754,117 @@ table.tableau tbody tr.selectionnee td {
 }
 
 /* =============================================================================
+   Rattacher un code-barres inconnu
+
+   Le comptoir ne s'interrompt pas : le panneau s'ouvre a la place du panier,
+   le champ est deja actif, et une fois le produit designe on revient au
+   travail. Le code est retenu pour toujours.
+   ============================================================================= */
+
+.rattachement {
+  margin-bottom: 12px;
+  padding: 13px 14px 14px;
+  border: 1px solid var(--attention);
+  border-radius: var(--rayon-panneau);
+  background: var(--attention-fond);
+}
+
+.rattachement-entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--attention);
+  font-size: 12.5px;
+}
+
+.rattachement-code {
+  margin-left: 9px;
+  font-family: var(--police-mono, ui-monospace, Consolas, monospace);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+}
+
+.rattachement-question {
+  margin: 10px 0 8px;
+  color: var(--texte-fort);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.rattachement-saisie {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+  color: var(--texte);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.rattachement-saisie:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-clair);
+}
+
+.rattachement-liste {
+  margin-top: 9px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.rattachement-choix {
+  display: block;
+  width: 100%;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--bordure-legere);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.rattachement-choix:last-child {
+  border-bottom: 0;
+}
+
+.rattachement-choix.surligne {
+  background: var(--accent-clair);
+}
+
+.rattachement-nom {
+  display: block;
+  color: var(--texte-fort);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.rattachement-detail {
+  display: block;
+  margin-top: 1px;
+  color: var(--texte-attenue);
+  font-size: 11.5px;
+}
+
+.rattachement-pied {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 11px;
+  padding-top: 10px;
+  border-top: 1px solid var(--attention);
+  color: var(--attention);
+  font-size: 12px;
+}
+
+/* =============================================================================
    Guide d'utilisation
 
    Le même contenu sert à l'écran et au papier. À l'écran, les sections se

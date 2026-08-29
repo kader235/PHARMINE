@@ -300,6 +300,73 @@ try {
     versionBase
   )
 
+  // ==========================================================================
+  titre('Codes-barres multiples')
+
+  // Au Tchad, une meme reference arrive avec des codes differents selon
+  // l'importateur. Le catalogue doit donc accepter plusieurs codes par produit,
+  // et le pharmacien doit pouvoir rattacher un code inconnu sans quitter le
+  // comptoir.
+  const codeImportateur = '6161100234567'
+  produits.rattacherCodeBarres(doliprane, codeImportateur, adminId)
+
+  verifier(
+    produits.parCodeBarres(codeImportateur)?.id === doliprane,
+    'un second code-barres désigne le même produit'
+  )
+  verifier(
+    produits.parCodeBarres('3400930000001')?.id === doliprane,
+    'le code d’origine continue de fonctionner'
+  )
+
+  const fiche = produits.produit(doliprane)
+  verifier(
+    (fiche?.codes_barres ?? []).length >= 2,
+    'la fiche porte les deux codes',
+    fiche?.codes_barres
+  )
+
+  // Rattacher deux fois le meme code au meme produit ne doit pas echouer :
+  // au comptoir, on rescanne sans y penser.
+  produits.rattacherCodeBarres(doliprane, codeImportateur, adminId)
+  verifier(
+    produits.produit(doliprane)?.codes_barres.filter((c) => c === codeImportateur).length === 1,
+    'rescanner le même code ne le duplique pas'
+  )
+
+  // Un code deja pris par un AUTRE produit doit etre refuse, en nommant lequel.
+  // Se tromper de produit, dans une officine, c'est le mauvais medicament dans
+  // le sachet.
+  refuse(
+    'un code déjà attribué à un autre produit est refusé',
+    () => produits.rattacherCodeBarres(amoxicilline, codeImportateur, adminId),
+    'déjà celui de'
+  )
+  verifier(
+    produits.parCodeBarres(codeImportateur)?.id === doliprane,
+    'le code refusé n’a pas changé de produit'
+  )
+
+  refuse(
+    'un code trop court est refusé',
+    () => produits.rattacherCodeBarres(doliprane, '12', adminId),
+    'trop court'
+  )
+  refuse(
+    'rattacher à un produit inexistant est refusé',
+    () => produits.rattacherCodeBarres(999_999, '7770001112223', adminId),
+    'n’existe pas'
+  )
+
+  // L'operation est tracee : on doit pouvoir savoir qui a rapproche quoi.
+  const traceCode = base()
+    .prepare(
+      `SELECT COUNT(*) n FROM journal_activite
+       WHERE action = 'Code-barres rattaché' AND entite_id = ?`
+    )
+    .get(doliprane) as unknown as { n: number }
+  verifier(traceCode.n >= 1, 'le rattachement est inscrit au journal', traceCode.n)
+
   titre('Réception fournisseur et création des lots')
 
   const labo = partenaires.enregistrerFournisseur(
