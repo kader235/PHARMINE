@@ -965,6 +965,72 @@ const SECTIONS: Section[] = [
   },
   {
     partie: 'Marches à suivre',
+    cle: 'faire-rapide',
+    titre: 'Enregistrer vite quarante produits',
+    contenu: (
+      <>
+        <p>
+          Une livraison de quarante références attend sur le comptoir. La fiche complète demande
+          une quinzaine de renseignements : c’est trop. Utilisez l’<strong>enregistrement
+          rapide</strong>.
+        </p>
+        <p>
+          <strong>Produits</strong> → <strong>F3</strong>. Six champs, dans l’ordre où vous les
+          lisez sur la boîte : le nom, la quantité reçue, le prix de vente, l’emplacement, le
+          code-barres, la date de péremption. Le curseur part sur le nom, vous n’avez pas à
+          cliquer.
+        </p>
+        <p>
+          Le prix d’achat est proposé mais facultatif. Sans lui, la valeur de votre stock et la
+          marge de ce produit resteront à zéro jusqu’à ce que vous le renseigniez — l’écran vous le
+          dit plutôt que de vous laisser croire que tout est complet.
+        </p>
+        <p>
+          Le reste — catégorie, laboratoire, forme, TVA, seuils — se complète plus tard depuis la
+          fiche, ou jamais : un produit sans laboratoire se vend très bien.
+        </p>
+      </>
+    )
+  },
+  {
+    partie: 'Marches à suivre',
+    cle: 'faire-etiquettes',
+    titre: 'Une boîte sans code-barres : en fabriquer un',
+    contenu: (
+      <>
+        <p>
+          Conditionnement local, étiquette arrachée, générique importé en vrac : beaucoup de boîtes
+          n’ont aucun code lisible. Sans code, chaque vente passe par une recherche au clavier —
+          trois secondes de plus, à chaque boîte, toute la journée.
+        </p>
+        <p>
+          <strong>Laissez le champ code-barres vide</strong> à l’enregistrement rapide. Le logiciel
+          en fabrique un et vous le dit. Ce code est un vrai EAN-13, chiffre de contrôle compris :
+          n’importe quelle douchette du commerce le lit, sans réglage.
+        </p>
+        <p>
+          Il commence par <strong>2</strong>, une plage que la norme réserve à l’usage interne d’un
+          commerce. Il ne peut donc jamais entrer en conflit avec le code d’un vrai médicament.
+        </p>
+        <p>
+          <strong>Pour l’imprimer :</strong> <strong>Produits</strong> → <strong>F4</strong> —
+          <em> Planche d’étiquettes</em>. Cochez ce que vous collez aujourd’hui, indiquez le nombre
+          d’exemplaires par produit, et imprimez. Dix étiquettes par feuille A4 : deux colonnes,
+          cinq rangées, avec un trait de coupe.
+        </p>
+        <p>
+          Chaque étiquette porte le nom, le code, le prix et l’emplacement. Découpez, collez sur la
+          boîte, et elle se scanne comme les autres.
+        </p>
+        <p>
+          Réimprimer une étiquette perdue redonne <strong>le même code</strong> : une boîte n’a
+          jamais deux codes maison.
+        </p>
+      </>
+    )
+  },
+  {
+    partie: 'Marches à suivre',
     cle: 'faire-codebarres',
     titre: 'Une boîte dont le code n’est pas reconnu',
     contenu: (

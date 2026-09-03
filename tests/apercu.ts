@@ -1154,6 +1154,141 @@ app.whenReady().then(async () => {
     await photographier(fenetre, 'code-retenu', 400)
   }
 
+  // --- Enregistrement rapide et planche d'etiquettes -------------------------
+  // Six champs pour une boite vendable, et un code fabrique quand elle n'en
+  // porte pas. La planche imprime ces codes, dix par feuille A4.
+  await fenetre.webContents.executeJavaScript(`
+    (async () => {
+      const lien = Array.from(document.querySelectorAll('.nav-lien'))
+        .find((a) => a.textContent && a.textContent.trim().startsWith('Produits'))
+      if (lien) lien.click()
+      for (let essai = 0; essai < 50; essai++) {
+        await new Promise((r) => setTimeout(r, 100))
+        if (document.querySelector('.entete-page, .liste, table')) return true
+      }
+      return false
+    })()`)
+
+  // F3 ouvre l'enregistrement rapide.
+  await fenetre.webContents.executeJavaScript(`
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F3', bubbles: true, cancelable: true }))`)
+
+  const rapide = await fenetre.webContents.executeJavaScript(`
+    (async () => {
+      for (let essai = 0; essai < 40; essai++) {
+        await new Promise((r) => setTimeout(r, 100))
+        if (document.querySelector('.rapide-grille')) break
+      }
+      const g = document.querySelector('.rapide-grille')
+      if (!g) return { ouvert: false }
+      return {
+        ouvert: true,
+        champs: Array.from(g.querySelectorAll('label')).map((l) => l.textContent.replace('*','').trim()),
+        curseurSurLeNom: document.activeElement === g.querySelector('input')
+      }
+    })()`)
+
+  console.log(`  enregistrement rapide -> ${JSON.stringify(rapide)}`)
+  if (!rapide.ouvert) erreurs.push('Produits : F3 n ouvre pas l enregistrement rapide')
+  else {
+    if (rapide.champs.length !== 7) {
+      erreurs.push(`Rapide : 7 champs attendus (6 + prix d achat), ${rapide.champs.length} trouve(s)`)
+    }
+    if (!rapide.curseurSurLeNom) erreurs.push('Rapide : le curseur ne part pas sur le nom')
+  }
+
+  await photographier(fenetre, 'produit-rapide', 400)
+
+  // On enregistre reellement un produit sans code-barres : le logiciel doit en
+  // fabriquer un.
+  const cree = await fenetre.webContents.executeJavaScript(`
+    (async () => {
+      const g = document.querySelector('.rapide-grille')
+      const poser = (input, valeur) => {
+        const setter = Object.getOwnPropertyDescriptor(
+          window.HTMLInputElement.prototype, 'value').set
+        setter.call(input, valeur)
+        input.dispatchEvent(new Event('input', { bubbles: true }))
+      }
+      const entrees = g.querySelectorAll('input')
+      poser(entrees[0], 'Ibuprofene 400 mg')
+      poser(entrees[1], '24')
+      poser(entrees[2], '800')
+      poser(entrees[4], 'Rayon B - Etagere 1')
+      await new Promise((r) => setTimeout(r, 200))
+      const bouton = Array.from(document.querySelectorAll('.modale button'))
+        .find((b) => b.textContent.trim() === 'Enregistrer')
+      bouton.click()
+      for (let essai = 0; essai < 60; essai++) {
+        await new Promise((r) => setTimeout(r, 100))
+        if (document.querySelector('.planche-liste')) return { planche: true }
+      }
+      return { planche: false }
+    })()`)
+
+  console.log(`  apres enregistrement -> ${JSON.stringify(cree)}`)
+  if (!cree.planche) {
+    erreurs.push('Rapide : la planche ne s ouvre pas apres un code fabrique')
+  } else {
+    const planche = await fenetre.webContents.executeJavaScript(`
+      (async () => {
+        // On coche tout pour voir une planche pleine.
+        const tout = Array.from(document.querySelectorAll('.modale button'))
+          .find((b) => b.textContent.trim() === 'Tout cocher')
+        if (tout) tout.click()
+        await new Promise((r) => setTimeout(r, 400))
+        const barres = document.querySelectorAll('.planche-ligne .code-barres rect')
+        return {
+          lignes: document.querySelectorAll('.planche-ligne').length,
+          barresDessinees: barres.length,
+          compte: document.querySelector('.planche-compte')?.textContent ?? '',
+          codeInvalide: document.querySelectorAll('.code-barres-invalide').length
+        }
+      })()`)
+
+    console.log(`  planche -> ${JSON.stringify(planche)}`)
+    if (!planche.lignes) erreurs.push('Planche : aucune etiquette proposee')
+    if (!planche.barresDessinees) erreurs.push('Planche : aucune barre dessinee')
+    if (planche.codeInvalide) erreurs.push(`Planche : ${planche.codeInvalide} code(s) illisible(s)`)
+    if (!planche.compte.includes('feuille')) {
+      erreurs.push('Planche : le nombre de feuilles n est pas annonce')
+    }
+
+    await photographier(fenetre, 'planche-etiquettes', 500)
+
+    // Et la planche telle qu'elle sortira de l'imprimante.
+    await fenetre.webContents.executeJavaScript(`
+      Array.from(document.querySelectorAll('.modale button'))
+        .find((b) => b.textContent.trim() === 'Imprimer')?.click()`)
+    await new Promise((r) => setTimeout(r, 900))
+    await photographierEnImpression(fenetre, 'planche-a-imprimer')
+
+    const grille = await fenetre.webContents.executeJavaScript(`
+      (() => {
+        const f = document.querySelector('#impression .planche-feuille')
+        if (!f) return { presente: false }
+        const style = getComputedStyle(f)
+        return {
+          presente: true,
+          colonnes: style.gridTemplateColumns.split(' ').length,
+          etiquettes: f.querySelectorAll('.etiquette-code').length
+        }
+      })()`)
+    console.log(`  planche a imprimer -> ${JSON.stringify(grille)}`)
+    if (!grille.presente) erreurs.push('Planche : le document a imprimer est absent')
+    else {
+      if (grille.colonnes !== 2) erreurs.push(`Planche : ${grille.colonnes} colonne(s) au lieu de 2`)
+      if (grille.etiquettes > 10) {
+        erreurs.push(`Planche : ${grille.etiquettes} etiquettes sur une feuille, 10 au maximum`)
+      }
+    }
+
+    await fenetre.webContents.executeJavaScript(`
+      Array.from(document.querySelectorAll('.modale button'))
+        .find((b) => b.textContent.trim() === 'Fermer')?.click()`)
+    await new Promise((r) => setTimeout(r, 400))
+  }
+
   // --- La licence doit etre trouvable ----------------------------------------
   // Un ecran d'activation accessible seulement depuis un bandeau en bas
   // d'ecran n'existe pas : personne ne cherche sa licence a cet endroit, et le

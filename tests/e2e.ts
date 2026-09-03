@@ -33,6 +33,7 @@ import * as repertoire from '../src/main/services/repertoire'
 import * as reprise from '../src/main/services/reprise'
 import * as stock from '../src/main/services/stock'
 import * as secours from '../src/main/secours'
+import * as codesBarres from '../src/main/services/codesBarres'
 import * as achats from '../src/main/services/achats'
 import * as caisse from '../src/main/services/caisse'
 import * as ventes from '../src/main/services/ventes'
@@ -1878,6 +1879,136 @@ try {
     const muet = produits.contexteProduit(anonyme)
     verifier(muet.equivalents.length === 0, 'sans principe actif, aucun équivalent n’est proposé')
     verifier(muet.joursAvantPeremption === null, 'sans lot daté, la péremption reste muette')
+  }
+
+  // ==========================================================================
+  titre('Enregistrement rapide et codes-barres fabriques')
+
+  // Une livraison de quarante references attend sur le comptoir. Six champs
+  // suffisent ; le reste se completera plus tard, ou jamais.
+  {
+    const rapide = produits.creerProduitRapide(
+      {
+        nom: 'Ibuprofene 400 mg',
+        prixVente: 800,
+        quantite: 24,
+        emplacement: 'Rayon B · Étagère 1',
+        datePeremption: '2028-06-30'
+      },
+      adminId
+    )
+
+    verifier(rapide.id > 0, 'l’enregistrement rapide crée le produit')
+    verifier(rapide.codeEngendre, 'sans code lu, un code interne est fabriqué')
+    verifier(
+      codesBarres.estEan13Valide(rapide.codeBarres ?? ''),
+      'le code fabriqué est un EAN-13 valide, chiffre de contrôle compris',
+      rapide.codeBarres
+    )
+    verifier(
+      codesBarres.estCodeInterne(rapide.codeBarres ?? ''),
+      'le code fabriqué commence par 2 — plage réservée à l’usage interne',
+      rapide.codeBarres
+    )
+
+    // Le stock doit etre entre, avec sa peremption : c'est tout l'interet
+    // d'avoir demande la quantite.
+    const ctx = produits.contexteProduit(rapide.id)
+    verifier(ctx.emplacement === 'Rayon B · Étagère 1', 'l’emplacement saisi est retenu')
+    verifier(ctx.datePeremption === '2028-06-30', 'la péremption saisie crée bien le lot', ctx.datePeremption)
+    verifier(
+      stock.stockDisponible(rapide.id) === 24,
+      'la quantité saisie entre en stock',
+      stock.stockDisponible(rapide.id)
+    )
+
+    // Le code fabrique doit se scanner : c'est la seule chose qui compte.
+    const parScan = produits.rechercheRapide(rapide.codeBarres!)
+    verifier(
+      parScan.length === 1 && parScan[0]!.id === rapide.id,
+      'le code fabriqué retrouve son produit à la douchette'
+    )
+
+    // Reinterroger le meme produit redonne le meme code : reimprimer une
+    // etiquette perdue ne doit pas creer un second code pour la meme boite.
+    const rappel = codesBarres.engendrerCodeInterne(rapide.id, adminId)
+    verifier(!rappel.nouveau, 'réimprimer ne fabrique pas un second code')
+    verifier(rappel.code === rapide.codeBarres, 'le même produit retrouve le même code')
+
+    // Deux produits n'obtiennent jamais le meme code.
+    const autre = produits.creerProduitRapide(
+      { nom: 'Vitamine C 500', prixVente: 300, quantite: 0 },
+      adminId
+    )
+    verifier(autre.codeBarres !== rapide.codeBarres, 'deux produits reçoivent deux codes distincts')
+    verifier(stock.stockDisponible(autre.id) === 0, 'une quantité nulle n’invente aucun lot')
+
+    // Un code lu sur la boite est conserve tel quel, sans en fabriquer un.
+    const avecCode = produits.creerProduitRapide(
+      { nom: 'Aspirine 500', prixVente: 400, quantite: 5, codeBarres: '3401579804567' },
+      adminId
+    )
+    verifier(!avecCode.codeEngendre, 'un code lu sur la boîte n’en fait pas fabriquer un autre')
+    verifier(avecCode.codeBarres === '3401579804567', 'le code lu est conservé tel quel')
+
+    // Et un code deja pris est refuse en NOMMANT le produit concerne.
+    let refus = ''
+    try {
+      produits.creerProduitRapide(
+        { nom: 'Doublon', prixVente: 100, quantite: 1, codeBarres: '3401579804567' },
+        adminId
+      )
+    } catch (erreur) {
+      refus = (erreur as Error).message
+    }
+    verifier(refus.includes('Aspirine 500'), 'un code déjà pris est refusé en nommant le produit', refus)
+
+    // Refus sans ecriture : le doublon ne doit pas avoir laisse de fiche.
+    verifier(
+      produits.rechercheRapide('Doublon').length === 0,
+      'le refus n’a laissé aucune fiche derrière lui'
+    )
+
+    // Les garde-fous de saisie.
+    const refuse = (demande: produits.DemandeRapide, quoi: string): void => {
+      let message = ''
+      try {
+        produits.creerProduitRapide(demande, adminId)
+      } catch (erreur) {
+        message = (erreur as Error).message
+      }
+      verifier(message !== '', `l’enregistrement rapide refuse ${quoi}`, message)
+    }
+    refuse({ nom: '   ', prixVente: 500, quantite: 1 }, 'un nom vide')
+    refuse({ nom: 'Sans prix', prixVente: 0, quantite: 1 }, 'un prix nul')
+    refuse({ nom: 'Prix negatif', prixVente: -5, quantite: 1 }, 'un prix négatif')
+    refuse({ nom: 'Quantite cassee', prixVente: 500, quantite: -2 }, 'une quantité négative')
+    refuse({ nom: 'Code court', prixVente: 500, quantite: 1, codeBarres: '123' }, 'un code trop court')
+    refuse(
+      { nom: 'Code non numerique', prixVente: 500, quantite: 1, codeBarres: '34015ABC04567' },
+      'un code non numérique'
+    )
+
+    // Le chiffre de controle, sur des cas connus.
+    verifier(codesBarres.chiffreControleEan13('400638133393') === 1, 'chiffre de contrôle EAN-13 exact')
+    verifier(!codesBarres.estEan13Valide('4006381333931'.slice(0, 12) + '2'), 'un contrôle faux est rejeté')
+    verifier(!codesBarres.estEan13Valide('123'), 'une longueur fausse est rejetée')
+
+    // La planche d'etiquettes ne propose que les codes fabriques : reimprimer
+    // le code du fabricant n'aurait aucun sens, il est deja sur la boite.
+    const aEtiqueter = codesBarres.produitsAEtiqueter()
+    verifier(
+      aEtiqueter.some((p) => p.produitId === rapide.id),
+      'la planche propose les produits à code fabriqué'
+    )
+    verifier(
+      !aEtiqueter.some((p) => p.code === '3401579804567'),
+      'la planche ne propose pas les codes lus sur les boîtes'
+    )
+    verifier(
+      aEtiqueter.every((p) => codesBarres.estCodeInterne(p.code)),
+      'la planche ne contient que des codes internes valides'
+    )
   }
 
   // ==========================================================================

@@ -3228,3 +3228,211 @@ table.tableau tbody tr.selectionnee td {
   color: var(--texte-faible);
   font-variant-numeric: tabular-nums;
 }
+
+/* --- Planche d'etiquettes code-barres (A4, 2 x 5) --------------------------
+   Les cotes sont en millimetres : une etiquette imprimee doit mesurer ce
+   qu'elle mesure, quel que soit le reglage d'echelle de l'imprimante. */
+.planche-feuille {
+  display: grid;
+  grid-template-columns: repeat(2, 95mm);
+  grid-auto-rows: 55mm;
+  gap: 0;
+  justify-content: center;
+}
+
+/* Chaque feuille repart sur une page neuve : sans cela une etiquette se
+   couperait en deux au saut de page. */
+.planche-feuille + .planche-feuille {
+  break-before: page;
+  page-break-before: always;
+}
+
+.etiquette-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2mm;
+  padding: 3mm 4mm;
+  /* Trait de coupe : sans repere, decouper droit dix etiquettes aux ciseaux
+     est impossible, et une etiquette de travers se colle de travers. */
+  border: 0.2mm dashed #b8b8b8;
+  overflow: hidden;
+}
+
+.etiquette-nom {
+  font-size: 10pt;
+  line-height: 1.2;
+  text-align: center;
+  max-height: 2.6em;
+  overflow: hidden;
+}
+
+.etiquette-nom span {
+  font-weight: 400;
+}
+
+.code-barres {
+  width: 44mm;
+  height: auto;
+  display: block;
+}
+
+.cb-chiffre {
+  font-family: var(--police-chiffres), monospace;
+  font-size: 9px;
+  letter-spacing: 1.6px;
+  fill: #000;
+}
+
+.etiquette-pied {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 3mm;
+  width: 100%;
+  font-size: 9pt;
+}
+
+.etiquette-pied strong {
+  font-size: 11pt;
+}
+
+.etiquette-officine {
+  font-size: 7pt;
+  color: #555;
+  text-align: center;
+}
+
+.code-barres-invalide {
+  font-size: 8pt;
+  color: var(--danger);
+  text-align: center;
+}
+
+/* A l'ecran, l'apercu de la planche se voit sur fond de page. */
+.planche {
+  background: var(--surface);
+  color: #000;
+}
+
+/* --- Enregistrement rapide -------------------------------------------------
+   Deux colonnes : le nom prend toute la largeur, le reste se lit par paires,
+   dans l'ordre ou on les trouve sur la boite. */
+.rapide-grille {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 14px;
+}
+
+.rapide-grille .champ.large {
+  grid-column: 1 / -1;
+}
+
+.rapide-erreur {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 9px 12px;
+  border-radius: var(--rayon);
+  background: var(--danger-fond);
+  color: var(--danger);
+  font-size: 13px;
+}
+
+/* --- Choix des etiquettes a imprimer --------------------------------------- */
+.planche-reglages {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--bordure-legere);
+}
+
+.planche-choix-tous {
+  display: flex;
+  gap: 6px;
+}
+
+.planche-exemplaires {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--texte-attenue);
+}
+
+.planche-exemplaires input {
+  width: 62px;
+  height: var(--hauteur-controle);
+  padding: 0 8px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface);
+  color: var(--texte);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.planche-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 52vh;
+  overflow-y: auto;
+}
+
+.planche-ligne {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--rayon);
+  cursor: pointer;
+}
+
+.planche-ligne:hover {
+  background: var(--surface-attenuee);
+}
+
+.planche-ligne.choisie {
+  border-color: var(--accent-bordure);
+  background: var(--accent-clair);
+}
+
+.planche-nom {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.planche-nom strong {
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.planche-nom span {
+  font-size: 12px;
+  color: var(--texte-faible);
+}
+
+/* L'apercu du code dans la liste : lisible, mais discret. */
+.planche-ligne .code-barres {
+  width: 38mm;
+  opacity: 0.92;
+}
+
+.planche-compte {
+  margin-right: auto;
+  font-size: 13px;
+  color: var(--texte-attenue);
+  font-variant-numeric: tabular-nums;
+}

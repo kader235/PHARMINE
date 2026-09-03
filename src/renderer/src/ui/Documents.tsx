@@ -1,5 +1,6 @@
 import type { ApercuCompte, LigneReleve, Pharmacie, VenteDetail } from '@shared/types'
 import { dateCourte, heure, modePaiement, montant, nombre } from '../lib/format'
+import { barresEan13 } from '../lib/ean13'
 
 /**
  * Documents imprimés.
@@ -482,5 +483,130 @@ export function DocumentTableau({
         ) : null}
       </table>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Planche d'étiquettes code-barres (A4)
+// ---------------------------------------------------------------------------
+
+/**
+ * Dix étiquettes par feuille A4 : deux colonnes, cinq rangées.
+ *
+ * POURQUOI CE DÉCOUPAGE
+ *
+ * Une A4 fait 210 mm de large. Deux colonnes laissent 95 mm par étiquette,
+ * de quoi imprimer un EAN-13 à sa taille nominale — 37,3 mm — avec de la
+ * marge. Cinq rangées donnent 55 mm de hauteur : le nom du produit tient sur
+ * deux lignes sans rogner les barres.
+ *
+ * On pourrait en mettre vingt-quatre, comme les planches d'étiquettes
+ * autocollantes du commerce. Ce serait une fausse économie : à cette taille
+ * les barres passent sous le seuil de lecture d'une douchette d'entrée de
+ * gamme, et une étiquette qu'on doit scanner trois fois ne fait gagner de
+ * papier à personne.
+ *
+ * LE TRAIT DE COUPE
+ *
+ * Chaque étiquette porte un cadre gris clair. Il ne s'imprime pas pour faire
+ * joli : sans repère, découper droit dix étiquettes aux ciseaux est
+ * impossible, et une étiquette de travers se colle de travers.
+ */
+export function PlancheEtiquettes({
+  etiquettes,
+  pharmacie
+}: {
+  etiquettes: {
+    code: string
+    nom: string
+    dosage?: string | null
+    prixVente?: number | null
+    emplacement?: string | null
+  }[]
+  pharmacie?: Pharmacie | null
+}) {
+  // Dix par feuille : on découpe en pages pour que chaque saut soit net.
+  const PAR_FEUILLE = 10
+  const feuilles: (typeof etiquettes)[] = []
+  for (let i = 0; i < etiquettes.length; i += PAR_FEUILLE) {
+    feuilles.push(etiquettes.slice(i, i + PAR_FEUILLE))
+  }
+
+  return (
+    <div className="planche">
+      {feuilles.map((feuille, indexFeuille) => (
+        <section className="planche-feuille" key={indexFeuille}>
+          {feuille.map((e, index) => (
+            <article className="etiquette-code" key={`${e.code}-${index}`}>
+              <div className="etiquette-nom">
+                <strong>{e.nom}</strong>
+                {e.dosage ? <span> {e.dosage}</span> : null}
+              </div>
+
+              <CodeBarres code={e.code} />
+
+              <div className="etiquette-pied">
+                {e.prixVente != null ? <strong>{montant(e.prixVente)}</strong> : <span />}
+                {e.emplacement ? <span>{e.emplacement}</span> : null}
+              </div>
+              {pharmacie?.nom ? <div className="etiquette-officine">{pharmacie.nom}</div> : null}
+            </article>
+          ))}
+        </section>
+      ))}
+    </div>
+  )
+}
+
+/**
+ * Un EAN-13 dessiné en SVG.
+ *
+ * Les proportions suivent la norme : module de 0,33 mm, barres de 22,85 mm,
+ * gardes descendant de 5 modules sous les chiffres. À cette taille, une
+ * douchette lit du premier coup — c'est le seul critère qui compte.
+ */
+export function CodeBarres({ code, hauteur = 62 }: { code: string; hauteur?: number }) {
+  const barres = barresEan13(code)
+
+  if (!barres.length) {
+    // Un code incohérent ne doit jamais produire un code-barres d'apparence
+    // valide : une douchette y lirait un autre produit.
+    return <div className="code-barres-invalide">Code-barres illisible : {code}</div>
+  }
+
+  const MODULE = 2
+  const largeur = 95 * MODULE
+  const basChiffres = 11
+  const hauteurBarre = hauteur - basChiffres
+
+  // Les chiffres se lisent en trois groupes, comme sur une boîte : le premier
+  // hors du symbole, puis six et six de part et d'autre de la barre du milieu.
+  return (
+    <svg
+      className="code-barres"
+      viewBox={`-16 0 ${largeur + 24} ${hauteur}`}
+      role="img"
+      aria-label={`Code-barres ${code}`}
+    >
+      {barres.map((b, i) => (
+        <rect
+          key={i}
+          x={b.x * MODULE}
+          y={0}
+          width={b.largeur * MODULE}
+          height={b.garde ? hauteur - 3 : hauteurBarre}
+          fill="#000"
+        />
+      ))}
+      <text className="cb-chiffre" x={-13} y={hauteur - 1}>
+        {code[0]}
+      </text>
+      <text className="cb-chiffre" x={24 * MODULE} y={hauteur - 1} textAnchor="middle">
+        {code.slice(1, 7)}
+      </text>
+      <text className="cb-chiffre" x={71 * MODULE} y={hauteur - 1} textAnchor="middle">
+        {code.slice(7)}
+      </text>
+    </svg>
   )
 }

@@ -6,6 +6,7 @@ import { writeFileSync } from 'node:fs'
 import { ErreurMetier, journaliser } from '../services/commun'
 import * as auth from '../services/auth'
 import * as produits from '../services/produits'
+import * as codesBarres from '../services/codesBarres'
 import * as repertoire from '../services/repertoire'
 import * as stock from '../services/stock'
 import * as ventes from '../services/ventes'
@@ -150,6 +151,17 @@ const CANAUX: Record<string, Canal> = {
   // Le comptoir interroge ce canal a chaque deplacement de curseur : il doit
   // rester bon marche, d'ou l'index sur le principe actif.
   'produits.contexte': c('produits.voir', (p: { id: number }) => produits.contexteProduit(p.id)),
+  // L'enregistrement rapide cree autant qu'il modifie le stock : il exige donc
+  // les deux droits, jamais l'un sans l'autre.
+  'produits.creer_rapide': c('produits.creer', (p: produits.DemandeRapide, ctx) =>
+    produits.creerProduitRapide(p, ctx.utilisateurId)
+  ),
+  'produits.engendrer_code': c('produits.modifier', (p: { id: number }, ctx) =>
+    codesBarres.engendrerCodeInterne(p.id, ctx.utilisateurId)
+  ),
+  'produits.a_etiqueter': c('produits.voir', (p: { limite?: number }) =>
+    codesBarres.produitsAEtiqueter(p?.limite ?? 200)
+  ),
   'produits.statistiques': c('produits.voir', (p: { id: number }) => produits.statistiquesProduit(p.id)),
   'produits.referentiels': c('produits.voir', () => produits.referentiels()),
   'produits.creer': c('produits.creer', (p, ctx) => produits.creerProduit(p, ctx.utilisateurId)),

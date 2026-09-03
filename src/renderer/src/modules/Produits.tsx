@@ -8,6 +8,8 @@ import type {
   ProduitEtat
 } from '@shared/types'
 import { useAction, useDifferee, useRequete } from '../lib/hooks'
+import { ProduitRapide } from './ProduitRapide'
+import { PlancheCodesBarres } from './PlancheCodesBarres'
 import { useSession } from '../app/Session'
 import { useFonctions } from '../app/fonctions'
 import type { Destination } from '../app/navigation'
@@ -63,6 +65,8 @@ export default function Produits({ destination }: { destination: Destination }) 
   })
 
   const referentiels = useRequete<Referentiels>('produits.referentiels')
+  const [rapide, setRapide] = useState(false)
+  const [planche, setPlanche] = useState(false)
 
   useFonctions('produits', [
     {
@@ -71,6 +75,18 @@ export default function Produits({ destination }: { destination: Destination }) 
       action: () => setEdition({ produit: null }),
       disponible: session.peut('produits.creer'),
       saillante: true
+    },
+    {
+      touche: 'F3',
+      libelle: 'Enregistrement rapide',
+      action: () => setRapide(true),
+      disponible: session.peut('produits.creer')
+    },
+    {
+      touche: 'F4',
+      libelle: 'Planche d’étiquettes',
+      action: () => setPlanche(true),
+      disponible: session.peut('produits.voir')
     },
     { touche: 'F5', libelle: 'Actualiser', action: () => liste.recharger() },
     {
@@ -210,6 +226,20 @@ export default function Produits({ destination }: { destination: Destination }) 
           </EtatVide>
         }
       />
+
+      {rapide ? (
+        <ProduitRapide
+          onFerme={() => setRapide(false)}
+          onCree={(resultat) => {
+            liste.recharger()
+            // Un code fabrique n'existe pour de bon que colle sur la boite :
+            // on propose la planche tout de suite, tant qu'on l'a en main.
+            if (resultat.codeEngendre) setPlanche(true)
+          }}
+        />
+      ) : null}
+
+      {planche ? <PlancheCodesBarres onFerme={() => setPlanche(false)} /> : null}
 
       {edition ? (
         <FormulaireProduit

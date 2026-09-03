@@ -1,6 +1,8 @@
 import { base, transaction, type ValeurSQL } from '../db'
 import type { Page, Produit, ProduitEtat } from '@shared/types'
 import { ErreurMetier, journaliser, maintenant, prochaineReference } from './commun'
+import { engendrerCodeInterne } from './codesBarres'
+import { entrerStock } from './stock'
 
 /** Prépare une saisie libre pour FTS5 : préfixe chaque terme, échappe les guillemets. */
 function requeteFts(saisie: string): string | null {
@@ -606,4 +608,123 @@ export function contexteProduit(id: number): ContexteProduit {
       stockDisponible: e.stock_disponible
     }))
   }
+}
+
+/**
+ * Enregistrement rapide d'un produit.
+ *
+ * POURQUOI UNE SECONDE PORTE D'ENTREE
+ *
+ * La fiche complete demande une quinzaine de renseignements : categorie,
+ * laboratoire, forme, unite, TVA, seuils, notes. C'est ce qu'il faut pour un
+ * catalogue bien tenu, et c'est trop quand une livraison de quarante
+ * references attend sur le comptoir.
+ *
+ * Ici, six champs et rien d'autre : le nom, la quantite, le prix,
+ * l'emplacement, le code-barres, la peremption. Le reste se complete plus tard,
+ * depuis la fiche, ou jamais — un produit sans laboratoire se vend tres bien.
+ *
+ * LE PRIX D'ACHAT
+ *
+ * Il n'est pas demande, parce qu'il ralentit la saisie et qu'on ne l'a pas
+ * toujours sous les yeux. Il reste accepte s'il est connu : sans lui, la valeur
+ * du stock et les marges de ce produit valent zero jusqu'a ce qu'on le
+ * renseigne. L'ecran le dit, plutot que de laisser croire que tout est complet.
+ */
+export interface DemandeRapide {
+  nom: string
+  prixVente: number
+  quantite: number
+  emplacement?: string | null
+  codeBarres?: string | null
+  datePeremption?: string | null
+  /** Connu : la valeur du stock est juste. Absent : elle vaut zero. */
+  prixAchat?: number
+  /** Fabriquer un code interne quand la boite n'en porte pas. */
+  engendrerCode?: boolean
+}
+
+export interface ProduitRapide {
+  id: number
+  codeInterne: string
+  /** Le code retenu : celui de la boite, ou celui fabrique par l'officine. */
+  codeBarres: string | null
+  codeEngendre: boolean
+}
+
+export function creerProduitRapide(demande: DemandeRapide, utilisateurId: number): ProduitRapide {
+  const nom = demande.nom?.trim()
+  if (!nom) throw new ErreurMetier('Le nom du produit est obligatoire.', 'nom')
+  if (!(demande.prixVente > 0)) {
+    throw new ErreurMetier('Le prix de vente doit être supérieur à zéro.', 'prixVente')
+  }
+  if (!Number.isInteger(demande.quantite) || demande.quantite < 0) {
+    throw new ErreurMetier('La quantité doit être un nombre entier positif.', 'quantite')
+  }
+
+  const codeLu = demande.codeBarres?.trim() || null
+  if (codeLu && !/^\d{6,14}$/.test(codeLu)) {
+    throw new ErreurMetier(
+      'Un code-barres compte entre six et quatorze chiffres. Vérifiez la lecture.',
+      'codeBarres'
+    )
+  }
+
+  // Un code deja pris doit etre refuse AVANT toute ecriture, et en nommant le
+  // produit concerne : « ce code est deja utilise » n'aide personne au comptoir.
+  if (codeLu) {
+    const pris = base()
+      .prepare(
+        `SELECT p.nom_commercial n FROM produit_codes_barres cb
+         JOIN produits p ON p.id = cb.produit_id WHERE cb.code = ?`
+      )
+      .get(codeLu) as { n: string } | undefined
+    if (pris) {
+      throw new ErreurMetier(`Ce code-barres est déjà celui de « ${pris.n} ».`, 'codeBarres')
+    }
+  }
+
+  return transaction(() => {
+    const id = creerProduit(
+      {
+        nomCommercial: nom,
+        prixAchat: demande.prixAchat ?? 0,
+        prixVente: demande.prixVente,
+        // Un seuil a zero n'alerterait jamais : trois boites est un plancher
+        // raisonnable, que la fiche permet d'ajuster ensuite.
+        stockMin: 3,
+        emplacement: demande.emplacement?.trim() || null,
+        codesBarres: codeLu ? [codeLu] : []
+      },
+      utilisateurId
+    )
+
+    let codeBarres = codeLu
+    let codeEngendre = false
+    if (!codeLu && demande.engendrerCode !== false) {
+      codeBarres = engendrerCodeInterne(id, utilisateurId).code
+      codeEngendre = true
+    }
+
+    // La quantite est facultative : on enregistre parfois la fiche avant que la
+    // livraison n'arrive.
+    if (demande.quantite > 0) {
+      entrerStock(
+        {
+          produitId: id,
+          quantite: demande.quantite,
+          prixAchat: demande.prixAchat ?? 0,
+          datePeremption: demande.datePeremption?.trim() || null,
+          motif: 'Enregistrement rapide'
+        },
+        utilisateurId
+      )
+    }
+
+    const code = base()
+      .prepare('SELECT code_interne c FROM produits WHERE id = ?')
+      .get(id) as { c: string }
+
+    return { id, codeInterne: code.c, codeBarres, codeEngendre }
+  })
 }
