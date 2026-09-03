@@ -1,6 +1,7 @@
 import { app, BrowserWindow, shell } from 'electron'
 import { dirname, join } from 'node:path'
-import { fermerBase, ouvrirBase } from './db'
+import { fermerBase } from './db'
+import { ouvrirBaseOuSecourir } from './secours'
 import { chemins, contexteActuel, enregistrerCanaux, terminerSession } from './ipc'
 import { creerSauvegarde } from './services/configuration'
 import { parametreBooleen } from './services/commun'
@@ -106,10 +107,10 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.whenReady().then(() => {
-    try {
-      ouvrirBase(cheminBase)
-    } catch (erreur) {
-      console.error('[pharmina] ouverture de la base impossible', erreur)
+    // Une base illisible ne doit jamais refermer le logiciel en silence : le
+    // pharmacien double-cliquerait sur l'icône sans que rien ne se passe, sans
+    // savoir pourquoi ni quoi faire. Voir secours.ts.
+    if (!ouvrirBaseOuSecourir(cheminBase, dossierSauvegardes)) {
       app.quit()
       return
     }

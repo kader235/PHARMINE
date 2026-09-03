@@ -187,6 +187,25 @@ function Comptoir() {
     champRecherche.current?.focus()
   }, [])
 
+  /**
+   * Ajouter un produit dont on ne connait que l'identifiant.
+   *
+   * Le panneau des equivalents ne porte que le strict necessaire a l'affichage ;
+   * le panier, lui, a besoin de la fiche complete — prix, TVA, ordonnance.
+   */
+  const ajouterParId = useCallback(
+    async (id: number) => {
+      try {
+        const produit = await appeler<ProduitEtat>('produits.detail', { id })
+        ajouter(produit)
+      } catch {
+        // Un equivalent devenu indisponible entre l'affichage et le clic : on
+        // laisse le comptoir tranquille plutot que d'ouvrir une alerte.
+      }
+    },
+    [ajouter]
+  )
+
   function changerQuantite(produitId: number, quantite: number): void {
     setPanier((precedent) =>
       quantite <= 0
@@ -474,6 +493,8 @@ function Comptoir() {
               })
             )}
           </section>
+
+          <FicheComptoir produit={resultats.donnees?.[survol] ?? null} onChoisir={ajouterParId} />
         </div>
 
         <aside className="panneau panier">
@@ -1590,5 +1611,129 @@ function RattacherCode({
         </Bouton>
       </div>
     </div>
+  )
+}
+
+/**
+ * Ce que le comptoir doit voir du produit sous le curseur.
+ *
+ * Le logiciel dont s'inspire cette fiche affichait ces informations en
+ * permanence, dans des cadres vides la plupart du temps. Ici elles n'existent
+ * que lorsqu'un produit est designe : l'ecran reste calme tant qu'on cherche,
+ * et se remplit au moment de decider.
+ *
+ * Trois questions, dans l'ordre ou elles se posent reellement :
+ *   ou est la boite — pour aller la chercher sans hesiter ;
+ *   combien de temps tient-elle — pour ne pas servir une peremption proche a
+ *     quelqu'un qui part en voyage ;
+ *   par quoi la remplacer — parce qu'une rupture n'est pas une vente perdue
+ *     quand la meme molecule existe sous un autre nom.
+ */
+interface ContexteProduit {
+  emplacement: string | null
+  joursAvantPeremption: number | null
+  datePeremption: string | null
+  lotsActifs: number
+  equivalents: {
+    id: number
+    nom: string
+    dosage: string | null
+    forme: string | null
+    prixVente: number
+    stockDisponible: number
+  }[]
+}
+
+function FicheComptoir({
+  produit,
+  onChoisir
+}: {
+  produit: ProduitEtat | null
+  onChoisir: (id: number) => void
+}): ReactNode {
+  const contexte = useRequete<ContexteProduit>(
+    'produits.contexte',
+    produit ? { id: produit.id } : null,
+    !!produit
+  )
+
+  if (!produit) {
+    return (
+      <section className="panneau fiche-comptoir vide">
+        <p>Designez un produit pour voir son emplacement, sa peremption et ses equivalents.</p>
+      </section>
+    )
+  }
+
+  const c = contexte.donnees
+  const jours = c?.joursAvantPeremption ?? null
+
+  // Trois semaines : le delai en deca duquel on hesite a servir une boite a
+  // quelqu'un qui ne reviendra pas avant longtemps.
+  const tonPeremption = jours == null ? 'neutre' : jours < 0 ? 'danger' : jours <= 21 ? 'attention' : 'succes'
+
+  return (
+    <section className="panneau fiche-comptoir">
+      <header>
+        <strong>
+          {produit.nom_commercial} {produit.dosage ?? ''}
+        </strong>
+        <span className="prix">{montant(produit.prix_vente)}</span>
+      </header>
+
+      <dl className="fiche-comptoir-faits">
+        <div>
+          <dt>Emplacement</dt>
+          <dd>{c?.emplacement || <span className="absent">non renseigné</span>}</dd>
+        </div>
+        <div>
+          <dt>Stock</dt>
+          <dd>
+            {nombre(produit.stock_disponible)}
+            {c && c.lotsActifs > 1 ? <span className="detail"> · {c.lotsActifs} lots</span> : null}
+          </dd>
+        </div>
+        <div>
+          <dt>Péremption</dt>
+          <dd className={`peremption ${tonPeremption}`}>
+            {jours == null ? (
+              <span className="absent">aucun lot daté</span>
+            ) : jours < 0 ? (
+              'lot expiré'
+            ) : jours === 0 ? (
+              'expire aujourd’hui'
+            ) : jours <= 60 ? (
+              `dans ${nombre(jours)} jour${jours > 1 ? 's' : ''}`
+            ) : (
+              `dans ${nombre(Math.round(jours / 30))} mois`
+            )}
+          </dd>
+        </div>
+      </dl>
+
+      {c && c.equivalents.length ? (
+        <div className="fiche-comptoir-equivalents">
+          <span className="intitule">Même principe actif</span>
+          <div className="equivalents-liste">
+            {c.equivalents.map((e) => (
+              <button
+                key={e.id}
+                type="button"
+                className="equivalent"
+                onClick={() => onChoisir(e.id)}
+                title={`Ajouter ${e.nom} au panier`}
+              >
+                <span className="nom">
+                  {e.nom} {e.dosage ?? ''}
+                </span>
+                <span className="chiffres">
+                  {montant(e.prixVente)} · {nombre(e.stockDisponible)} en stock
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </section>
   )
 }

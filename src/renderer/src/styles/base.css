@@ -3085,3 +3085,146 @@ table.tableau tbody tr.selectionnee td {
     page-break-after: avoid;
   }
 }
+
+/* --- La fiche du produit designe au comptoir -------------------------------
+   Elle occupe une hauteur fixe : le pharmacien apprend ou regarder, et la
+   liste au-dessus ne saute pas quand le contexte se charge. */
+.fiche-comptoir {
+  margin-top: 10px;
+  padding: 12px 14px;
+  min-height: 108px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.fiche-comptoir.vide {
+  align-items: center;
+  justify-content: center;
+  min-height: 72px;
+}
+
+.fiche-comptoir.vide p {
+  margin: 0;
+  color: var(--texte-faible);
+  font-size: 13px;
+  text-align: center;
+}
+
+.fiche-comptoir > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fiche-comptoir > header strong {
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.fiche-comptoir > header .prix {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  font-size: 15px;
+  white-space: nowrap;
+}
+
+/* Trois faits sur une ligne, egalement repartis : l'oeil les prend d'un coup
+   plutot que de lire une liste. */
+.fiche-comptoir-faits {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.fiche-comptoir-faits > div {
+  min-width: 0;
+}
+
+.fiche-comptoir-faits dt {
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--texte-faible);
+  margin-bottom: 2px;
+}
+
+.fiche-comptoir-faits dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fiche-comptoir-faits .absent {
+  font-weight: 400;
+  color: var(--texte-faible);
+  font-style: italic;
+}
+
+.fiche-comptoir-faits .detail {
+  font-weight: 400;
+  color: var(--texte-faible);
+}
+
+/* La couleur ne porte jamais l'information seule : le texte dit toujours
+   « expiré », « dans 12 jours », « dans 8 mois ». */
+.fiche-comptoir-faits .peremption.danger { color: var(--danger); }
+.fiche-comptoir-faits .peremption.attention { color: var(--attention); }
+.fiche-comptoir-faits .peremption.succes { color: var(--succes); }
+
+.fiche-comptoir-equivalents {
+  border-top: 1px solid var(--bordure-legere);
+  padding-top: 9px;
+}
+
+.fiche-comptoir-equivalents .intitule {
+  display: block;
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--texte-faible);
+  margin-bottom: 6px;
+}
+
+.equivalents-liste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.equivalent {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px;
+  border: 1px solid var(--bordure);
+  border-radius: var(--rayon);
+  background: var(--surface-attenuee);
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.equivalent:hover,
+.equivalent:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-clair);
+}
+
+.equivalent .nom {
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.equivalent .chiffres {
+  font-size: 11.5px;
+  color: var(--texte-faible);
+  font-variant-numeric: tabular-nums;
+}

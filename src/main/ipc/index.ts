@@ -147,6 +147,9 @@ const CANAUX: Record<string, Canal> = {
   'produits.rechercheRapide': c('produits.voir', (p: { saisie: string }) => produits.rechercheRapide(p.saisie)),
   'produits.parCodeBarres': c('produits.voir', (p: { code: string }) => produits.parCodeBarres(p.code)),
   'produits.detail': c('produits.voir', (p: { id: number }) => produits.produit(p.id)),
+  // Le comptoir interroge ce canal a chaque deplacement de curseur : il doit
+  // rester bon marche, d'ou l'index sur le principe actif.
+  'produits.contexte': c('produits.voir', (p: { id: number }) => produits.contexteProduit(p.id)),
   'produits.statistiques': c('produits.voir', (p: { id: number }) => produits.statistiquesProduit(p.id)),
   'produits.referentiels': c('produits.voir', () => produits.referentiels()),
   'produits.creer': c('produits.creer', (p, ctx) => produits.creerProduit(p, ctx.utilisateurId)),

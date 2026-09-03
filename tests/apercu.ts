@@ -992,6 +992,57 @@ app.whenReady().then(async () => {
 
   }
 
+  // --- La fiche vivante du produit designe ----------------------------------
+  // Emplacement, peremption et equivalents : ce que le pharmacien regarde,
+  // client devant, avant de servir.
+  // On attend reellement l'ecran de vente : cliquer puis dormir laissait la
+  // capture partir sur l'ecran precedent quand le rendu prenait son temps.
+  await fenetre.webContents.executeJavaScript(`
+    (async () => {
+      const lien = Array.from(document.querySelectorAll('.nav-lien'))
+        .find((a) => a.textContent && a.textContent.trim().startsWith('Ventes'))
+      if (lien) lien.click()
+      for (let essai = 0; essai < 50; essai++) {
+        await new Promise((r) => setTimeout(r, 100))
+        if (document.querySelector('.vente-recherche input')) return true
+      }
+      return false
+    })()`)
+  await fenetre.webContents.executeJavaScript(`(${SAISIR})('.vente-recherche input', 'para')`)
+  await new Promise((r) => setTimeout(r, 1200))
+
+  const fiche = await fenetre.webContents.executeJavaScript(`
+    (async () => {
+      for (let essai = 0; essai < 40; essai++) {
+        const f = document.querySelector('.fiche-comptoir:not(.vide)')
+        if (f && f.querySelector('.fiche-comptoir-faits')) break
+        await new Promise((r) => setTimeout(r, 100))
+      }
+      const f = document.querySelector('.fiche-comptoir')
+      if (!f) return { presente: false }
+      const faits = Array.from(f.querySelectorAll('.fiche-comptoir-faits dt')).map((d) => d.textContent)
+      return {
+        presente: true,
+        // L'ecran reellement affiche, pour que la capture ne puisse pas
+        // montrer autre chose que ce qu'on vient de verifier.
+        ecran: document.querySelector('.fil-ariane, .entete-titre h1, h1')?.textContent ?? '?',
+        faits,
+        equivalents: f.querySelectorAll('.equivalent').length,
+        deborde: f.scrollWidth > f.clientWidth + 1
+      }
+    })()`)
+
+  console.log(`  fiche du comptoir -> ${JSON.stringify(fiche)}`)
+  if (!fiche.presente) erreurs.push('Comptoir : la fiche du produit designe est absente')
+  else {
+    if (fiche.faits.length !== 3) {
+      erreurs.push(`Comptoir : la fiche devrait porter 3 faits, elle en porte ${fiche.faits.length}`)
+    }
+    if (fiche.deborde) erreurs.push('Comptoir : la fiche deborde en largeur')
+  }
+
+  await photographier(fenetre, 'comptoir-fiche', 400)
+
   // --- Un code inconnu ne bloque pas le comptoir -----------------------------
   // Au Tchad, une meme reference arrive avec des codes differents selon
   // l'importateur. Renvoyer le pharmacien dans la fiche produit, client devant,

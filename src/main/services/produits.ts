@@ -184,6 +184,24 @@ export interface DemandeProduit {
   codeInterne?: string
 }
 
+/**
+ * Forme comparable d'un principe actif : sans accents, sans casse, sans bords.
+ *
+ * Le meme medicament est saisi « Paracetamol », « paracétamol », « PARACÉTAMOL »
+ * selon la personne et l'annee. Ce sont les memes molecules et il faut les
+ * rapprocher — mais LOWER() de SQLite ne descend que l'ASCII. La normalisation
+ * se fait donc ici, en JavaScript, et le resultat est range dans la base.
+ */
+export function normaliserPrincipe(valeur: string | null | undefined): string | null {
+  const brut = valeur?.trim()
+  if (!brut) return null
+  return brut
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+}
+
 function valider(demande: DemandeProduit): void {
   if (!demande.nomCommercial?.trim()) throw new ErreurMetier('Le nom commercial est obligatoire.', 'nomCommercial')
   if (demande.prixVente < 0 || demande.prixAchat < 0) throw new ErreurMetier('Un prix ne peut pas être négatif.', 'prix')
@@ -206,17 +224,19 @@ export function creerProduit(demande: DemandeProduit, utilisateurId: number): nu
     const resultat = base()
       .prepare(
         `INSERT INTO produits
-           (code_interne, nom_commercial, nom_generique, principe_actif, dosage,
+           (code_interne, nom_commercial, nom_generique, principe_actif,
+            principe_actif_norme, dosage,
             categorie_id, laboratoire_id, forme_id, unite_id, prix_achat, prix_vente,
             taux_tva, stock_min, stock_max, emplacement, ordonnance_requise,
             suivi_peremption, vente_autorisee, notes, created_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         code,
         demande.nomCommercial.trim(),
         demande.nomGenerique ?? null,
         demande.principeActif ?? null,
+        normaliserPrincipe(demande.principeActif),
         demande.dosage ?? null,
         demande.categorieId ?? null,
         demande.laboratoireId ?? null,
@@ -278,7 +298,8 @@ export function modifierProduit(id: number, demande: DemandeProduit, utilisateur
     base()
       .prepare(
         `UPDATE produits SET
-           nom_commercial = ?, nom_generique = ?, principe_actif = ?, dosage = ?,
+           nom_commercial = ?, nom_generique = ?, principe_actif = ?,
+           principe_actif_norme = ?, dosage = ?,
            categorie_id = ?, laboratoire_id = ?, forme_id = ?, unite_id = ?,
            prix_achat = ?, prix_vente = ?, taux_tva = ?, stock_min = ?, stock_max = ?,
            emplacement = ?, ordonnance_requise = ?, suivi_peremption = ?,
@@ -289,6 +310,7 @@ export function modifierProduit(id: number, demande: DemandeProduit, utilisateur
         demande.nomCommercial.trim(),
         demande.nomGenerique ?? null,
         demande.principeActif ?? null,
+        normaliserPrincipe(demande.principeActif),
         demande.dosage ?? null,
         demande.categorieId ?? null,
         demande.laboratoireId ?? null,
@@ -490,5 +512,98 @@ export function statistiquesProduit(id: number): {
     ventes12m: parMois,
     margeUnitaire: marge,
     tauxMarge: p?.prix_vente ? Math.round((marge / p.prix_vente) * 1000) / 10 : 0
+  }
+}
+
+/**
+ * Ce que le comptoir doit savoir d'un produit au moment de le servir.
+ *
+ * Trois questions se posent, client devant, et une seule seconde pour y
+ * repondre : ou est la boite, combien de temps tient-elle, et si je n'en ai
+ * plus, par quoi je remplace.
+ */
+export interface ContexteProduit {
+  emplacement: string | null
+  /** Jours restants sur le lot le plus proche de la peremption. */
+  joursAvantPeremption: number | null
+  datePeremption: string | null
+  lotsActifs: number
+  /** Meme principe actif, en stock, vendable. Au plus cinq. */
+  equivalents: {
+    id: number
+    nom: string
+    dosage: string | null
+    forme: string | null
+    prixVente: number
+    stockDisponible: number
+  }[]
+}
+
+export function contexteProduit(id: number): ContexteProduit {
+  const etat = base()
+    .prepare(
+      `SELECT emplacement, prochaine_peremption, lots_actifs, principe_actif_norme
+       FROM v_produit_etat WHERE id = ?`
+    )
+    .get(id) as
+    | {
+        emplacement: string | null
+        prochaine_peremption: string | null
+        lots_actifs: number
+        principe_actif_norme: string | null
+      }
+    | undefined
+
+  if (!etat) throw new ErreurMetier('Produit introuvable.')
+
+  let jours: number | null = null
+  if (etat.prochaine_peremption) {
+    // On compte en jours pleins, sur des dates seules : une peremption « demain »
+    // ne doit pas devenir « aujourd'hui » a cause de l'heure qu'il est.
+    const jour = 86_400_000
+    const cible = Date.parse(`${etat.prochaine_peremption.slice(0, 10)}T00:00:00`)
+    const aujourdhui = Date.parse(`${new Date().toISOString().slice(0, 10)}T00:00:00`)
+    if (!Number.isNaN(cible)) jours = Math.round((cible - aujourdhui) / jour)
+  }
+
+  // Sans principe actif renseigne, aucun equivalent ne peut etre propose : le
+  // nom commercial ne dit rien de la molecule.
+  const principe = etat.principe_actif_norme
+  const equivalents = principe
+    ? (base()
+        .prepare(
+          `SELECT id, nom_commercial, dosage, forme, prix_vente, stock_disponible
+           FROM v_produit_etat
+           WHERE principe_actif_norme = ?
+             AND id <> ?
+             AND archived_at IS NULL
+             AND vente_autorisee = 1
+             AND stock_disponible > 0
+           ORDER BY stock_disponible DESC, prix_vente
+           LIMIT 5`
+        )
+        .all(principe, id) as unknown as {
+        id: number
+        nom_commercial: string
+        dosage: string | null
+        forme: string | null
+        prix_vente: number
+        stock_disponible: number
+      }[])
+    : []
+
+  return {
+    emplacement: etat.emplacement,
+    joursAvantPeremption: jours,
+    datePeremption: etat.prochaine_peremption,
+    lotsActifs: etat.lots_actifs ?? 0,
+    equivalents: equivalents.map((e) => ({
+      id: e.id,
+      nom: e.nom_commercial,
+      dosage: e.dosage,
+      forme: e.forme,
+      prixVente: e.prix_vente,
+      stockDisponible: e.stock_disponible
+    }))
   }
 }

@@ -457,7 +457,7 @@ function fichierTemporaire(suffixe: string): string {
  * restaurer l'historique d'une officine parce que le format a changé serait
  * inacceptable.
  */
-function ouvrirSauvegarde(fichier: string): {
+export function ouvrirSauvegarde(fichier: string): {
   chemin: string
   temporaire: boolean
   chiffree: boolean

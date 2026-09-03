@@ -32,6 +32,7 @@ import * as licence from '../src/main/services/licence'
 import * as repertoire from '../src/main/services/repertoire'
 import * as reprise from '../src/main/services/reprise'
 import * as stock from '../src/main/services/stock'
+import * as secours from '../src/main/secours'
 import * as achats from '../src/main/services/achats'
 import * as caisse from '../src/main/services/caisse'
 import * as ventes from '../src/main/services/ventes'
@@ -1708,8 +1709,176 @@ try {
   verifier(!enClair(baseAilleurs), 'la base restaurée est rescellée à son nouveau poste')
   fermerBase()
 
+  // ==========================================================================
+  titre('Une base illisible ne referme plus le logiciel en silence')
+
+  // Le scenario du poste infeste : un antivirus met le fichier en quarantaine,
+  // un rancongiciel le chiffre, une coupure de courant l'abime. Jusqu'ici le
+  // logiciel ecrivait dans une console que personne ne lit, puis se refermait :
+  // le pharmacien double-cliquait sur l'icone et il ne se passait rien.
+  {
+    const posteInfeste = join(dossier, 'poste-infeste')
+    const baseAbimee = join(posteInfeste, 'pharmina.db')
+    mkdirSync(posteInfeste, { recursive: true })
+
+    // Une base saine, sa sauvegarde, puis le sinistre.
+    ouvrirBase(baseAbimee)
+    const avant = (base().prepare('SELECT COUNT(*) n FROM produits').get() as { n: number }).n
+    // Aucun utilisateur n'existe encore sur ce poste neuf : la sauvegarde est
+    // donc anonyme, comme elle le serait sur une installation fraîche.
+    const sauvegardeSaine = configuration.creerSauvegarde(
+      baseAbimee,
+      join(posteInfeste, 'sauvegardes'),
+      'manuelle',
+      null
+    )
+    fermerBase()
+
+    verifier(
+      configuration.controlerSauvegarde(sauvegardeSaine.fichier).valide,
+      'la sauvegarde prise avant le sinistre est relisible'
+    )
+
+    // Le sinistre lui-meme : le fichier est ecrase par du bruit.
+    writeFileSync(baseAbimee, randomBytes(4096))
+
+    let ouvertureAbimee = 'refusée'
+    try {
+      ouvrirBase(baseAbimee)
+      ouvertureAbimee = 'ACCEPTÉE'
+      fermerBase()
+    } catch {
+      /* refus attendu */
+    }
+    verifier(ouvertureAbimee === 'refusée', 'une base abîmée est refusée à l’ouverture', ouvertureAbimee)
+
+    // Le secours : restaurer sans base ouverte, sans journal, sans utilisateur.
+    secours.restaurerEnUrgence(sauvegardeSaine.fichier, baseAbimee)
+    ouvrirBase(baseAbimee)
+
+    const apres = (base().prepare('SELECT COUNT(*) n FROM produits').get() as { n: number }).n
+    verifier(apres === avant, 'le secours ramène exactement les données sauvegardées', { avant, apres })
+    verifier(
+      (base().prepare('PRAGMA integrity_check').get() as { integrity_check: string })
+        .integrity_check === 'ok',
+      'la base secourue est intègre'
+    )
+    verifier(!enClair(baseAbimee), 'la base secourue est rescellée à ce poste')
+    fermerBase()
+
+    // Le fichier abime n'est JAMAIS efface : il se repare parfois, et c'est
+    // tout ce qui reste le jour ou les sauvegardes manquent aussi.
+    const conserves = readdirSync(posteInfeste).filter((f) => f.includes('illisible'))
+    verifier(conserves.length === 1, 'le fichier illisible est conservé, jamais effacé', conserves)
+
+    // Et le secours doit savoir presenter les sauvegardes, la plus recente
+    // d'abord : c'est celle qu'on proposera au pharmacien.
+    const disponibles = secours.sauvegardesDisponibles(join(posteInfeste, 'sauvegardes'))
+    verifier(disponibles.length > 0, 'le secours retrouve les sauvegardes du dossier', disponibles.length)
+    verifier(
+      disponibles.every((s, i) => i === 0 || disponibles[i - 1]!.at >= s.at),
+      'les sauvegardes sont présentées de la plus récente à la plus ancienne'
+    )
+    verifier(
+      secours.sauvegardesDisponibles(join(posteInfeste, 'dossier-inexistant')).length === 0,
+      'un dossier de sauvegardes absent ne fait pas tomber le secours'
+    )
+  }
+
   // Retour a la base de l'essai pour la suite des controles.
   ouvrirBase(cheminBase)
+
+  // ==========================================================================
+  titre('Le contexte du comptoir')
+
+  // Emplacement, peremption et equivalents : les trois choses qu'on regarde,
+  // client devant, avant de servir. Elles doivent etre justes ou muettes,
+  // jamais approximatives.
+  {
+    const efferalgan = produits.creerProduit(
+      {
+        nomCommercial: 'Efferalgan',
+        principeActif: 'Paracétamol',
+        dosage: '500 mg',
+        prixAchat: 400,
+        prixVente: 600,
+        stockMin: 5,
+        emplacement: 'Rayon A · Étagère 2'
+      },
+      adminId
+    )
+    const teva = produits.creerProduit(
+      {
+        nomCommercial: 'Paracétamol Teva',
+        // Meme molecule, ecrite differemment : c'est le cas reel, et la
+        // comparaison doit resister a la casse comme aux espaces.
+        principeActif: '  PARACÉTAMOL ',
+        dosage: '500 mg',
+        prixAchat: 350,
+        prixVente: 500,
+        stockMin: 5
+      },
+      adminId
+    )
+    const rupture = produits.creerProduit(
+      { nomCommercial: 'Panadol', principeActif: 'Paracétamol', prixAchat: 300, prixVente: 450, stockMin: 1 },
+      adminId
+    )
+
+    const dans = (jours: number): string =>
+      new Date(Date.now() + jours * 86_400_000).toISOString().slice(0, 10)
+
+    stock.entrerStock({ produitId: efferalgan, quantite: 10, prixAchat: 400, datePeremption: dans(400) }, adminId)
+    stock.entrerStock({ produitId: teva, quantite: 30, prixAchat: 350, datePeremption: dans(200) }, adminId)
+
+    const ctx = produits.contexteProduit(efferalgan)
+
+    verifier(ctx.emplacement === 'Rayon A · Étagère 2', 'le contexte donne l’emplacement du produit')
+    verifier(
+      ctx.joursAvantPeremption !== null && Math.abs(ctx.joursAvantPeremption - 400) <= 1,
+      'le contexte compte les jours avant péremption',
+      ctx.joursAvantPeremption
+    )
+    verifier(
+      ctx.equivalents.some((e) => e.id === teva),
+      'le contexte propose l’équivalent de même principe actif'
+    )
+    verifier(
+      ctx.equivalents.find((e) => e.id === teva)?.nom === 'Paracétamol Teva',
+      'la casse et les espaces du principe actif n’empêchent pas le rapprochement'
+    )
+    verifier(!ctx.equivalents.some((e) => e.id === efferalgan), 'le contexte ne se propose pas lui-même')
+    verifier(
+      !ctx.equivalents.some((e) => e.id === rupture),
+      'un équivalent en rupture n’est jamais proposé',
+      ctx.equivalents.map((e) => e.nom)
+    )
+    verifier(
+      !ctx.equivalents.some((e) => e.id === amoxicilline),
+      'une autre molécule n’apparaît pas dans les équivalents'
+    )
+
+    // Un lot plus proche prend la main : c'est celui-la qui sera servi.
+    stock.entrerStock({ produitId: efferalgan, quantite: 4, prixAchat: 400, datePeremption: dans(15) }, adminId)
+    const apres = produits.contexteProduit(efferalgan)
+    verifier(
+      apres.joursAvantPeremption !== null && Math.abs(apres.joursAvantPeremption - 15) <= 1,
+      'la péremption affichée est celle du lot le plus proche',
+      apres.joursAvantPeremption
+    )
+    verifier(apres.lotsActifs === 2, 'le contexte compte les lots actifs', apres.lotsActifs)
+
+    // Sans principe actif renseigne, aucun equivalent ne peut etre devine : le
+    // nom commercial ne dit rien de la molecule.
+    const anonyme = produits.creerProduit(
+      { nomCommercial: 'Sirop maison', prixAchat: 100, prixVente: 200, stockMin: 1 },
+      adminId
+    )
+    stock.entrerStock({ produitId: anonyme, quantite: 3, prixAchat: 100 }, adminId)
+    const muet = produits.contexteProduit(anonyme)
+    verifier(muet.equivalents.length === 0, 'sans principe actif, aucun équivalent n’est proposé')
+    verifier(muet.joursAvantPeremption === null, 'sans lot daté, la péremption reste muette')
+  }
 
   // ==========================================================================
   titre('Intégrité finale de la base')
@@ -1749,7 +1918,14 @@ try {
   } catch {
     /* déjà fermée */
   }
-  rmSync(dossier, { recursive: true, force: true })
+  // Windows relâche ses verrous de fichier avec un instant de retard : sans
+  // patience, le ménage de fin échoue et masque le résultat des vérifications.
+  // Le banc ne doit jamais tomber sur son propre nettoyage.
+  try {
+    rmSync(dossier, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 })
+  } catch (erreur) {
+    console.log(`  (dossier d'essai non supprimé : ${(erreur as Error).message})`)
+  }
 }
 
 console.log(`\n${'='.repeat(66)}`)
