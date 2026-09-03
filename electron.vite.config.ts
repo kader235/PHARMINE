@@ -34,6 +34,7 @@ export default defineConfig({
             : {
                 e2e: resolve(__dirname, 'tests/e2e.ts'),
                 migration009: resolve(__dirname, 'tests/migration009.ts'),
+                basedessai: resolve(__dirname, 'tests/basedessai.ts'),
                 apercu: resolve(__dirname, 'tests/apercu.ts'),
                 // Le guide en PDF est imprime depuis l'ecran d'aide du logiciel
                 // reel : le document remis au client et l'aide consultee a
