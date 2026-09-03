@@ -18,6 +18,8 @@
     "test:e2e": "electron-vite build && electron out/main/e2e.js",
     "apercu": "bash scripts/apercu.sh",
     "icone": "electron scripts/icone.js",
+    "licence:hors-ligne": "electron scripts/licence-hors-ligne.test.js",
+    "ed25519": "node scripts/ed25519.test.js",
     "essai": "electron-vite build && electron out/main/basedessai.js",
     "repertoire": "electron scripts/repertoire.js",
     "licence": "electron scripts/licence.js",

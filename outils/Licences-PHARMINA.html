@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!--
+  Cette page manipule votre clé privée. Elle ne doit rien pouvoir envoyer, et
+  cette promesse ne doit pas reposer sur ma parole : la politique ci-dessous
+  l'impose au navigateur.
+
+    default-src 'none'   rien ne se charge, sauf ce qui est autorisé ensuite
+    connect-src 'none'   AUCUN appel réseau possible — fetch, XHR, WebSocket
+    form-action 'none'   aucun envoi de formulaire
+    img-src 'none'       aucune image, donc aucune requête déguisée
+
+  Le script et le style sont en ligne, dans ce fichier : c'est ce qui permet de
+  travailler hors connexion, et ce qui rend la page vérifiable — tout ce qu'elle
+  fait est lisible ici.
+-->
+<meta http-equiv="Content-Security-Policy"
+  content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src 'none'; connect-src 'none'; form-action 'none'; base-uri 'none'; frame-src 'none'; object-src 'none'">
+<title>Licences PHARMINA</title>
+<style>
+  :root {
+    --fond: #f4f6f5;
+    --surface: #ffffff;
+    --texte: #182420;
+    --faible: #5d6d67;
+    --bordure: #d8e0dc;
+    --accent: #15654e;
+    --accent-clair: #e6f0ec;
+    --danger: #a8322a;
+    --danger-fond: #fbeceb;
+    --attention: #8a5a12;
+    --attention-fond: #fdf4e3;
+    --rayon: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fond: #121917;
+      --surface: #1b2320;
+      --texte: #e8eeeb;
+      --faible: #9aa8a2;
+      --bordure: #2c3733;
+      --accent: #3fa383;
+      --accent-clair: #1d2e28;
+      --danger: #f08a80;
+      --danger-fond: #2e1c1a;
+      --attention: #e0b060;
+      --attention-fond: #2b2216;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--fond);
+    color: var(--texte);
+    font: 15px/1.55 -apple-system, "Segoe UI", Roboto, sans-serif;
+    padding: 18px 14px 56px;
+  }
+  main { max-width: 660px; margin: 0 auto; }
+
+  header.titre { margin-bottom: 18px; }
+  header.titre h1 { font-size: 20px; margin: 0 0 3px; letter-spacing: -0.01em; }
+  header.titre p { margin: 0; color: var(--faible); font-size: 13.5px; }
+
+  section {
+    background: var(--surface);
+    border: 1px solid var(--bordure);
+    border-radius: var(--rayon);
+    padding: 16px;
+    margin-bottom: 14px;
+  }
+  section > h2 {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--faible);
+    margin: 0 0 12px;
+    font-weight: 650;
+  }
+
+  label { display: block; margin-bottom: 12px; }
+  label > span.intitule {
+    display: block;
+    font-size: 13px;
+    font-weight: 550;
+    margin-bottom: 5px;
+  }
+  label > span.aide {
+    display: block;
+    font-size: 12px;
+    color: var(--faible);
+    margin-top: 4px;
+  }
+
+  input[type=text], input[type=number], textarea {
+    width: 100%;
+    padding: 11px 12px;
+    border: 1px solid var(--bordure);
+    border-radius: 8px;
+    background: var(--fond);
+    color: var(--texte);
+    font: inherit;
+  }
+  /* Le code d'installation et la clé se lisent chiffre par chiffre : une
+     police à pas fixe évite de confondre un 0 et un O au téléphone. */
+  input#code { font-family: ui-monospace, "Consolas", monospace; letter-spacing: 1.5px; text-transform: uppercase; }
+  textarea#cle { font-family: ui-monospace, "Consolas", monospace; font-size: 12px; min-height: 92px; resize: vertical; }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
+  @media (max-width: 460px) { .duo { grid-template-columns: 1fr; } }
+
+  button {
+    font: inherit;
+    font-weight: 600;
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--bordure);
+    background: var(--surface);
+    color: var(--texte);
+    cursor: pointer;
+    /* Cible tactile : on produit une licence au téléphone, souvent debout. */
+    min-height: 46px;
+  }
+  button.principal {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+    width: 100%;
+  }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .boutons { display: flex; gap: 8px; flex-wrap: wrap; }
+  .boutons button { flex: 1; min-width: 130px; }
+
+  .resultat { display: none; }
+  .resultat.visible { display: block; }
+  .resultat dl {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 14px;
+    margin: 0 0 14px;
+    font-size: 13.5px;
+  }
+  .resultat dt { color: var(--faible); }
+  .resultat dd { margin: 0; font-weight: 550; font-variant-numeric: tabular-nums; }
+
+  .cle-boite {
+    background: var(--accent-clair);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 12px;
+    font-family: ui-monospace, "Consolas", monospace;
+    font-size: 12.5px;
+    line-height: 1.7;
+    word-break: break-all;
+    user-select: all;
+    -webkit-user-select: all;
+    margin-bottom: 12px;
+  }
+
+  .avis {
+    border-radius: 8px;
+    padding: 11px 13px;
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+  .avis.erreur { background: var(--danger-fond); color: var(--danger); }
+  .avis.prudence { background: var(--attention-fond); color: var(--attention); }
+  .avis:empty { display: none; }
+
+  .memoire { display: flex; align-items: flex-start; gap: 9px; font-size: 13px; }
+  .memoire input { margin-top: 3px; width: 18px; height: 18px; flex: none; }
+
+  .etat-cle { font-size: 13px; color: var(--faible); }
+  .etat-cle.chargee { color: var(--accent); font-weight: 600; }
+
+  footer.notes {
+    color: var(--faible);
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+  footer.notes strong { color: var(--texte); }
+  details summary { cursor: pointer; font-weight: 600; color: var(--texte); font-size: 13px; }
+  details[open] summary { margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<main>
+
+<header class="titre">
+  <h1>Licences PHARMINA</h1>
+  <p>Outil de l'éditeur. Fonctionne hors ligne, sur ordinateur comme sur téléphone.</p>
+</header>
+
+<div class="avis prudence" id="avisNavigateur"></div>
+
+<section>
+  <h2>1 · Clé de signature</h2>
+  <label>
+    <span class="intitule">Contenu de <code>licence-privee.pem</code></span>
+    <textarea id="pem" rows="4" spellcheck="false" autocomplete="off"
+      placeholder="-----BEGIN PRIVATE KEY-----&#10;…&#10;-----END PRIVATE KEY-----"></textarea>
+    <span class="aide">Ouvrez le fichier avec le Bloc-notes, copiez tout, collez ici.</span>
+  </label>
+  <label class="memoire">
+    <input type="checkbox" id="retenir">
+    <span>Retenir la clé sur cet appareil, pour ne plus la coller à chaque fois.
+      <strong>À ne cocher que sur un appareil qui n'appartient qu'à vous</strong> — elle
+      restera dans la mémoire de ce navigateur.</span>
+  </label>
+  <p class="etat-cle" id="etatCle">Aucune clé chargée.</p>
+</section>
+
+<section>
+  <h2>2 · Le poste du client</h2>
+  <label>
+    <span class="intitule">Code d'installation</span>
+    <input type="text" id="code" inputmode="latin" autocapitalize="characters"
+      spellcheck="false" autocomplete="off" placeholder="XXXX-XXXX-XXXX-XXXX">
+    <span class="aide">Les quatre groupes de quatre caractères affichés sur son écran d'activation.</span>
+  </label>
+  <div class="duo">
+    <label>
+      <span class="intitule">Nom de l'officine</span>
+      <input type="text" id="officine" autocomplete="off" placeholder="Facultatif">
+    </label>
+    <label>
+      <span class="intitule">Durée en jours</span>
+      <input type="number" id="jours" min="1" max="100000" placeholder="Vide = perpétuelle">
+    </label>
+  </div>
+  <button class="principal" id="produire">Produire la licence</button>
+</section>
+
+<div class="avis erreur" id="erreur"></div>
+
+<section class="resultat" id="resultat">
+  <h2>3 · Clé à communiquer</h2>
+  <dl>
+    <dt>Officine</dt><dd id="rOfficine">—</dd>
+    <dt>Poste</dt><dd id="rPoste">—</dd>
+    <dt>Validité</dt><dd id="rValidite">—</dd>
+    <dt>Empreinte</dt><dd id="rEmpreinte">—</dd>
+  </dl>
+  <div class="cle-boite" id="rCle"></div>
+  <div class="boutons">
+    <button id="copier">Copier la clé</button>
+    <button id="copierMessage">Copier le message complet</button>
+  </div>
+</section>
+
+<footer class="notes">
+  <details>
+    <summary>Ce que fait cet outil, et ce qu'il ne fait pas</summary>
+    <p>Il signe une licence avec votre clé privée, exactement comme
+      <code>npm run licence</code> sur votre ordinateur. La signature est
+      identique octet pour octet — vérifié contre l'implémentation de Node sur
+      votre vraie clé.</p>
+    <p><strong>Tout se passe dans ce navigateur.</strong> Aucune donnée ne part
+      nulle part : il n'y a pas de serveur, et la page fonctionne avion en mode
+      avion. Votre clé ne quitte pas l'appareil.</p>
+    <p><strong>Une licence est liée à un poste.</strong> Le code d'installation
+      est l'empreinte de l'ordinateur du client ; la clé produite ne fonctionne
+      que là. Un client qui change de machine redemande une clé — c'est ce qui
+      empêche une licence de circuler entre officines.</p>
+    <p><strong>Ce fichier n'est pas un secret ; votre clé en est un.</strong>
+      Cette page seule ne peut rien produire. Mais si vous cochez « retenir »,
+      l'appareil devient aussi précieux que le fichier : un téléphone perdu et
+      déverrouillé permet de fabriquer des licences gratuites pour votre
+      logiciel.</p>
+    <p><strong>Gardez <code>licence-privee.pem</code> ailleurs qu'ici.</strong>
+      Le perdre n'invalide aucune licence déjà émise, mais interdit d'en produire
+      de nouvelles : il faudrait changer la clé publique dans le logiciel, donc
+      livrer une nouvelle version, donc réactiver un par un tous vos clients.</p>
+  </details>
+</footer>
+
+</main>
+
+<script>
+'use strict'
+
+// ---------------------------------------------------------------------------
+// Signature Ed25519, écrite à la main.
+//
+// Trois portes se fermaient pour un outil hors ligne dans un navigateur :
+// node:crypto n'existe pas ici, WebCrypto ne signe en Ed25519 que sur les
+// navigateurs très récents, et charger une bibliothèque suppose une connexion —
+// exactement ce qu'on veut éviter.
+//
+// Seul SHA-512 est emprunté à WebCrypto : il est disponible partout et depuis
+// toujours. Le reste tient en quatre-vingts lignes, et produit des signatures
+// identiques octet pour octet à celles de Node — c'est éprouvé dans
+// scripts/ed25519.test.js.
+// ---------------------------------------------------------------------------
+
+const P = 2n ** 255n - 19n
+const L = 2n ** 252n + 27742317777372353535851937790883648493n
+
+const mod = (a) => { const r = a % P; return r >= 0n ? r : r + P }
+
+function puissance(base, exposant) {
+  let resultat = 1n, b = mod(base), e = exposant
+  while (e > 0n) {
+    if (e & 1n) resultat = mod(resultat * b)
+    b = mod(b * b)
+    e >>= 1n
+  }
+  return resultat
+}
+const inverse = (a) => puissance(a, P - 2n)
+const D = mod(-121665n * inverse(121666n))
+
+const NEUTRE = [0n, 1n, 1n, 0n]
+const BASE = (() => {
+  const y = mod(4n * inverse(5n))
+  const xx = mod((y * y - 1n) * inverse(D * y * y + 1n))
+  let x = puissance(xx, (P + 3n) / 8n)
+  if (mod(x * x) !== xx) x = mod(x * puissance(2n, (P - 1n) / 4n))
+  if (x % 2n !== 0n) x = P - x
+  return [x, y, 1n, mod(x * y)]
+})()
+
+function additionner(a, b) {
+  const [X1, Y1, Z1, T1] = a, [X2, Y2, Z2, T2] = b
+  const A = mod((Y1 - X1) * (Y2 - X2))
+  const B = mod((Y1 + X1) * (Y2 + X2))
+  const C = mod(T1 * 2n * D * T2)
+  const Dd = mod(Z1 * 2n * Z2)
+  const E = B - A, F = Dd - C, G = Dd + C, H = B + A
+  return [mod(E * F), mod(G * H), mod(F * G), mod(E * H)]
+}
+
+function multiplier(scalaire, point) {
+  let resultat = NEUTRE, addition = point, s = scalaire
+  while (s > 0n) {
+    if (s & 1n) resultat = additionner(resultat, addition)
+    addition = additionner(addition, addition)
+    s >>= 1n
+  }
+  return resultat
+}
+
+function encoderPoint(point) {
+  const [X, Y, Z] = point
+  const zi = inverse(Z)
+  const x = mod(X * zi)
+  let reste = mod(Y * zi)
+  const octets = new Uint8Array(32)
+  for (let i = 0; i < 32; i++) { octets[i] = Number(reste & 255n); reste >>= 8n }
+  if (x & 1n) octets[31] |= 0x80
+  return octets
+}
+
+function versEntier(octets) {
+  let v = 0n
+  for (let i = octets.length - 1; i >= 0; i--) v = (v << 8n) | BigInt(octets[i])
+  return v
+}
+function versOctets(valeur, longueur) {
+  const o = new Uint8Array(longueur)
+  let reste = valeur
+  for (let i = 0; i < longueur; i++) { o[i] = Number(reste & 255n); reste >>= 8n }
+  return o
+}
+function concatener(...morceaux) {
+  const total = morceaux.reduce((s, m) => s + m.length, 0)
+  const sortie = new Uint8Array(total)
+  let position = 0
+  for (const m of morceaux) { sortie.set(m, position); position += m.length }
+  return sortie
+}
+
+const sha512 = async (octets) =>
+  new Uint8Array(await crypto.subtle.digest('SHA-512', octets))
+
+async function signer(graine, message) {
+  const h = await sha512(graine)
+  const brides = h.slice(0, 32)
+  brides[0] &= 248; brides[31] &= 127; brides[31] |= 64
+  const a = versEntier(brides)
+  const prefixe = h.slice(32, 64)
+  const A = encoderPoint(multiplier(a, BASE))
+  const r = versEntier(await sha512(concatener(prefixe, message))) % L
+  const R = encoderPoint(multiplier(r, BASE))
+  const k = versEntier(await sha512(concatener(R, A, message))) % L
+  const S = (r + k * a) % L
+  return concatener(R, versOctets(S, 32))
+}
+
+function graineDepuisPem(pem) {
+  const base64 = pem
+    .replace(/-----BEGIN [^-]+-----/g, '')
+    .replace(/-----END [^-]+-----/g, '')
+    .replace(/\s+/g, '')
+  if (!base64) throw new Error('Collez le contenu de licence-privee.pem dans le premier champ.')
+
+  let der
+  try {
+    der = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0))
+  } catch {
+    throw new Error('Ce texte n’est pas une clé lisible. Recopiez le fichier en entier.')
+  }
+  const attendu = [0x30, 0x2e, 0x02, 0x01, 0x00, 0x30, 0x05, 0x06, 0x03, 0x2b, 0x65, 0x70]
+  if (der.length !== 48 || !attendu.every((o, i) => der[i] === o)) {
+    throw new Error('Cette clé n’est pas une clé privée Ed25519. Utilisez licence-privee.pem tel quel.')
+  }
+  return der.slice(16, 48)
+}
+
+// ---------------------------------------------------------------------------
+// Format d'une licence PHARMINA — identique à scripts/licence.js
+// ---------------------------------------------------------------------------
+
+const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+const ORIGINE = Date.UTC(2026, 0, 1)
+
+function base32(octets) {
+  let tampon = 0, bits = 0, sortie = ''
+  for (const octet of octets) {
+    tampon = (tampon << 8) | octet
+    bits += 8
+    while (bits >= 5) { sortie += ALPHABET[(tampon >>> (bits - 5)) & 31]; bits -= 5 }
+  }
+  if (bits > 0) sortie += ALPHABET[(tampon << (5 - bits)) & 31]
+  return sortie
+}
+
+function debase32(texte) {
+  let tampon = 0, bits = 0
+  const octets = []
+  for (const caractere of texte) {
+    // L'alphabet évite volontairement I, O et L : on rattrape la confusion
+    // plutôt que de renvoyer le pharmacien vérifier son écran.
+    const normalise = caractere.toUpperCase().replace(/[IL]/, '1').replace(/O/, '0')
+    const valeur = ALPHABET.indexOf(normalise)
+    if (valeur < 0) throw new Error(`Caractère inattendu dans le code : « ${caractere} ».`)
+    tampon = (tampon << 5) | valeur
+    bits += 5
+    if (bits >= 8) { octets.push((tampon >>> (bits - 8)) & 255); bits -= 8 }
+  }
+  return new Uint8Array(octets)
+}
+
+async function empreinteCourte(texte) {
+  const somme = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(texte)))
+  return Array.from(somme.slice(0, 6)).map((o) => o.toString(16).padStart(2, '0')).join('')
+}
+
+async function produireLicence({ pem, code, jours }) {
+  const graine = graineDepuisPem(pem)
+
+  const nettoye = code.replace(/[\s-]/g, '')
+  if (!nettoye) throw new Error('Indiquez le code d’installation affiché sur le poste du client.')
+
+  const empreinte = debase32(nettoye).slice(0, 10)
+  if (empreinte.length !== 10) {
+    throw new Error(
+      `Ce code fait ${empreinte.length} octets au lieu de 10. Demandez les quatre groupes de quatre caractères.`
+    )
+  }
+
+  const expiration = jours
+    ? Math.round((Date.now() + Number(jours) * 86400000 - ORIGINE) / 86400000)
+    : 0
+  if (expiration < 0 || expiration > 65535) {
+    throw new Error('Durée hors limites : indiquez entre 1 et 100 000 jours.')
+  }
+
+  const entete = new Uint8Array([1, expiration >> 8, expiration & 255, 0])
+  const message = concatener(new TextEncoder().encode('PHARMINA-LICENCE-1'), entete, empreinte)
+  const signature = await signer(graine, message)
+
+  const licence = base32(concatener(entete, signature))
+  return {
+    cle: (licence.match(/.{1,5}/g) ?? []).join('-'),
+    brute: licence,
+    validite: expiration === 0
+      ? 'perpétuelle'
+      : new Date(ORIGINE + expiration * 86400000).toISOString().slice(0, 10),
+    empreinte: await empreinteCourte(licence)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// L'écran
+// ---------------------------------------------------------------------------
+
+const $ = (id) => document.getElementById(id)
+const MEMOIRE = 'pharmina.licence.pem'
+
+function afficherErreur(texte) { $('erreur').textContent = texte || '' }
+
+function majEtatCle() {
+  const valeur = $('pem').value.trim()
+  if (!valeur) {
+    $('etatCle').textContent = 'Aucune clé chargée.'
+    $('etatCle').classList.remove('chargee')
+    return
+  }
+  try {
+    graineDepuisPem(valeur)
+    $('etatCle').textContent = 'Clé reconnue : les licences produites seront valides.'
+    $('etatCle').classList.add('chargee')
+  } catch (erreur) {
+    $('etatCle').textContent = erreur.message
+    $('etatCle').classList.remove('chargee')
+  }
+}
+
+// La mémoire du navigateur peut être refusée — navigation privée, réglages
+// stricts. On n'en fait jamais dépendre le fonctionnement.
+try {
+  const retenue = localStorage.getItem(MEMOIRE)
+  if (retenue) { $('pem').value = retenue; $('retenir').checked = true }
+} catch { /* stockage indisponible : on continue sans */ }
+
+$('pem').addEventListener('input', () => {
+  majEtatCle()
+  try {
+    if ($('retenir').checked) localStorage.setItem(MEMOIRE, $('pem').value.trim())
+  } catch { /* sans mémoire, il faudra recoller la clé */ }
+})
+
+$('retenir').addEventListener('change', () => {
+  try {
+    if ($('retenir').checked) localStorage.setItem(MEMOIRE, $('pem').value.trim())
+    else localStorage.removeItem(MEMOIRE)
+  } catch {
+    $('retenir').checked = false
+    afficherErreur('Ce navigateur refuse d’enregistrer la clé. Il faudra la coller à chaque fois.')
+  }
+})
+
+$('produire').addEventListener('click', async () => {
+  afficherErreur('')
+  $('resultat').classList.remove('visible')
+  $('produire').disabled = true
+  $('produire').textContent = 'Signature…'
+
+  try {
+    const resultat = await produireLicence({
+      pem: $('pem').value,
+      code: $('code').value,
+      jours: $('jours').value.trim() || null
+    })
+
+    $('rOfficine').textContent = $('officine').value.trim() || '—'
+    $('rPoste').textContent = $('code').value.trim().toUpperCase()
+    $('rValidite').textContent = resultat.validite
+    $('rEmpreinte').textContent = resultat.empreinte
+    $('rCle').textContent = resultat.cle
+    $('resultat').classList.add('visible')
+    $('resultat').scrollIntoView({ behavior: 'smooth', block: 'nearest' })
+  } catch (erreur) {
+    afficherErreur(erreur.message)
+  } finally {
+    $('produire').disabled = false
+    $('produire').textContent = 'Produire la licence'
+  }
+})
+
+async function copier(texte, bouton) {
+  const libelle = bouton.textContent
+  try {
+    await navigator.clipboard.writeText(texte)
+    bouton.textContent = 'Copié'
+  } catch {
+    // Sur un navigateur ancien, ou hors contexte sécurisé, le presse-papier
+    // est refusé : on sélectionne le texte pour que la copie reste possible
+    // à la main plutôt que de laisser l'utilisateur sans recours.
+    const plage = document.createRange()
+    plage.selectNodeContents($('rCle'))
+    const selection = window.getSelection()
+    selection.removeAllRanges()
+    selection.addRange(plage)
+    bouton.textContent = 'Copiez à la main'
+  }
+  setTimeout(() => { bouton.textContent = libelle }, 1800)
+}
+
+$('copier').addEventListener('click', (e) => copier($('rCle').textContent, e.currentTarget))
+
+$('copierMessage').addEventListener('click', (e) => {
+  const officine = $('officine').value.trim()
+  const message =
+    `Licence PHARMINA${officine ? ` — ${officine}` : ''}\n` +
+    `Poste : ${$('rPoste').textContent}\n` +
+    `Validité : ${$('rValidite').textContent}\n\n` +
+    `Clé à coller dans l'écran d'activation :\n\n${$('rCle').textContent}\n`
+  copier(message, e.currentTarget)
+})
+
+// Le code d'installation se met en forme pendant la frappe : quatre groupes de
+// quatre, comme sur l'écran du client, pour qu'on voie tout de suite s'il en
+// manque un.
+$('code').addEventListener('input', (e) => {
+  const champ = e.target
+  const brut = champ.value.toUpperCase().replace(/[^0-9A-Z]/g, '').slice(0, 16)
+  champ.value = (brut.match(/.{1,4}/g) ?? []).join('-')
+})
+
+// Un navigateur sans BigInt ne peut rien signer : autant le dire tout de suite
+// plutôt que d'échouer à la première licence.
+if (typeof BigInt === 'undefined' || !window.crypto?.subtle) {
+  $('avisNavigateur').textContent =
+    'Ce navigateur est trop ancien pour signer une licence. Ouvrez cette page avec Chrome, Firefox ou Safari à jour.'
+  $('produire').disabled = true
+} else {
+  $('avisNavigateur').remove()
+}
+
+majEtatCle()
+</script>
+</body>
+</html>
