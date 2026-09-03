@@ -85,7 +85,7 @@ export function ouvrirBase(chemin: string): Connexion {
   connexion.exec('PRAGMA synchronous = NORMAL')
   connexion.exec('PRAGMA busy_timeout = 5000')
 
-  appliquerMigrations(connexion)
+  appliquerMigrations(connexion, chemin)
 
   db = connexion
   cheminOuvert = chemin
@@ -115,7 +115,7 @@ export function fermerBase(): void {
   db = null
 }
 
-function appliquerMigrations(connexion: Connexion): void {
+function appliquerMigrations(connexion: Connexion, chemin: string): void {
   connexion.exec(`
     CREATE TABLE IF NOT EXISTS schema_migrations (
       version    INTEGER PRIMARY KEY,
@@ -130,6 +130,34 @@ function appliquerMigrations(connexion: Connexion): void {
       .all()
       .map((r: unknown) => Number((r as { version: number }).version))
   )
+
+  // Une migration est atomique, mais une SUITE de migrations ne l'est pas : si
+  // la neuvième échoue après que la huitième est passée, la base reste dans un
+  // état qu'aucun code ne connaît. On garde donc une copie de l'état d'avant.
+  //
+  // La copie se fait au niveau du fichier, sans passer par le service de
+  // sauvegarde : à cet instant la base peut être trop ancienne pour que ce
+  // service en comprenne le schéma. C'est le seul point de retour qui ne
+  // dépende de rien.
+  const aMigrer = MIGRATIONS.filter((m) => !appliquees.has(m.version))
+  const premiereOuverture = appliquees.size === 0
+  if (aMigrer.length && !premiereOuverture) {
+    const derniere = aMigrer[aMigrer.length - 1]!.version
+    const copie = `${chemin}.avant-migration-${derniere}`
+    try {
+      if (!existsSync(copie)) {
+        // Le WAL est replié d'abord : sans cela la copie décrirait un état
+        // antérieur aux dernières écritures.
+        connexion.pragma('wal_checkpoint(TRUNCATE)')
+        copyFileSync(chemin, copie)
+        console.log(`[pharmina] copie avant migration : ${copie}`)
+      }
+    } catch (erreur) {
+      // Une copie impossible — disque plein, dossier en lecture seule — ne doit
+      // pas empêcher la mise à jour de s'installer : on le dit, et on continue.
+      console.error('[pharmina] copie avant migration impossible', erreur)
+    }
+  }
 
   for (const migration of MIGRATIONS) {
     if (appliquees.has(migration.version)) continue

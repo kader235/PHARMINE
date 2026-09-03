@@ -2012,6 +2012,77 @@ try {
   }
 
   // ==========================================================================
+  titre('Une copie est gardee avant toute migration')
+
+  // Une migration est atomique, mais une SUITE de migrations ne l'est pas : si
+  // la neuvieme echoue apres que la huitieme est passee, la base reste dans un
+  // etat qu'aucun code ne connait. Le type « avant_migration » existait dans le
+  // schema depuis le debut ; personne ne l'appelait.
+  {
+    // `ouvrirBase` renvoie la base deja ouverte si elle l'est : sans cette
+    // fermeture, tout ce bloc travaillerait sur la base principale.
+    fermerBase()
+
+    const posteAncien = join(dossier, 'poste-ancien')
+    const baseAncienne = join(posteAncien, 'pharmina.db')
+    mkdirSync(posteAncien, { recursive: true })
+
+    // Une base au schema d'hier. Effacer la ligne de migration ne suffirait
+    // pas : la colonne existerait toujours et la migration retomberait sur un
+    // doublon. On defait donc vraiment ce que la migration 9 apporte.
+    ouvrirBase(baseAncienne)
+    const produitsAvant = (base().prepare('SELECT COUNT(*) n FROM produits').get() as { n: number }).n
+    base().exec('DROP VIEW IF EXISTS v_produit_etat')
+    base().exec('DROP INDEX IF EXISTS idx_produits_principe_norme')
+    base().exec('ALTER TABLE produits DROP COLUMN principe_actif_norme')
+    base().prepare('DELETE FROM schema_migrations WHERE version >= 9').run()
+    fermerBase()
+
+    const copie = `${baseAncienne}.avant-migration-9`
+    verifier(!existsSync(copie), 'aucune copie ne traine avant l’ouverture')
+
+    ouvrirBase(baseAncienne)
+    verifier(existsSync(copie), 'une copie est posée avant de rejouer une migration')
+    verifier(
+      (base().prepare('SELECT MAX(version) n FROM schema_migrations').get() as { n: number }).n ===
+        VERSION_SCHEMA,
+      'la migration s’est bien rejouée par-dessus'
+    )
+    verifier(
+      (base().prepare('SELECT COUNT(*) n FROM produits').get() as { n: number }).n === produitsAvant,
+      'les données traversent la migration sans perte'
+    )
+    fermerBase()
+
+    // La copie doit etre une base ouvrable : une copie illisible ne serait pas
+    // un point de retour.
+    const tailleCopie = statSync(copie).size
+    verifier(tailleCopie > 0, 'la copie avant migration n’est pas vide', tailleCopie)
+
+    // Reouvrir ne doit pas ecraser la copie : elle decrit l'etat d'AVANT, et
+    // un second demarrage ne doit pas la remplacer par l'etat d'apres.
+    const empreinteAvant = statSync(copie).mtimeMs
+    ouvrirBase(baseAncienne)
+    fermerBase()
+    verifier(
+      statSync(copie).mtimeMs === empreinteAvant,
+      'un second démarrage n’écrase pas la copie d’origine'
+    )
+
+    // Et une base NEUVE ne doit pas semer de copie : il n'y a rien a sauver.
+    const posteNeuf = join(dossier, 'poste-neuf')
+    const baseNeuve = join(posteNeuf, 'pharmina.db')
+    mkdirSync(posteNeuf, { recursive: true })
+    ouvrirBase(baseNeuve)
+    fermerBase()
+    const semees = readdirSync(posteNeuf).filter((f) => f.includes('avant-migration'))
+    verifier(semees.length === 0, 'une installation neuve ne pose aucune copie inutile', semees)
+
+    // Retour a la base de l'essai pour les controles d'integrite finaux.
+    ouvrirBase(cheminBase)
+  }
+
+  // ==========================================================================
   titre('Intégrité finale de la base')
 
   const integrite = base().prepare('PRAGMA integrity_check').get() as { integrity_check: string }
