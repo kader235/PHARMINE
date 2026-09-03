@@ -27,3 +27,12 @@ licence-privee.pem
 
 # Produit par `npm run notes` depuis NOUVEAUTES.md.
 notes-de-version.md
+
+# JAMAIS de cle privee dans le depot, sous aucun nom, dans aucun dossier.
+# Une copie nommee « licence-privee.txt » a ete poussee sur le depot PUBLIC le
+# 3 septembre 2026 : la regle qui suit est large a dessein.
+licence-privee*
+*licence-privee*
+*.pem
+*.key
+**/licence-privee*
