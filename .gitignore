@@ -24,3 +24,6 @@ licence-privee.pem
 # Jamais de jeton dans le depot, meme par accident.
 *token*.txt
 *TOKEN*.txt
+
+# Produit par `npm run notes` depuis NOUVEAUTES.md.
+notes-de-version.md

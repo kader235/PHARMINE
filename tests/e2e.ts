@@ -33,6 +33,7 @@ import * as repertoire from '../src/main/services/repertoire'
 import * as reprise from '../src/main/services/reprise'
 import * as stock from '../src/main/services/stock'
 import * as secours from '../src/main/secours'
+import * as miseAJour from '../src/main/services/miseAJour'
 import * as codesBarres from '../src/main/services/codesBarres'
 import * as achats from '../src/main/services/achats'
 import * as caisse from '../src/main/services/caisse'
@@ -2080,6 +2081,56 @@ try {
 
     // Retour a la base de l'essai pour les controles d'integrite finaux.
     ouvrirBase(cheminBase)
+  }
+
+  // ==========================================================================
+  titre('Les notes de version ne montrent jamais de plomberie')
+
+  // Vu en vrai sur un poste de N'Djamena : la 0.1.2 s'est annoncee avec des
+  // « <p> » et des « <br /> » en clair, et le contenu d'un journal de
+  // developpeur. Un pharmacien n'a rien a faire de cela, et des balises brutes
+  // donnent l'impression d'un logiciel casse.
+  {
+    const notes = miseAJour.notesLisibles
+
+    verifier(notes(null) === null, 'des notes absentes ne produisent rien')
+    verifier(notes('   ') === null, 'des notes vides ne produisent rien')
+
+    // Le cas exact qui a ete observe.
+    const vu =
+      '<p>Version 0.1.2</p> <p>LE COMPTOIR MONTRE CE QU IL SAIT <br /> Emplacement, ' +
+      'peremption et equivalents.</p> <p>Co-Authored-By: Claude Opus 5 ' +
+      '&lt;noreply@anthropic.com&gt;</p>'
+    verifier(notes(vu) === null, 'un message de commit est refuse en entier', notes(vu))
+
+    // Une note ecrite pour le pharmacien passe, et garde ses lignes.
+    const propre = 'Le comptoir affiche l’emplacement et la péremption.\nLes codes-barres s’impriment.'
+    const resultat = notes(propre)
+    verifier(resultat === propre, 'une note écrite pour le comptoir passe telle quelle', resultat)
+
+    // Les balises d'un texte par ailleurs sain sont retirees, pas affichees.
+    const enHtml = '<p>Deux nouveautés.</p><ul><li>Les équivalents</li><li>Les étiquettes</li></ul>'
+    const nettoye = notes(enHtml)
+    verifier(
+      nettoye !== null && !nettoye.includes('<') && nettoye.includes('Deux nouveautés'),
+      'les balises sont retirées d’un texte sain',
+      nettoye
+    )
+    verifier(nettoye !== null && nettoye.includes('•'), 'les puces deviennent de vraies puces', nettoye)
+
+    // Les entites sont decodees, jamais laissees en clair.
+    const entites = 'Prix &lt; 500 F &amp; stock &gt; 0'
+    verifier(notes(entites) === 'Prix < 500 F & stock > 0', 'les entités HTML sont décodées', notes(entites))
+
+    // Un pave de developpeur est refuse, meme sans signature.
+    const pave = Array.from({ length: 14 }, (_, i) => `Ligne technique ${i}`).join('\n')
+    verifier(notes(pave) === null, 'un pavé de plus de dix lignes est refusé')
+
+    const interminable = `Une seule ligne de ${'x'.repeat(250)}`
+    verifier(notes(interminable) === null, 'une ligne interminable est refusée')
+
+    const trop = Array.from({ length: 9 }, () => 'x'.repeat(90)).join('\n')
+    verifier(notes(trop) === null, 'un texte trop long est refusé plutôt que tronqué')
   }
 
   // ==========================================================================

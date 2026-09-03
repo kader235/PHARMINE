@@ -62,6 +62,14 @@ jobs:
       - name: Vérifier que le code compile
         run: npm run typecheck
 
+      - name: Préparer les notes de version
+        # Sans cette étape, electron-builder publie le message de commit comme
+        # notes de version — vu en vrai sur un poste de N'Djamena : des balises
+        # brutes et un journal de développeur sur le comptoir. Le script refuse
+        # de sortir si les notes ne sont pas présentables, ce qui arrête la
+        # publication ici plutôt que chez le client.
+        run: npm run notes
+
       - name: Construire l'application
         run: npx electron-vite build
         env:

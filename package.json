@@ -1,7 +1,7 @@
 {
   "name": "pharmina",
   "productName": "PHARMINA",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Logiciel de gestion de pharmacie : ventes, stock, lots, comptes clients et caisse.",
   "author": {
     "name": "PHARMINA"
@@ -20,6 +20,7 @@
     "icone": "electron scripts/icone.js",
     "licence:hors-ligne": "electron scripts/licence-hors-ligne.test.js",
     "ed25519": "node scripts/ed25519.test.js",
+    "notes": "node scripts/notes-version.js",
     "essai": "electron-vite build && electron out/main/basedessai.js",
     "repertoire": "electron scripts/repertoire.js",
     "licence": "electron scripts/licence.js",

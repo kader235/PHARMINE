@@ -20,6 +20,16 @@ asar: true
 # Les Releases doivent etre PUBLIQUES : electron-updater telecharge sans
 # authentification. Si le code doit rester prive, publiez les installateurs
 # dans un second depot public qui ne contient qu'eux.
+# Notes de version affichees au pharmacien.
+#
+# Sans cela, electron-builder publie le MESSAGE DE COMMIT. C'est ce qu'a vu un
+# pharmacien de N'Djamena sur la 0.1.2 : des balises brutes et un journal de
+# developpeur sur son comptoir. Ce fichier est produit par `npm run notes`
+# depuis NOUVEAUTES.md, et refuse de sortir si les notes ne sont pas
+# presentables.
+releaseInfo:
+  releaseNotesFile: notes-de-version.md
+
 publish:
   provider: github
   owner: kader235

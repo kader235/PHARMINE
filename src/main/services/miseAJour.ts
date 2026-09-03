@@ -60,6 +60,82 @@ let etatCourant: EtatMiseAJour = {
   verifieLe: null
 }
 
+/**
+ * Met les notes de version en texte lisible.
+ *
+ * CE QU'ON A VU EN VRAI
+ *
+ * La 0.1.2 s'est annoncee au comptoir avec des « <p> » et des « <br /> » en
+ * clair, et le contenu d'un journal de developpeur : « 325 verifications
+ * metier, 18 invariants de schema ». Un pharmacien de N'Djamena n'a rien a
+ * faire de cela, et des balises brutes donnent l'impression d'un logiciel
+ * casse.
+ *
+ * Ces notes viennent d'un texte libre, ecrit a la main, publie sur GitHub.
+ * Elles peuvent contenir n'importe quoi — du HTML, du Markdown, une ligne de
+ * signature automatique. On ne les affiche donc jamais telles quelles :
+ *
+ *   — les balises sont retirees, et les sauts de ligne qu'elles portaient
+ *     deviennent de vrais sauts de ligne ;
+ *   — les entites HTML sont decodees, sinon « &lt; » resterait tel quel ;
+ *   — les lignes de plomberie — signatures, co-auteurs — sont ecartees ;
+ *   — le tout est plafonne : ce panneau annonce une nouveaute, il ne raconte
+ *     pas l'histoire du logiciel.
+ *
+ * Ce nettoyage est un filet, pas la solution : la vraie reponse est d'ecrire
+ * des notes destinees au pharmacien, ce que fait desormais NOUVEAUTES.md.
+ */
+export function notesLisibles(brut: string | null | undefined): string | null {
+  if (!brut) return null
+
+  // Deux etapes, dans cet ordre precis. Le retrait des balises d'abord, le
+  // decodage des entites ensuite : l'inverse transformerait « &lt;p&gt; » en
+  // une vraie balise, qu'on retirerait alors sans le vouloir — et un texte
+  // parlant legitimement de balises se viderait.
+  const sansBalises = brut
+    // Les balises de bloc portent le saut de ligne : le perdre collerait
+    // toutes les phrases en un seul pave.
+    .replace(/<\/(p|div|li|h[1-6])>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<li[^>]*>/gi, '• ')
+    .replace(/<[^>]+>/g, '')
+
+  // Un chevron survivant ici signale un balisage qu'on n'a pas su lire. Le
+  // controle a lieu AVANT le decodage : sinon « Prix &lt; 500 F », qui est un
+  // texte parfaitement legitime, serait refuse.
+  if (sansBalises.includes('<')) return null
+
+  const texte = sansBalises
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    // L'esperluette en dernier : la decoder d'abord recreerait les autres.
+    .replace(/&amp;/g, '&')
+
+  // La presence d'une signature de depot PROUVE qu'on lit un message de
+  // commit, pas une note ecrite pour le pharmacien. On refuse alors le tout
+  // plutot que d'en retirer la ligne : le reste serait du meme tonneau.
+  if (/co-authored-by|signed-off-by|generated with \[claude/i.test(texte)) return null
+
+  const lignes = texte
+    .split('\n')
+    .map((l) => l.replace(/\s+/g, ' ').trim())
+    .filter(Boolean)
+
+  if (!lignes.length) return null
+
+  // Une balise survivante, une ligne interminable, un pave de vingt lignes :
+  // autant de signes qu'on n'a pas affaire a un texte destine au comptoir.
+  // Mieux vaut ne rien annoncer qu'annoncer n'importe quoi devant un client.
+  if (lignes.some((l) => l.length > 200)) return null
+  if (lignes.length > 10) return null
+
+  const assemble = lignes.join('\n')
+  return assemble.length > 600 ? null : assemble
+}
+
 let dejaConfigure = false
 
 function configurer(): void {
@@ -74,7 +150,7 @@ function configurer(): void {
     etatCourant = {
       ...etatCourant,
       versionDisponible: info.version,
-      notes: typeof info.releaseNotes === 'string' ? info.releaseNotes : null,
+      notes: notesLisibles(typeof info.releaseNotes === 'string' ? info.releaseNotes : null),
       motif: null
     }
   })

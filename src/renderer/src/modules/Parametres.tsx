@@ -881,7 +881,11 @@ function PanneauMiseAJour() {
       ) : courant.versionDisponible ? (
         <div style={{ marginTop: 12 }}>
           <Bandeau ton="info" titre={`Version ${courant.versionDisponible} disponible`}>
-            {courant.notes ?? 'Seules les parties modifiées seront téléchargées.'}
+            {/* Les notes arrivent nettoyées et en lignes : on les respecte
+                plutôt que de les recoller en un pavé. */}
+            <span style={{ whiteSpace: 'pre-line' }}>
+              {courant.notes ?? 'Seules les parties modifiées seront téléchargées.'}
+            </span>
           </Bandeau>
         </div>
       ) : courant.motif ? (
