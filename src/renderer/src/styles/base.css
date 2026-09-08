@@ -3436,3 +3436,81 @@ table.tableau tbody tr.selectionnee td {
   color: var(--texte-attenue);
   font-variant-numeric: tabular-nums;
 }
+
+/* --- Bilan mensuel ---------------------------------------------------------
+   Un document qu'on lit assis, et qu'on montre a son banquier : sobre, dense
+   sans etre serre, et lisible photocopie. */
+.bilan-titre { font-size: 19pt; margin: 6mm 0 1mm; letter-spacing: -0.3pt; }
+.bilan-mois { font-size: 11pt; margin-bottom: 6mm; }
+.bilan-mois span { color: #6b7c75; }
+
+/* Les quatre chiffres qu'on regarde en premier, sur une seule ligne. */
+.bilan-cles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4mm;
+  margin-bottom: 7mm;
+  padding-bottom: 5mm;
+  border-bottom: 0.4mm solid #d8e0dc;
+}
+.bilan-cles > div { min-width: 0; }
+.bilan-cles dt {
+  font-size: 8pt; text-transform: uppercase; letter-spacing: 0.6pt;
+  color: #6b7c75; margin-bottom: 1.5mm;
+}
+.bilan-cles dd {
+  margin: 0 0 1mm; font-size: 14pt; font-weight: 700;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.3pt;
+}
+
+/* L'ecart ne se lit jamais a la seule couleur : le signe et le mot le disent
+   aussi, pour une photocopie en noir et blanc comme pour un daltonien. */
+.bilan-ecart { font-size: 8.5pt; font-weight: 600; }
+.bilan-ecart.hausse { color: #15654e; }
+.bilan-ecart.baisse { color: #a8322a; }
+.bilan-ecart.neutre { color: #6b7c75; font-weight: 400; }
+
+.bilan-bloc { margin-bottom: 6mm; break-inside: avoid; }
+.bilan-bloc h2 {
+  font-size: 10.5pt; margin-bottom: 2mm;
+  padding-bottom: 1.5mm; border-bottom: 0.3mm solid #e2e8e5;
+}
+.bilan-note { font-size: 8.5pt; color: #6b7c75; margin-bottom: 2mm; }
+.bilan-vide { font-size: 9.5pt; color: #6b7c75; }
+
+.bilan-etat {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4mm 6mm; margin: 0;
+}
+.bilan-etat dt { font-size: 9pt; color: #6b7c75; }
+.bilan-etat dd {
+  margin: 0.5mm 0; font-size: 12pt; font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.bilan-etat span { font-size: 8.5pt; color: #6b7c75; }
+
+.bilan-pied {
+  margin-top: 8mm; padding-top: 3mm;
+  border-top: 0.3mm solid #e2e8e5;
+  font-size: 8pt; color: #8b9a94;
+}
+
+/* Les tableaux du bilan : le nom du produit prend la place, les nombres se
+   lisent alignes a droite. Sans largeurs, la quantite venait coller le nom. */
+.bilan .doc-table { width: 100%; border-collapse: collapse; }
+.bilan .doc-table th,
+.bilan .doc-table td { padding: 1.1mm 2mm; vertical-align: baseline; }
+.bilan .doc-table th {
+  font-size: 8pt; text-transform: uppercase; letter-spacing: 0.4pt;
+  color: #6b7c75; text-align: left; font-weight: 600;
+  border-bottom: 0.3mm solid #e2e8e5;
+}
+.bilan .doc-table td { font-size: 9.5pt; border-bottom: 0.2mm solid #f0f4f2; }
+.bilan .doc-table tr:last-child td { border-bottom: none; }
+.bilan .doc-table th:first-child,
+.bilan .doc-table td:first-child { width: 46%; }
+.bilan .doc-table .nombre {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

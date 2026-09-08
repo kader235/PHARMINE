@@ -610,3 +610,212 @@ export function CodeBarres({ code, hauteur = 62 }: { code: string; hauteur?: num
     </svg>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Bilan mensuel (A4)
+// ---------------------------------------------------------------------------
+
+interface BilanMensuelDonnees {
+  mois: string
+  libelleMois: string
+  libelleMoisPrecedent: string
+  ventes: { nombre: number; precedent: number }
+  chiffreAffaires: { montant: number; precedent: number }
+  marge: { montant: number; precedent: number; taux: number }
+  panierMoyen: { montant: number; precedent: number }
+  reglements: { mode: string; montant: number }[]
+  meilleuresVentes: { nom: string; quantite: number; montant: number; marge: number }[]
+  produitsQuiDorment: { nom: string; stock: number; valeur: number; derniereVente: string | null }[]
+  stock: { valeur: number; references: number; ruptures: number }
+  peremptions: { dansTroisMois: number; valeur: number; deja: number }
+  creances: { total: number; clients: number }
+  caisse: { sessions: number; ecartTotal: number; sessionsAvecEcart: number }
+}
+
+/**
+ * L'écart avec le mois précédent, en toutes lettres.
+ *
+ * Un pourcentage seul se lit mal quand on part de rien : « +∞ % » n'aide
+ * personne. On dit alors « rien le mois dernier », qui est la vraie
+ * information.
+ */
+function Variation({ valeur, precedent }: { valeur: number; precedent: number }) {
+  if (precedent === 0) {
+    return <span className="bilan-ecart neutre">{valeur === 0 ? '—' : 'rien le mois dernier'}</span>
+  }
+  const ecart = Math.round(((valeur - precedent) / precedent) * 1000) / 10
+  if (ecart === 0) return <span className="bilan-ecart neutre">identique</span>
+  return (
+    <span className={`bilan-ecart ${ecart > 0 ? 'hausse' : 'baisse'}`}>
+      {ecart > 0 ? '+' : ''}
+      {ecart} %
+    </span>
+  )
+}
+
+export function BilanMensuel({
+  bilan,
+  pharmacie
+}: {
+  bilan: BilanMensuelDonnees
+  pharmacie: Pharmacie
+}) {
+  return (
+    <article className="doc bilan">
+      <EnteteOfficine pharmacie={pharmacie} />
+
+      <h1 className="bilan-titre">Bilan du mois</h1>
+      <p className="bilan-mois">
+        {bilan.libelleMois}
+        <span> — comparé à {bilan.libelleMoisPrecedent}</span>
+      </p>
+
+      {/* Les quatre chiffres qu'on regarde en premier. */}
+      <section className="bilan-cles">
+        <div>
+          <dt>Chiffre d’affaires</dt>
+          <dd>{montant(bilan.chiffreAffaires.montant)}</dd>
+          <Variation
+            valeur={bilan.chiffreAffaires.montant}
+            precedent={bilan.chiffreAffaires.precedent}
+          />
+        </div>
+        <div>
+          <dt>Marge dégagée</dt>
+          <dd>{montant(bilan.marge.montant)}</dd>
+          <span className="bilan-ecart neutre">{bilan.marge.taux} % du chiffre</span>
+        </div>
+        <div>
+          <dt>Ventes</dt>
+          <dd>{nombre(bilan.ventes.nombre)}</dd>
+          <Variation valeur={bilan.ventes.nombre} precedent={bilan.ventes.precedent} />
+        </div>
+        <div>
+          <dt>Panier moyen</dt>
+          <dd>{montant(bilan.panierMoyen.montant)}</dd>
+          <Variation valeur={bilan.panierMoyen.montant} precedent={bilan.panierMoyen.precedent} />
+        </div>
+      </section>
+
+      {bilan.reglements.length ? (
+        <section className="bilan-bloc">
+          <h2>Comment vos clients ont payé</h2>
+          <table className="doc-table">
+            <tbody>
+              {bilan.reglements.map((r) => (
+                <tr key={r.mode}>
+                  <td>{modePaiement(r.mode)}</td>
+                  <td className="nombre">{montant(r.montant)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+
+      <section className="bilan-bloc">
+        <h2>Ce qui a le plus rapporté</h2>
+        {bilan.meilleuresVentes.length ? (
+          <table className="doc-table">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th className="nombre">Vendus</th>
+                <th className="nombre">Chiffre</th>
+                <th className="nombre">Marge</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bilan.meilleuresVentes.map((l) => (
+                <tr key={l.nom}>
+                  <td>{l.nom}</td>
+                  <td className="nombre">{nombre(l.quantite)}</td>
+                  <td className="nombre">{montant(l.montant)}</td>
+                  <td className="nombre">{montant(l.marge)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="bilan-vide">Aucune vente ce mois-ci.</p>
+        )}
+      </section>
+
+      {bilan.produitsQuiDorment.length ? (
+        <section className="bilan-bloc">
+          <h2>Votre argent qui dort</h2>
+          <p className="bilan-note">
+            En stock, mais pas vendus depuis trois mois. C’est de l’argent immobilisé.
+          </p>
+          <table className="doc-table">
+            <thead>
+              <tr>
+                <th>Produit</th>
+                <th className="nombre">En stock</th>
+                <th className="nombre">Valeur</th>
+                <th>Dernière vente</th>
+              </tr>
+            </thead>
+            <tbody>
+              {bilan.produitsQuiDorment.map((p) => (
+                <tr key={p.nom}>
+                  <td>{p.nom}</td>
+                  <td className="nombre">{nombre(p.stock)}</td>
+                  <td className="nombre">{montant(p.valeur)}</td>
+                  <td>{p.derniereVente ? dateCourte(p.derniereVente) : 'jamais'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      ) : null}
+
+      <section className="bilan-bloc">
+        <h2>Où en est l’officine</h2>
+        <dl className="bilan-etat">
+          <div>
+            <dt>Valeur du stock</dt>
+            <dd>{montant(bilan.stock.valeur)}</dd>
+            <span>
+              {nombre(bilan.stock.references)} références
+              {bilan.stock.ruptures > 0 ? `, dont ${nombre(bilan.stock.ruptures)} en rupture` : ''}
+            </span>
+          </div>
+          <div>
+            <dt>À écouler avant trois mois</dt>
+            <dd>{montant(bilan.peremptions.valeur)}</dd>
+            <span>
+              {nombre(bilan.peremptions.dansTroisMois)} lot
+              {bilan.peremptions.dansTroisMois > 1 ? 's' : ''}
+              {bilan.peremptions.deja > 0
+                ? `, et ${nombre(bilan.peremptions.deja)} déjà périmé${bilan.peremptions.deja > 1 ? 's' : ''}`
+                : ''}
+            </span>
+          </div>
+          <div>
+            <dt>Ce que vos clients doivent</dt>
+            <dd>{montant(bilan.creances.total)}</dd>
+            <span>
+              {bilan.creances.clients > 0
+                ? `${nombre(bilan.creances.clients)} client${bilan.creances.clients > 1 ? 's' : ''}`
+                : 'aucun client débiteur'}
+            </span>
+          </div>
+          <div>
+            <dt>Écarts de caisse</dt>
+            <dd>{montant(bilan.caisse.ecartTotal)}</dd>
+            <span>
+              {bilan.caisse.sessionsAvecEcart > 0
+                ? `sur ${nombre(bilan.caisse.sessionsAvecEcart)} journée${bilan.caisse.sessionsAvecEcart > 1 ? 's' : ''} de ${nombre(bilan.caisse.sessions)}`
+                : `${nombre(bilan.caisse.sessions)} journée${bilan.caisse.sessions > 1 ? 's' : ''}, aucun écart`}
+            </span>
+          </div>
+        </dl>
+      </section>
+
+      <footer className="bilan-pied">
+        Bilan établi le {dateCourte(new Date().toISOString())} · {pharmacie.nom}
+      </footer>
+    </article>
+  )
+}

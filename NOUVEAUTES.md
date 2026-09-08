@@ -18,6 +18,15 @@ place de ces lignes :
 Le titre de chaque section doit être `## <version>`, exactement : c'est ainsi
 que `npm run notes` retrouve la bonne.
 
+## 0.1.4
+
+Une feuille pour savoir comment va votre officine.
+
+• Le bilan du mois s'imprime en une touche depuis l'écran Rapports : ce que
+vous avez vendu, ce que vous avez gagné, comparé au mois d'avant.
+• Il montre aussi ce qui a le plus rapporté, ce qui dort en rayon, ce que vos
+clients doivent et vos écarts de caisse.
+
 ## 0.1.3
 
 Le comptoir en dit plus, et l'étiquetage devient possible.

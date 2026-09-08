@@ -7,6 +7,12 @@
  * du logiciel — les données de démonstration vivent ici, jamais dans le produit.
  */
 import { app, BrowserWindow } from 'electron'
+
+// Le banc photographie des fenetres jamais affichees. Sur un poste ou le
+// processus graphique est fragile — pilote ancien, machine chargee — il finit
+// par tomber en « UnknownVizError » et emporte le banc avec lui. Le rendu
+// logiciel est plus lent de quelques secondes et ne tombe pas.
+app.disableHardwareAcceleration()
 import { mkdirSync, readdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -33,7 +39,24 @@ let etapes = 0
 
 async function photographier(fenetre: BrowserWindow, nom: string, attente = 700): Promise<void> {
   await new Promise((r) => setTimeout(r, attente))
-  const image = await fenetre.webContents.capturePage()
+
+  // Le compositeur d'Electron rend parfois une « UnknownVizError » sur une
+  // fenetre jamais affichee, surtout apres une longue serie de captures. Ce
+  // n'est pas un defaut du logiciel photographie : c'est le processus
+  // graphique qui hoquette. Un banc de cinquante-cinq etapes ne doit pas
+  // tomber pour cela — on retente, en laissant le compositeur respirer.
+  let image
+  for (let essai = 1; ; essai++) {
+    try {
+      image = await fenetre.webContents.capturePage()
+      break
+    } catch (erreur) {
+      if (essai >= 4) throw erreur
+      console.log(`  (capture « ${nom} » retentee : ${(erreur as Error).message})`)
+      await new Promise((r) => setTimeout(r, 600 * essai))
+    }
+  }
+
   const fichier = join(sortie, `${String(++etapes).padStart(2, '0')}-${nom}.png`)
   writeFileSync(fichier, image.toPNG())
   console.log(`  capture : ${fichier}`)
@@ -1288,6 +1311,52 @@ app.whenReady().then(async () => {
         .find((b) => b.textContent.trim() === 'Fermer')?.click()`)
     await new Promise((r) => setTimeout(r, 400))
   }
+
+  // --- Le bilan mensuel ------------------------------------------------------
+  // Reserve a la formule Premium. Le banc tourne sur une demonstration, donc
+  // sans formule : le refus doit etre clair, et c'est justement ce qu'on
+  // verifie ici — un client Standard ne doit jamais voir un echec muet.
+  await fenetre.webContents.executeJavaScript(`
+    (async () => {
+      const lien = Array.from(document.querySelectorAll('.nav-lien'))
+        .find((a) => a.textContent && a.textContent.trim().startsWith('Rapports'))
+      if (lien) lien.click()
+      for (let essai = 0; essai < 50; essai++) {
+        await new Promise((r) => setTimeout(r, 100))
+        if (document.querySelector('.entete-page')) return true
+      }
+      return false
+    })()`)
+  await new Promise((r) => setTimeout(r, 600))
+
+  const refusBilan = await fenetre.webContents.executeJavaScript(`
+    window.pharmina.essayer('bilan.mensuel', {}).then((r) => ({
+      accepte: r.ok,
+      message: r.ok ? '' : r.erreur.message,
+      code: r.ok ? '' : r.erreur.code
+    }))`)
+
+  console.log(`  bilan sans formule -> ${JSON.stringify(refusBilan)}`)
+  if (refusBilan.accepte) {
+    erreurs.push('Bilan : accepte alors que le poste n a aucune formule')
+  } else {
+    // Le message doit dire QUOI FAIRE. « demonstration » s'ecrit avec un
+    // accent dans l'interface : on compare sans accents plutot que d'echouer
+    // sur une lettre.
+    const sansAccents = refusBilan.message.normalize('NFD').replace(/[̀-ͯ]/g, '')
+    if (!sansAccents.includes('Premium') && !sansAccents.includes('demonstration')) {
+      erreurs.push(`Bilan : le refus ne dit pas quoi faire — « ${refusBilan.message} »`)
+    }
+  }
+
+  // La touche doit exister dans la barre des fonctions, meme si elle mene a un
+  // refus explique : on ne cache pas ce qui existe.
+  const toucheBilan = await fenetre.webContents.executeJavaScript(`
+    Array.from(document.querySelectorAll('.barre-fonctions, .fonctions, footer'))
+      .map((e) => e.textContent).join(' ').includes('Bilan du mois')`)
+  console.log(`  touche « Bilan du mois » presente : ${toucheBilan ? 'oui' : 'non'}`)
+
+  await photographier(fenetre, 'rapports-bilan', 400)
 
   // --- La licence doit etre trouvable ----------------------------------------
   // Un ecran d'activation accessible seulement depuis un bandeau en bas

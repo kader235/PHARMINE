@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRequete } from '../lib/hooks'
+import { appeler, messageErreur } from '../lib/api'
 import { useSession } from '../app/Session'
 import { useFonctions } from '../app/fonctions'
 import { useNotifications } from '../ui/Notifications'
 import { useImpression } from '../ui/Impression'
-import { DocumentTableau } from '../ui/Documents'
+import { BilanMensuel, DocumentTableau } from '../ui/Documents'
 import { enregistrerCSV } from '../lib/export'
 import {
   Bouton,
@@ -67,7 +68,31 @@ export default function Rapports() {
     if (fichier) notifications.succes('Export terminé', fichier)
   }, [sortie, depuis, notifications])
 
+  /**
+   * Le bilan du mois.
+   *
+   * Il ne s'affiche pas a l'ecran : c'est une feuille qu'on imprime, qu'on lit
+   * assis et qu'on montre a son banquier. L'ouvrir dans un onglet en ferait un
+   * ecran de plus a consulter, ce qu'il n'est pas.
+   */
+  const imprimerBilan = useCallback(async () => {
+    try {
+      const donnees = await appeler('bilan.mensuel', { mois: debutDuMois(jusqua).slice(0, 7) })
+      imprimer(<BilanMensuel bilan={donnees as never} pharmacie={session.pharmacie} />, 'a4')
+    } catch (erreur) {
+      // Formule Standard, ou droits manquants : le message du serveur dit quoi
+      // faire, on ne le remplace pas par un echec muet.
+      notifications.erreur(messageErreur(erreur).message)
+    }
+  }, [jusqua, imprimer, session.pharmacie, notifications])
+
   useFonctions('rapports', [
+    {
+      touche: 'F9',
+      libelle: 'Bilan du mois',
+      action: imprimerBilan,
+      disponible: session.peut('rapports.voir')
+    },
     {
       touche: 'F8',
       libelle: 'Exporter en CSV',

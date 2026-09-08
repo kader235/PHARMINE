@@ -29,6 +29,7 @@ import { homedir, hostname, userInfo } from 'node:os'
 
 import * as coffre from '../src/main/services/coffre'
 import * as licence from '../src/main/services/licence'
+import * as bilan from '../src/main/services/bilan'
 import * as repertoire from '../src/main/services/repertoire'
 import * as reprise from '../src/main/services/reprise'
 import * as stock from '../src/main/services/stock'
@@ -2161,6 +2162,108 @@ try {
         `la formule ${formule} se relit telle qu’elle a ete ecrite`
       )
     }
+  }
+
+  // ==========================================================================
+  titre('Le bilan mensuel')
+
+  // Un chiffre seul ne dit rien : le bilan compare toujours au mois precedent.
+  // C'est la comparaison qui doit etre juste, plus encore que le total.
+  {
+    const moisCourant = new Date().toISOString().slice(0, 7)
+    const b = bilan.bilanMensuel(moisCourant)
+
+    verifier(b.mois === moisCourant, 'le bilan porte sur le mois demande', b.mois)
+    verifier(
+      b.libelleMois !== b.libelleMoisPrecedent,
+      'le mois precedent est nomme, et ce n’est pas le meme',
+      { mois: b.libelleMois, avant: b.libelleMoisPrecedent }
+    )
+
+    // Le chiffre d'affaires du bilan doit egaler la somme des ventes non
+    // annulees du mois : c'est le seul controle qui compte.
+    const attendu = (
+      base()
+        .prepare(
+          `SELECT COALESCE(SUM(total), 0) n FROM ventes
+           WHERE statut = 'finalisee' AND at >= ? AND at <= ?`
+        )
+        .get(b.debut, b.fin) as { n: number }
+    ).n
+    verifier(
+      b.chiffreAffaires.montant === attendu,
+      'le chiffre d’affaires egale la somme des ventes du mois',
+      { bilan: b.chiffreAffaires.montant, base: attendu }
+    )
+
+    // Les ventes annulees ne doivent JAMAIS entrer dans un total.
+    const avecAnnulees = (
+      base()
+        .prepare('SELECT COALESCE(SUM(total), 0) n FROM ventes WHERE at >= ? AND at <= ?')
+        .get(b.debut, b.fin) as { n: number }
+    ).n
+    verifier(
+      b.chiffreAffaires.montant <= avecAnnulees,
+      'les ventes annulees sont exclues du chiffre d’affaires'
+    )
+
+    verifier(b.marge.montant <= b.chiffreAffaires.montant, 'la marge ne depasse jamais le chiffre')
+    verifier(
+      b.chiffreAffaires.montant === 0 || (b.marge.taux > 0 && b.marge.taux <= 100),
+      'le taux de marge est un pourcentage credible',
+      b.marge.taux
+    )
+    verifier(
+      b.ventes.nombre === 0 ||
+        b.panierMoyen.montant === Math.round(b.chiffreAffaires.montant / b.ventes.nombre),
+      'le panier moyen est le chiffre divise par le nombre de ventes'
+    )
+
+    verifier(b.meilleuresVentes.length <= 10, 'le classement s’arrete a dix produits')
+    verifier(
+      b.meilleuresVentes.every((l, i) => i === 0 || b.meilleuresVentes[i - 1]!.montant >= l.montant),
+      'le classement va du plus gros au plus petit'
+    )
+
+    const totalReglements = b.reglements.reduce((s, r) => s + r.montant, 0)
+    verifier(totalReglements >= 0, 'les reglements sont ventiles par mode', b.reglements.length)
+
+    verifier(b.stock.valeur >= 0 && b.stock.references > 0, 'la valeur du stock est calculee', b.stock)
+    verifier(b.creances.total >= 0, 'les creances clients sont totalisees', b.creances)
+    verifier(
+      b.produitsQuiDorment.every((p) => p.stock > 0),
+      'un produit qui dort a forcement du stock'
+    )
+
+    // Un mois sans activite ne doit pas casser : il doit repondre des zeros.
+    const vide = bilan.bilanMensuel('2020-01')
+    verifier(vide.chiffreAffaires.montant === 0, 'un mois sans vente rend zero, sans erreur')
+    verifier(vide.panierMoyen.montant === 0, 'le panier moyen d’un mois vide ne divise pas par zero')
+    verifier(vide.marge.taux === 0, 'le taux de marge d’un mois vide vaut zero')
+
+    // Le passage de janvier a decembre est le piege classique.
+    const janvier = bilan.bilanMensuel('2026-01')
+    verifier(
+      janvier.libelleMoisPrecedent === 'décembre 2025',
+      'le mois precedent de janvier est decembre de l’annee d’avant',
+      janvier.libelleMoisPrecedent
+    )
+
+    // Fevrier 2028 est bissextile : la borne de fin doit tomber le 29.
+    const fevrier = bilan.bilanMensuel('2028-02')
+    verifier(
+      fevrier.fin.slice(0, 10) === '2028-02-29',
+      'fevrier d’une annee bissextile va jusqu’au 29',
+      fevrier.fin.slice(0, 10)
+    )
+
+    let refus = ''
+    try {
+      bilan.bilanMensuel('2026-13')
+    } catch (erreur) {
+      refus = (erreur as Error).message
+    }
+    verifier(refus !== '', 'un mois impossible est refuse', refus)
   }
 
   // ==========================================================================

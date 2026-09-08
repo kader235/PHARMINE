@@ -7,6 +7,7 @@ import { ErreurMetier, journaliser } from '../services/commun'
 import * as auth from '../services/auth'
 import * as produits from '../services/produits'
 import * as codesBarres from '../services/codesBarres'
+import * as bilan from '../services/bilan'
 import * as repertoire from '../services/repertoire'
 import * as stock from '../services/stock'
 import * as ventes from '../services/ventes'
@@ -403,6 +404,13 @@ const CANAUX: Record<string, Canal> = {
   // L'export vers un tableur sert au comptable, pas au comptoir : c'est un
   // confort de gerant, et c'est ce qui le rend legitime en formule Premium.
   // Rien de ce qui protege l'officine ne passe cette porte.
+  // Le bilan mensuel : la reponse a la seule question qu'un gerant se pose une
+  // fois par mois. C'est un outil de gerant, pas de comptoir — sa place est
+  // donc en formule Premium.
+  'bilan.mensuel': reservePremium('rapports.voir', 'bilan', (p: { mois?: string }) =>
+    bilan.bilanMensuel(p?.mois)
+  ),
+
   'exports.enregistrer': reservePremium('rapports.exporter', 'export', (p: { nomFichier: string; contenu: string }, ctx) =>
     exporter(p.nomFichier, p.contenu, ctx.utilisateurId)
   )

@@ -92,7 +92,9 @@ function debase32(texte: string): Buffer {
 /** Une licence perpétuelle pour le poste de démonstration. */
 function licencePour(code: string): string {
   const empreinte = debase32(code.replace(/[\s-]/g, '')).subarray(0, 10)
-  const entete = Buffer.from([1, 0, 0, 0])
+  // Premium : le bilan mensuel lui est reserve, et c'est lui qu'on veut
+  // montrer sur la page des formules.
+  const entete = Buffer.from([1, 0, 0, 1])
   const message = Buffer.concat([Buffer.from('PHARMINA-LICENCE-1'), entete, empreinte])
   const signature = sign(null, message, createPrivateKey(readFileSync(CLE_PRIVEE)))
   return base32(Buffer.concat([entete, signature]))
@@ -316,6 +318,72 @@ async function produire(): Promise<void> {
   ] as const) {
     await allerA(libelle)
     await photographier(nom)
+  }
+
+  // Le bilan mensuel : un document, pas un ecran. On l'imprime dans la zone
+  // masquee et on le photographie tel qu'il sortira de l'imprimante.
+  await allerA('Rapports')
+  await fenetre.webContents.executeJavaScript(`
+    (async () => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'F9', bubbles: true, cancelable: true }))
+      for (let essai = 0; essai < 60; essai++) {
+        await new Promise((r) => setTimeout(r, 100))
+        if (document.querySelector('#impression .bilan')) return true
+      }
+      return false
+    })()`)
+  await new Promise((r) => setTimeout(r, 800))
+
+  const bilanPresent = await fenetre.webContents.executeJavaScript(
+    `!!document.querySelector('#impression .bilan')`
+  )
+  if (bilanPresent) {
+    // La zone d'impression est masquee a l'ecran par une regle display:none.
+    // Un style en ligne qui ne redefinit pas `display` ne la revele donc pas —
+    // c'est ce qui faisait photographier l'ecran des rapports a sa place.
+    //
+    // ATTENTION : aucun accent grave dans ce script injecte. Il terminerait le
+    // litteral TypeScript qui l'entoure, et le code envoye serait tronque.
+    const diagnostic = await fenetre.webContents.executeJavaScript(`
+      (() => {
+        // Un position:fixed ne suffit pas : si un ancetre porte transform,
+        // filter ou contain, il devient le bloc englobant et la zone reste
+        // derriere l'application. On masque donc le reste de l'ecran plutot
+        // que de tenter de passer par-dessus.
+        //
+        // ATTENTION : aucun accent grave ici. Il terminerait le litteral
+        // TypeScript qui entoure ce script, et le code envoye serait tronque.
+        const zone = document.getElementById('impression')
+        const racine = zone.parentElement
+        for (const enfant of Array.from(racine.children)) {
+          if (enfant !== zone) enfant.style.display = 'none'
+        }
+        racine.style.display = 'block'
+        zone.style.cssText = 'display:block;background:#fff;color:#000;padding:10mm 12mm;'
+        document.body.style.cssText = 'background:#fff;overflow:auto;'
+
+        const doc = zone.querySelector('.bilan')
+        const r = doc ? doc.getBoundingClientRect() : null
+        return {
+          display: getComputedStyle(zone).display,
+          hautDoc: r ? Math.round(r.top) : -1,
+          hauteurDoc: r ? Math.round(r.height) : 0,
+          largeurDoc: r ? Math.round(r.width) : 0
+        }
+      })()`)
+    console.log(`  zone d impression -> ${JSON.stringify(diagnostic)}`)
+
+    await new Promise((r) => setTimeout(r, 600))
+    await photographier('bilan')
+    // Le bilan sert aussi de piece a relire : on le pose a cote des captures
+    // du banc, pour l'examiner sans rouvrir le PDF.
+    writeFileSync(
+      join(process.cwd(), 'apercu', 'bilan-mensuel.png'),
+      Buffer.from(images.bilan!, 'base64')
+    )
+    console.log('  bilan mensuel photographie')
+  } else {
+    console.log('  ATTENTION : le bilan mensuel n a pas pu etre photographie')
   }
 
   fenetre.destroy()
@@ -682,8 +750,8 @@ function documentHtml(images: Record<string, string>): string {
   </div>
 
   <figure>
-    ${img('alertes')}
-    <figcaption>Le logiciel vous dit chaque jour ce qui demande votre attention.</figcaption>
+    ${img('bilan')}
+    <figcaption>Le bilan du mois, compris dans la formule Premium : une feuille à imprimer, à lire assis, à montrer à son banquier.</figcaption>
   </figure>
 
   <div class="contact">
