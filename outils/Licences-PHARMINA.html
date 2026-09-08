@@ -232,6 +232,13 @@
       <input type="number" id="jours" min="1" max="100000" placeholder="Vide = perpétuelle">
     </label>
   </div>
+
+  <label class="memoire" style="margin-bottom:4px">
+    <input type="checkbox" id="premium">
+    <span><strong>Formule Premium</strong> — le client installe les nouvelles versions
+      depuis le logiciel et accède à l'export vers un tableur. Décoché : formule
+      Standard.</span>
+  </label>
   <button class="principal" id="produire">Produire la licence</button>
 </section>
 
@@ -240,6 +247,7 @@
 <section class="resultat" id="resultat">
   <h2>3 · Clé à communiquer</h2>
   <dl>
+    <dt>Formule</dt><dd id="rFormule">—</dd>
     <dt>Officine</dt><dd id="rOfficine">—</dd>
     <dt>Poste</dt><dd id="rPoste">—</dd>
     <dt>Validité</dt><dd id="rValidite">—</dd>
@@ -450,7 +458,7 @@ async function empreinteCourte(texte) {
   return Array.from(somme.slice(0, 6)).map((o) => o.toString(16).padStart(2, '0')).join('')
 }
 
-async function produireLicence({ pem, code, jours }) {
+async function produireLicence({ pem, code, jours, premium }) {
   const graine = graineDepuisPem(pem)
 
   const nettoye = code.replace(/[\s-]/g, '')
@@ -470,7 +478,10 @@ async function produireLicence({ pem, code, jours }) {
     throw new Error('Durée hors limites : indiquez entre 1 et 100 000 jours.')
   }
 
-  const entete = new Uint8Array([1, expiration >> 8, expiration & 255, 0])
+  // Le quatrieme octet porte la formule : zero pour Standard, un pour Premium.
+  // Il etait reserve depuis le premier jour, donc les licences deja emises
+  // restent valides et se lisent comme des Standard.
+  const entete = new Uint8Array([1, expiration >> 8, expiration & 255, premium ? 1 : 0])
   const message = concatener(new TextEncoder().encode('PHARMINA-LICENCE-1'), entete, empreinte)
   const signature = await signer(graine, message)
 
@@ -478,6 +489,7 @@ async function produireLicence({ pem, code, jours }) {
   return {
     cle: (licence.match(/.{1,5}/g) ?? []).join('-'),
     brute: licence,
+    formule: premium ? 'Premium' : 'Standard',
     validite: expiration === 0
       ? 'perpétuelle'
       : new Date(ORIGINE + expiration * 86400000).toISOString().slice(0, 10),
@@ -545,9 +557,11 @@ $('produire').addEventListener('click', async () => {
     const resultat = await produireLicence({
       pem: $('pem').value,
       code: $('code').value,
-      jours: $('jours').value.trim() || null
+      jours: $('jours').value.trim() || null,
+      premium: $('premium').checked
     })
 
+    $('rFormule').textContent = resultat.formule
     $('rOfficine').textContent = $('officine').value.trim() || '—'
     $('rPoste').textContent = $('code').value.trim().toUpperCase()
     $('rValidite').textContent = resultat.validite

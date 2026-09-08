@@ -31,12 +31,22 @@ import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
 
 import { journaliser } from './commun'
+import { estPremium } from './licence'
 
 /** Version du produit, injectee a la compilation depuis package.json. */
 declare const __VERSION_PHARMINA__: string
 
 export interface EtatMiseAJour {
   versionInstallee: string
+  /**
+   * Vrai si ce poste peut installer la nouvelle version depuis le logiciel.
+   *
+   * La formule Standard voit qu'une version existe mais ne la telecharge pas :
+   * elle passe par le fournisseur. On ne cache PAS son existence — un
+   * pharmacien qui reste sur une version corrigee depuis six mois sans le
+   * savoir serait le vrai probleme.
+   */
+  installationPossible: boolean
   /** Version disponible en ligne, si elle est plus récente. */
   versionDisponible: string | null
   notes: string | null
@@ -52,6 +62,7 @@ let etatCourant: EtatMiseAJour = {
   // Pas `app.getVersion()` : hors application empaquetee, il renvoie la
   // version d'Electron. Le pharmacien lirait « 41.10.7 » au lieu de la sienne.
   versionInstallee: __VERSION_PHARMINA__,
+  installationPossible: false,
   versionDisponible: null,
   notes: null,
   progression: null,
@@ -149,6 +160,7 @@ function configurer(): void {
   autoUpdater.on('update-available', (info) => {
     etatCourant = {
       ...etatCourant,
+      installationPossible: estPremium(),
       versionDisponible: info.version,
       notes: notesLisibles(typeof info.releaseNotes === 'string' ? info.releaseNotes : null),
       motif: null
@@ -230,6 +242,20 @@ export async function verifier(): Promise<EtatMiseAJour> {
 export async function telecharger(): Promise<EtatMiseAJour> {
   configurer()
   if (!etatCourant.versionDisponible) return etatCourant
+
+  // La formule Standard n'installe pas depuis le logiciel. Le refus dit quoi
+  // faire, plutot que de laisser le bouton tourner dans le vide.
+  if (!estPremium()) {
+    etatCourant = {
+      ...etatCourant,
+      installationPossible: false,
+      motif:
+        'L’installation des nouvelles versions depuis le logiciel fait partie ' +
+        'de la formule Premium. Votre fournisseur peut vous transmettre cette ' +
+        'version.'
+    }
+    return etatCourant
+  }
 
   try {
     etatCourant = { ...etatCourant, progression: 0, motif: null }

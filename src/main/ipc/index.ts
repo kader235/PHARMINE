@@ -66,6 +66,23 @@ const connecte = (gestionnaire: Gestionnaire): Canal => ({ permission: '', gesti
  * démonstration laisse faire. Un contrôle dispersé dans les services finirait
  * par en oublier un.
  */
+/**
+ * Canal réservé à la formule Premium.
+ *
+ * La licence est exigée d'abord — une démonstration n'a aucune formule — puis
+ * la formule. Les deux messages sont différents : « activez le logiciel » et
+ * « cette fonction est dans la formule Premium » n'appellent pas la même
+ * réponse du pharmacien.
+ */
+const reservePremium = (permission: string, domaine: string, gestionnaire: Gestionnaire): Canal => ({
+  permission,
+  gestionnaire: (charge, ctx, source) => {
+    licence.exigerLicence(domaine)
+    licence.exigerPremium(domaine)
+    return gestionnaire(charge, ctx, source)
+  }
+})
+
 const reserve = (permission: string, domaine: string, gestionnaire: Gestionnaire): Canal => ({
   permission,
   gestionnaire: (charge, ctx, source) => {
@@ -383,7 +400,10 @@ const CANAUX: Record<string, Canal> = {
   ),
 
   // --- Export de fichiers ----------------------------------------------------
-  'exports.enregistrer': reserve('rapports.exporter', 'export', (p: { nomFichier: string; contenu: string }, ctx) =>
+  // L'export vers un tableur sert au comptable, pas au comptoir : c'est un
+  // confort de gerant, et c'est ce qui le rend legitime en formule Premium.
+  // Rien de ce qui protege l'officine ne passe cette porte.
+  'exports.enregistrer': reservePremium('rapports.exporter', 'export', (p: { nomFichier: string; contenu: string }, ctx) =>
     exporter(p.nomFichier, p.contenu, ctx.utilisateurId)
   )
 }

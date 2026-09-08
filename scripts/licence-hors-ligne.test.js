@@ -64,12 +64,12 @@ function debase32(texte) {
   return Buffer.from(octets)
 }
 
-function licenceDeReference(code, jours) {
+function licenceDeReference(code, jours, premium = false) {
   const empreinte = debase32(code.replace(/[\s-]/g, '')).subarray(0, 10)
   const expiration = jours
     ? Math.round((Date.now() + Number(jours) * 86_400_000 - ORIGINE) / 86_400_000)
     : 0
-  const entete = Buffer.from([1, expiration >> 8, expiration & 255, 0])
+  const entete = Buffer.from([1, expiration >> 8, expiration & 255, premium ? 1 : 0])
   const message = Buffer.concat([Buffer.from('PHARMINA-LICENCE-1'), entete, empreinte])
   const signature = sign(null, message, createPrivateKey(readFileSync(CLE)))
   const licence = base32(Buffer.concat([entete, signature]))
@@ -202,6 +202,49 @@ async function principal() {
   const attendueAutre = licenceDeReference('7K3M-9PQR-2XYZ-4A5B', null)
   verifier(autre.cle === attendueAutre.cle, 'un autre poste donne la cle attendue')
   verifier(autre.cle !== attenduePerpetuelle.cle, 'deux postes n’obtiennent pas la meme cle')
+
+  // --- La formule Premium ---------------------------------------------------
+  // Elle vit dans le quatrieme octet de l'en-tete : la cle doit donc differer
+  // de celle d'une Standard pour le meme poste, et correspondre a la reference.
+  await poser('jours', '')
+  await poser('code', '5vaw26g3nj9vg8d5')
+  await fenetre.webContents.executeJavaScript(`
+    (() => {
+      const c = document.getElementById('premium')
+      c.checked = true
+      c.dispatchEvent(new Event('change', { bubbles: true }))
+      return true
+    })()`)
+
+  const attenduePremium = licenceDeReference('5VAW-26G3-NJ9V-G8D5', null, true)
+  const obtenuePremium = await produire()
+
+  verifier(
+    obtenuePremium.cle === attenduePremium.cle,
+    'une licence Premium est identique a la reference',
+    { attendue: attenduePremium.cle.slice(0, 40), obtenue: (obtenuePremium.cle ?? '').slice(0, 40) }
+  )
+  verifier(
+    obtenuePremium.cle !== attenduePerpetuelle.cle,
+    'Premium et Standard ne donnent pas la meme cle pour le meme poste'
+  )
+  const formuleAffichee = await fenetre.webContents.executeJavaScript(
+    `document.getElementById('rFormule').textContent`
+  )
+  verifier(formuleAffichee === 'Premium', 'la formule est annoncee a l ecran', formuleAffichee)
+
+  await fenetre.webContents.executeJavaScript(`
+    (() => {
+      const c = document.getElementById('premium')
+      c.checked = false
+      c.dispatchEvent(new Event('change', { bubbles: true }))
+      return true
+    })()`)
+  const retourStandard = await produire()
+  verifier(
+    retourStandard.cle === attenduePerpetuelle.cle,
+    'decocher Premium redonne exactement la cle Standard'
+  )
 
   // --- Les refus ------------------------------------------------------------
   const refuse = async (champs, quoi) => {

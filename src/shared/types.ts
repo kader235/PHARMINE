@@ -502,6 +502,14 @@ export interface EtatCopieExterne {
 
 export interface EtatMiseAJour {
   versionInstallee: string
+  /**
+   * Vrai si ce poste peut installer la nouvelle version depuis le logiciel.
+   *
+   * La formule Standard voit qu'une version existe mais ne la télécharge pas.
+   * On ne cache pas son existence : un pharmacien resté des mois sur une
+   * version corrigée sans le savoir serait le vrai problème.
+   */
+  installationPossible: boolean
   versionDisponible: string | null
   notes: string | null
   progression: number | null

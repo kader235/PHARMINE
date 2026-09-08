@@ -2134,6 +2134,36 @@ try {
   }
 
   // ==========================================================================
+  titre('Standard et Premium')
+
+  // La formule vit dans le quatrieme octet de l'en-tete, reserve depuis le
+  // premier jour. Les licences deja emises valent zero : elles restent valides
+  // et deviennent Standard, sans qu'aucun client ait a reactiver quoi que ce
+  // soit. C'est la seule raison d'avoir choisi cet octet.
+  {
+    verifier(licence.formuleDepuisOptions(0) === 'standard', 'une licence sans option est Standard')
+    verifier(licence.formuleDepuisOptions(1) === 'premium', 'le premier bit porte la formule Premium')
+    verifier(
+      licence.formuleDepuisOptions(0b1111_1110) === 'standard',
+      'les autres bits n’ouvrent pas le Premium par accident'
+    )
+    verifier(
+      licence.formuleDepuisOptions(0b1000_0001) === 'premium',
+      'un bit futur n’efface pas la formule'
+    )
+    verifier(licence.optionsDepuisFormule('standard') === 0, 'Standard s’ecrit zero')
+    verifier(licence.optionsDepuisFormule('premium') === 1, 'Premium s’ecrit un')
+
+    // Aller-retour : ce qu'on ecrit doit se relire.
+    for (const formule of ['standard', 'premium'] as const) {
+      verifier(
+        licence.formuleDepuisOptions(licence.optionsDepuisFormule(formule)) === formule,
+        `la formule ${formule} se relit telle qu’elle a ete ecrite`
+      )
+    }
+  }
+
+  // ==========================================================================
   titre('Intégrité finale de la base')
 
   const integrite = base().prepare('PRAGMA integrity_check').get() as { integrity_check: string }

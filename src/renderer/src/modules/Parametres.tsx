@@ -884,8 +884,20 @@ function PanneauMiseAJour() {
             {/* Les notes arrivent nettoyées et en lignes : on les respecte
                 plutôt que de les recoller en un pavé. */}
             <span style={{ whiteSpace: 'pre-line' }}>
-              {courant.notes ?? 'Seules les parties modifiées seront téléchargées.'}
+              {courant.notes ??
+                (courant.installationPossible
+                  ? 'Seules les parties modifiées seront téléchargées.'
+                  : '')}
             </span>
+            {/* Formule Standard : on annonce la version sans la proposer. Ne
+                pas la mentionner du tout laisserait un pharmacien sur une
+                version corrigée depuis des mois sans qu'il le sache. */}
+            {!courant.installationPossible ? (
+              <p style={{ marginTop: 8, marginBottom: 0 }}>
+                L’installation depuis le logiciel fait partie de la formule Premium. Votre
+                fournisseur peut vous transmettre cette version.
+              </p>
+            ) : null}
           </Bandeau>
         </div>
       ) : courant.motif ? (
@@ -909,7 +921,9 @@ function PanneauMiseAJour() {
         <Bouton enCours={action.enCours} onClick={verifier}>
           Vérifier maintenant
         </Bouton>
-        {courant.versionDisponible && !courant.prete && modifiable ? (
+        {/* Formule Standard : pas de bouton qui mènerait à un refus. On ne
+            propose que ce qui aboutit. */}
+        {courant.versionDisponible && !courant.prete && modifiable && courant.installationPossible ? (
           <Bouton variante="principal" enCours={action.enCours} onClick={telecharger}>
             Télécharger
           </Bouton>

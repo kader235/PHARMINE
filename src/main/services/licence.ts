@@ -269,6 +269,31 @@ interface Contenu {
   options: number
 }
 
+/**
+ * La formule vendue, portée par le premier bit de l'octet d'options.
+ *
+ * POURQUOI CET OCTET ET PAS UN AUTRE
+ *
+ * Il était réservé depuis le premier jour et valait zéro dans toutes les
+ * licences déjà émises. Elles restent donc valides et deviennent Standard,
+ * sans qu'aucun client ait à réactiver quoi que ce soit. Changer le format
+ * aurait invalidé l'existant.
+ *
+ * Les sept autres bits restent libres pour la suite — multi-poste, prise en
+ * charge entreprise, ce qui viendra.
+ */
+export type Formule = 'standard' | 'premium'
+
+const BIT_PREMIUM = 1
+
+export function formuleDepuisOptions(options: number): Formule {
+  return (options & BIT_PREMIUM) === BIT_PREMIUM ? 'premium' : 'standard'
+}
+
+export function optionsDepuisFormule(formule: Formule): number {
+  return formule === 'premium' ? BIT_PREMIUM : 0
+}
+
 function messageSigne(contenu: Contenu, empreinte: Buffer): Buffer {
   const entete = Buffer.from([contenu.version, contenu.expiration >> 8, contenu.expiration & 255, contenu.options])
   return Buffer.concat([Buffer.from('PHARMINA-LICENCE-1'), entete, empreinte])
@@ -276,6 +301,8 @@ function messageSigne(contenu: Contenu, empreinte: Buffer): Buffer {
 
 export interface EtatLicence {
   activee: boolean
+  /** Formule vendue. Une démonstration n'en a aucune. */
+  formule: Formule | null
   codeInstallation: string
   expiration: string | null
   joursRestants: number | null
@@ -392,6 +419,7 @@ export function etat(ventesDuJour: number): EtatLicence {
 
   return {
     activee: contenu !== null,
+    formule: contenu ? formuleDepuisOptions(contenu.options) : null,
     codeInstallation: codeInstallation(),
     expiration: fin,
     joursRestants: fin
@@ -427,6 +455,44 @@ export function exigerLicence(domaine: keyof typeof RESERVE | string): void {
     `${RESERVE[domaine] ?? 'Cette fonction'} n’est pas disponible en démonstration. ` +
       'Activez le logiciel pour y accéder.',
     'demonstration'
+  )
+}
+
+/** La formule du poste, ou null s'il n'est pas activé. */
+export function formuleActive(): Formule | null {
+  const contenu = licenceActive()
+  return contenu ? formuleDepuisOptions(contenu.options) : null
+}
+
+export function estPremium(): boolean {
+  return formuleActive() === 'premium'
+}
+
+/**
+ * Ce que la formule Premium ouvre en plus.
+ *
+ * CE QU'ON N'A PAS MIS DERRIÈRE CETTE PORTE
+ *
+ * Rien de ce qui protège l'officine ou son client : les sauvegardes, les
+ * alertes de péremption, l'avertissement sur les produits sous ordonnance, la
+ * traçabilité des ventes. Faire payer pour cela reviendrait à vendre le risque.
+ *
+ * Ce qui est réservé relève du confort du gérant, pas de la sécurité du
+ * comptoir : les analyses approfondies et la sortie vers un tableur.
+ */
+const PREMIUM: Record<string, string> = {
+  export: 'L’export vers un tableur',
+  analyses: 'Les rapports approfondis',
+  mise_a_jour: 'L’installation des nouvelles versions depuis le logiciel'
+}
+
+export function exigerPremium(domaine: string): void {
+  if (estPremium()) return
+
+  throw new ErreurMetier(
+    `${PREMIUM[domaine] ?? 'Cette fonction'} fait partie de la formule Premium. ` +
+      'Contactez votre fournisseur pour y accéder.',
+    'formule'
   )
 }
 

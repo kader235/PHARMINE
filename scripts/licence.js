@@ -8,10 +8,12 @@
  * correspondante, il la colle, le logiciel est activé.
  *
  *   npm run licence -- --code 7K3M-9PQR-2XYZ-4A5B
+ *   npm run licence -- --code 7K3M-9PQR-2XYZ-4A5B --premium
  *   npm run licence -- --code 7K3M-9PQR-2XYZ-4A5B --jours 365
- *   npm run licence -- --code 7K3M-9PQR-2XYZ-4A5B --officine "Pharmacie du Plateau"
+ *   npm run licence -- --code 7K3M-9PQR-2XYZ-4A5B --officine "Pharmacie Santé Pour Tous"
  *
  * Sans --jours, la licence est perpétuelle.
+ * Sans --premium, la licence est Standard.
  *
  * LA CLÉ PRIVÉE.
  *
@@ -79,6 +81,9 @@ function main() {
   const code = argument('code')
   const jours = argument('jours')
   const officine = argument('officine') ?? ''
+  // La formule vit dans le quatrieme octet de l'en-tete, reserve depuis le
+  // premier jour : les licences deja emises valent zero, donc Standard.
+  const premium = process.argv.includes('--premium')
 
   if (!code) {
     console.error(
@@ -121,7 +126,7 @@ function main() {
     process.exit(1)
   }
 
-  const entete = Buffer.from([1, expiration >> 8, expiration & 255, 0])
+  const entete = Buffer.from([1, expiration >> 8, expiration & 255, premium ? 1 : 0])
   const message = Buffer.concat([Buffer.from('PHARMINA-LICENCE-1'), entete, empreinte])
   const signature = sign(null, message, createPrivateKey(readFileSync(CLE_PRIVEE)))
 
@@ -132,6 +137,7 @@ function main() {
 
   console.log('')
   console.log('  LICENCE PHARMINA')
+  console.log(`  Formule    : ${premium ? 'PREMIUM' : 'Standard'}`)
   if (officine) console.log(`  Officine   : ${officine}`)
   console.log(`  Poste      : ${code.toUpperCase()}`)
   console.log(`  Validité   : ${fin}`)
