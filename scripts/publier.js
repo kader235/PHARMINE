@@ -120,9 +120,8 @@ function main() {
   }
   // Le script des notes applique les mêmes règles que le logiciel : une note
   // qui ne s'afficherait pas ne doit pas être publiée.
-  const apercu = courir(`node scripts/notes-version.js`, {
-    env: { ...process.env, npm_package_version: version }
-  })
+  // On passe le numero explicitement : package.json porte encore l'ancien.
+  const apercu = courir(`node scripts/notes-version.js ${version}`)
   console.log('  section trouvée et présentable — OK')
   for (const ligne of apercu.split('\n').filter((l) => l.trim().startsWith('•'))) {
     console.log(`\x1b[2m  ${ligne.trim()}\x1b[0m`)
@@ -138,9 +137,17 @@ function main() {
   eprouver('référentiel et permissions', 'npx electron tests/seed.test.js', /toutes les v/i)
   eprouver('signature des licences', 'node scripts/ed25519.test.js', /0 echouees/)
 
-  // --- 4. Le guide ----------------------------------------------------------
-  titre('4 · Le guide d’utilisation')
+  // --- 4. Le numéro, puis le guide -----------------------------------------
+  titre('4 · Le numéro et le guide')
 
+  execFileSync('npm', ['version', version, '--no-git-tag-version'], {
+    cwd: RACINE,
+    stdio: 'pipe'
+  })
+  console.log(`  package.json porte ${version} — OK`)
+
+  // Le guide se régénère APRÈS le changement de numéro : produit avant, il
+  // décrirait la version précédente.
   courir('npx electron out/main/manuel.js', {
     env: Object.fromEntries(
       Object.entries(process.env).filter(([c]) => c !== 'ELECTRON_RUN_AS_NODE')
@@ -148,12 +155,11 @@ function main() {
   })
   const pdf = join(RACINE, 'Manuel-PHARMINA.pdf')
   if (!existsSync(pdf)) echouer('le guide n’a pas été produit')
-  console.log(`  Manuel-PHARMINA.pdf régénéré — OK`)
+  console.log('  Manuel-PHARMINA.pdf régénéré — OK')
 
   // --- 5. La publication ----------------------------------------------------
   titre('5 · La publication')
 
-  execFileSync('npm', ['version', version, '--no-git-tag-version'], { cwd: RACINE, stdio: 'pipe', shell: true })
   courir('git add -A')
   execFileSync('git', ['commit', '-q', '-m', `Version ${version}`], { cwd: RACINE, stdio: 'pipe' })
   execFileSync('git', ['tag', `v${version}`], { cwd: RACINE, stdio: 'pipe' })

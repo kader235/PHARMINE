@@ -27,7 +27,13 @@ const SOURCE = join(RACINE, 'NOUVEAUTES.md')
 const SORTIE = join(RACINE, 'notes-de-version.md')
 
 function main() {
-  const version = JSON.parse(readFileSync(join(RACINE, 'package.json'), 'utf8')).version
+  // La version peut etre imposee en argument : au moment de publier, le
+  // numero n'est pas encore monte dans package.json, et lire ce fichier
+  // validerait les notes de la version PRECEDENTE.
+  const version =
+    process.argv[2] && /^\d+\.\d+\.\d+$/.test(process.argv[2])
+      ? process.argv[2]
+      : JSON.parse(readFileSync(join(RACINE, 'package.json'), 'utf8')).version
 
   if (!existsSync(SOURCE)) {
     console.error(`\nNOUVEAUTES.md est introuvable. Sans lui, aucune note ne peut être publiée.\n`)
