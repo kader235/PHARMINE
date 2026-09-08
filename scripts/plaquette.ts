@@ -635,7 +635,6 @@ function documentHtml(images: Record<string, string>): string {
     <li>L'installation sur votre ordinateur et la reprise de vos produits.</li>
     <li>La formation de votre équipe.</li>
     <li>Le guide d'utilisation imprimé.</li>
-    <li>Les mises à jour, qui s'installent depuis le logiciel.</li>
   </ul>
 
   <div class="duo" style="margin-bottom:5mm">
