@@ -37,7 +37,8 @@ import * as caisse from '../src/main/services/caisse'
 import * as ventes from '../src/main/services/ventes'
 import * as partenaires from '../src/main/services/partenaires'
 
-const PRIX = '350 000 FCFA'
+const STANDARD = '275 000 FCFA'
+const PREMIUM = '350 000 FCFA'
 // Un mobile tchadien fait huit chiffres : on les groupe par deux, comme ils se
 // dictent au telephone.
 const TELEPHONES = ['+235 62 87 37 99', '97 69 11 12', '69 18 67 66']
@@ -429,13 +430,26 @@ function documentHtml(images: Record<string, string>): string {
     padding-left: 4mm; margin-bottom: 5mm;
   }
 
-  .prix-boite {
-    background: #15654e; color: #fff;
-    padding: 8mm; border-radius: 2mm; text-align: center;
-    margin: 4mm 0 6mm;
+  .formules { display: grid; grid-template-columns: 1fr 1fr; gap: 5mm; margin: 4mm 0 6mm; }
+  .formule {
+    border: 0.4mm solid #d5e0dc; border-radius: 2mm;
+    padding: 6mm 5mm; display: flex; flex-direction: column;
   }
-  .prix-boite .montant { font-size: 34pt; font-weight: 700; letter-spacing: -1pt; }
-  .prix-boite .detail { font-size: 11pt; color: #cfe4dc; margin-top: 2mm; }
+  /* La formule la plus complete se distingue par la couleur, pas par une
+     etiquette « recommande » : le pharmacien choisit, on ne le pousse pas. */
+  .formule.pleine { background: #15654e; border-color: #15654e; color: #fff; }
+  .formule .nom {
+    font-size: 9pt; letter-spacing: 2.5pt; text-transform: uppercase;
+    color: #6b7c75; margin-bottom: 3mm;
+  }
+  .formule.pleine .nom { color: #8fc0b0; }
+  .formule .montant { font-size: 21pt; font-weight: 700; letter-spacing: -0.6pt; line-height: 1; }
+  .formule .tranche { font-size: 9.5pt; color: #6b7c75; margin-top: 1.5mm; margin-bottom: 4mm; }
+  .formule.pleine .tranche { color: #cfe4dc; }
+  .formule ul { font-size: 9.5pt; }
+  .formule li { margin-bottom: 2mm; padding-left: 5mm; }
+  .formule li::before { top: 1.9mm; width: 1.6mm; height: 1.6mm; }
+  .formule.pleine li::before { background: #8fc0b0; }
 
   ul { list-style: none; }
   li { padding-left: 6mm; position: relative; margin-bottom: 2.5mm; }
@@ -622,20 +636,37 @@ function documentHtml(images: Record<string, string>): string {
 
 <!-- Le prix -->
 <section class="page">
-  <h2>Le prix</h2>
+  <h2>Deux formules</h2>
+  <p style="margin-bottom:1mm">
+    Le logiciel est le même dans les deux cas. Ce qui change, c'est
+    l'accompagnement.
+  </p>
 
-  <div class="prix-boite">
-    <div class="montant">${PRIX}</div>
-    <div class="detail">payable en une tranche</div>
+  <div class="formules">
+    <div class="formule">
+      <div class="nom">Standard</div>
+      <div class="montant">${STANDARD}</div>
+      <div class="tranche">payable en une tranche</div>
+      <ul>
+        <li>Le logiciel complet, sans limite de durée ni d'utilisation.</li>
+        <li>L'installation sur votre ordinateur et la reprise de vos produits.</li>
+        <li>La formation de votre équipe.</li>
+        <li>Le guide d'utilisation imprimé.</li>
+        <li>L'assistance pendant la mise en route.</li>
+      </ul>
+    </div>
+
+    <div class="formule pleine">
+      <div class="nom">Premium</div>
+      <div class="montant">${PREMIUM}</div>
+      <div class="tranche">payable en une tranche</div>
+      <ul>
+        <li>Tout ce que comprend la formule Standard.</li>
+        <li>Les nouvelles versions du logiciel, qui s'installent depuis le logiciel lui-même.</li>
+        <li>L'assistance par téléphone quand vous en avez besoin.</li>
+      </ul>
+    </div>
   </div>
-
-  <h3 style="margin-bottom:3mm">Ce qui est compris</h3>
-  <ul style="margin-bottom:6mm">
-    <li>Le logiciel complet, sans limite de durée ni d'utilisation.</li>
-    <li>L'installation sur votre ordinateur et la reprise de vos produits.</li>
-    <li>La formation de votre équipe.</li>
-    <li>Le guide d'utilisation imprimé.</li>
-  </ul>
 
   <div class="duo" style="margin-bottom:5mm">
     <div>
