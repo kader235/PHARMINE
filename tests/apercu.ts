@@ -40,6 +40,12 @@ let etapes = 0
 async function photographier(fenetre: BrowserWindow, nom: string, attente = 700): Promise<void> {
   await new Promise((r) => setTimeout(r, attente))
 
+  // On attend deux images successives : la premiere applique les styles, la
+  // seconde garantit qu'elles sont peintes. Sans cela, une simple bascule de
+  // theme n'a pas encore atteint le compositeur au moment de la capture.
+  await fenetre.webContents.executeJavaScript(`
+    new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r(true))))`)
+
   // Le compositeur d'Electron rend parfois une « UnknownVizError » sur une
   // fenetre jamais affichee, surtout apres une longue serie de captures. Ce
   // n'est pas un defaut du logiciel photographie : c'est le processus
@@ -298,11 +304,17 @@ app.whenReady().then(async () => {
     height: 1000,
     show: false,
     backgroundColor: '#eef2f3',
+    // Une fenetre masquee voit son rendu ralenti : capturePage rend alors la
+    // DERNIERE image composee, pas l'etat courant. Les captures de themes
+    // etaient decalees d'un cran — on photographiait Ardoise en croyant tenir
+    // Emeraude. Sans ce reglage, le banc ment en silence.
+    paintWhenInitiallyHidden: true,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: false
+      sandbox: false,
+      backgroundThrottling: false
     }
   })
 
@@ -428,10 +440,31 @@ app.whenReady().then(async () => {
       }
     })()`
 
-  for (const theme of ['clair', 'ocean', 'cobalt', 'ardoise', 'brique']) {
+  // Le fond mesure DOIT correspondre au theme demande. Sans ce controle, une
+  // capture decalee d'un cran passe inapercue : on a photographie Ardoise en
+  // croyant tenir Emeraude, et personne ne l'a vu a l'oeil.
+  const FOND_ATTENDU: Record<string, string> = {
+    clair: 'rgb(255, 255, 255)',
+    ocean: 'rgb(22, 40, 61)',
+    cobalt: 'rgb(26, 30, 60)',
+    ardoise: 'rgb(36, 43, 49)',
+    brique: 'rgb(46, 33, 29)',
+    emeraude: 'rgb(13, 138, 112)'
+  }
+
+  for (const theme of ['clair', 'ocean', 'cobalt', 'ardoise', 'brique', 'emeraude']) {
     await fenetre.webContents.executeJavaScript(apparence(theme, 'confort'))
     await new Promise((r) => setTimeout(r, 350))
-    console.log('    ' + JSON.stringify(await fenetre.webContents.executeJavaScript(etatVisuel)))
+    const vu = (await fenetre.webContents.executeJavaScript(etatVisuel)) as {
+      theme: string
+      navFond: string
+    }
+    console.log('    ' + JSON.stringify(vu))
+    if (vu.navFond !== FOND_ATTENDU[theme]) {
+      erreurs.push(
+        `Theme ${theme} : fond ${vu.navFond} au lieu de ${FOND_ATTENDU[theme]}`
+      )
+    }
     await photographier(fenetre, `theme-${theme}`, 400)
   }
 

@@ -2,9 +2,9 @@ import { useMemo, useState } from 'react'
 import { Bouton, Case, Chargement, EtatVide, Modale } from '../ui/Composants'
 import { PlancheEtiquettes, CodeBarres } from '../ui/Documents'
 import { useRequete } from '../lib/hooks'
+import { useSession } from '../app/Session'
 import { useImpression } from '../ui/Impression'
 import { montant } from '../lib/format'
-import type { Pharmacie } from '@shared/types'
 
 interface Etiquetable {
   produitId: number
@@ -29,7 +29,10 @@ interface Etiquetable {
  */
 export function PlancheCodesBarres({ onFerme }: { onFerme: () => void }) {
   const liste = useRequete<Etiquetable[]>('produits.a_etiqueter', { limite: 300 })
-  const pharmacie = useRequete<Pharmacie>('parametres.pharmacie')
+  // L'officine est deja dans la session : l'aller chercher par un canal
+  // reveillait `parametres.pharmacie`, qui ECRIT. Ouvrir la planche declenchait
+  // donc une tentative d'ecriture sans donnees, et une erreur dans le journal.
+  const session = useSession()
   const impression = useImpression()
 
   const [choisis, setChoisis] = useState<Set<number>>(new Set())
@@ -84,7 +87,7 @@ export function PlancheCodesBarres({ onFerme }: { onFerme: () => void }) {
             disabled={etiquettes.length === 0}
             onClick={() =>
               impression.imprimer(
-                <PlancheEtiquettes etiquettes={etiquettes} pharmacie={pharmacie.donnees} />,
+                <PlancheEtiquettes etiquettes={etiquettes} pharmacie={session.pharmacie} />,
                 'a4'
               )
             }

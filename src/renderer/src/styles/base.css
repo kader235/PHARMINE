@@ -87,6 +87,15 @@
   --marge-cellule-h: 10px;
   --hauteur-ligne-nav: 46px;
 
+  /* En-tetes de tableau et de panneau. Declares ici pour qu'un theme puisse
+     les remplir d'aplat, a la maniere des logiciels de gestion, sans qu'aucune
+     regle de mise en page ne vive dans le fichier des themes. */
+  --tableau-entete-fond: var(--surface-attenuee);
+  --tableau-entete-texte: var(--texte-attenue);
+  --tableau-entete-graisse: 600;
+  --panneau-entete-fond: var(--surface);
+  --panneau-entete-texte: inherit;
+
   --rayon: 8px;
   --rayon-panneau: 11px;
   --ombre-panneau: none;
@@ -794,7 +803,8 @@ a {
   min-height: 40px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--bordure-legere);
-  background: var(--surface);
+  background: var(--panneau-entete-fond);
+  color: var(--panneau-entete-texte);
 }
 
 .panneau-entete h2 {
@@ -923,12 +933,12 @@ table.tableau {
 
 table.tableau th {
   padding: var(--marge-cellule-v) var(--marge-cellule-h);
-  background: var(--surface-attenuee);
+  background: var(--tableau-entete-fond);
   border-bottom: 1px solid var(--bordure);
   border-right: 1px solid var(--bordure-legere);
-  color: var(--texte-attenue);
+  color: var(--tableau-entete-texte);
   font-size: 10.5px;
-  font-weight: 600;
+  font-weight: var(--tableau-entete-graisse);
   letter-spacing: 0.03em;
   text-transform: uppercase;
   text-align: left;

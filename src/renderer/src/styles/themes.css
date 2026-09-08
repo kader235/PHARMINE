@@ -325,3 +325,72 @@
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.18);
 }
+
+/* =============================================================================
+   6. ÉMERAUDE — le style des logiciels de gestion
+
+   Inspiré de ce que l'éditeur a construit pendant des années sous WebDev, et
+   de ce que ses clients tchadiens ont sous les yeux depuis toujours : un vert
+   émeraude saturé, des angles droits, des en-têtes pleins.
+
+   POURQUOI CE THÈME EXISTE
+
+   Un pharmacien qui a tenu son officine dix ans avec un logiciel de gestion
+   classique ne juge pas une interface sur sa modernité : il cherche ses
+   repères. Un en-tête de tableau en aplat de couleur, un total en gros
+   caractères sur fond plein, des cadres nets — c'est la grammaire qu'il
+   connaît, et elle raccourcit la formation.
+
+   CE QUI CHANGE VRAIMENT
+
+   La couleur, mais aussi la FORME : les angles passent à deux pixels au lieu
+   de huit, les bordures se durcissent, les en-têtes se remplissent. C'est ce
+   trio qui fait la différence — un simple changement de teinte n'y suffirait
+   pas.
+   ============================================================================= */
+
+[data-theme='emeraude'] {
+  --teinte-pastille: 26%;
+
+  /* Le vert de SOLUS : saturé, franc, sans nuance pastel. */
+  --accent: #0f9e80;
+  --accent-fonce: #0a7a63;
+  --accent-clair: #e3f5f0;
+  --accent-bordure: #7fc9b6;
+
+  --nav-fond: #0d8a70;
+  --nav-texte: #c8ece2;
+  --nav-texte-fort: #ffffff;
+  --nav-survol: #0f9a7d;
+  --nav-actif: #ffffff;
+  --nav-actif-texte: #0a6b56;
+  --nav-bordure: #0a7a63;
+  --nav-marque: #9fdccc;
+
+  /* Angles droits : c'est la moitié de l'identité de ces logiciels. */
+  --rayon: 2px;
+  --rayon-panneau: 2px;
+
+  /* Bordures franches plutôt que suggérées. */
+  --bordure: #cbd8d4;
+  --bordure-nette: #a8bdb7;
+  --bordure-legere: #dfe8e5;
+
+  /* En-têtes pleins, texte blanc : la signature visuelle du genre. */
+  --tableau-entete-fond: #0f9e80;
+  --tableau-entete-texte: #ffffff;
+  --tableau-entete-graisse: 700;
+  --panneau-entete-fond: #f2f8f6;
+  --panneau-entete-texte: #0a6b56;
+
+  --surface-attenuee: #f3f8f6;
+  --surface-active: #e3f5f0;
+  --zebre: #f7fbfa;
+
+  --serie-1: #0f9e80;
+  --serie-2: #34b39a;
+  --serie-3: #5cc6b1;
+  --serie-4: #86d7c8;
+  --serie-5: #b0e5db;
+  --serie-6: #d8f2ed;
+}
