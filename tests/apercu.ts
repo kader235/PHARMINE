@@ -78,10 +78,10 @@ const SAISIR = `
 function preparerDonnees(): void {
   configuration.configurerPharmacie({
     pharmacie: {
-      nom: 'Pharmacie du Plateau',
-      ville: 'Abidjan',
+      nom: 'Pharmacie Santé Pour Tous',
+      ville: 'N’Djaména',
       pays: "Côte d'Ivoire",
-      telephone: '+225 27 20 30 40 50',
+      telephone: '+235 22 51 44 20',
       devise: 'XOF',
       deviseSymbole: 'FCFA',
       deviseDecimales: 0
@@ -98,7 +98,7 @@ function preparerDonnees(): void {
   configuration.definirParametres({ 'impression.silencieuse': '0' }, admin)
 
   auth.creerUtilisateur(
-    { nomComplet: 'Jean Kouassi', identifiant: 'jean', motDePasse: 'Comptoir2026', roleId: 3 },
+    { nomComplet: 'Djibrine Adoum', identifiant: 'jean', motDePasse: 'Comptoir2026', roleId: 3 },
     admin
   )
 
@@ -145,8 +145,8 @@ function preparerDonnees(): void {
     {
       nom: 'Laboratoire SantéPlus',
       contactPrincipal: 'Serge Amani',
-      telephone: '+225 07 08 09 10 11',
-      ville: 'Abidjan',
+      telephone: '+235 66 90 14 22',
+      ville: 'N’Djaména',
       conditionsPaiement: '30 jours fin de mois',
       delaiLivraisonJours: 3
     },
@@ -154,7 +154,7 @@ function preparerDonnees(): void {
   )
   const distrib = partenaires.enregistrerFournisseur(
     null,
-    { nom: 'Pharma Distribution CI', telephone: '+225 05 44 22 18 90', ville: 'Abidjan', conditionsPaiement: 'Comptant' },
+    { nom: 'Tchad Pharma Distribution', telephone: '+235 66 24 18 90', ville: 'N’Djaména', conditionsPaiement: 'Comptant' },
     admin
   )
 
@@ -195,9 +195,9 @@ function preparerDonnees(): void {
   )
 
   const clients = [
-    partenaires.enregistrerClient(null, { nom: 'Aminata Traoré', telephone: '+225 07 11 22 33 44', plafondCredit: 50_000 }, admin),
-    partenaires.enregistrerClient(null, { nom: 'Kouadio N’Guessan', telephone: '+225 05 66 77 88 99', plafondCredit: 30_000 }, admin),
-    partenaires.enregistrerClient(null, { nom: 'Fatou Diallo', telephone: '+225 01 23 45 67 89' }, admin)
+    partenaires.enregistrerClient(null, { nom: 'Aminata Hassane', telephone: '+235 66 11 22 33', plafondCredit: 50_000 }, admin),
+    partenaires.enregistrerClient(null, { nom: 'Mahamat Saleh', telephone: '+235 63 44 21 07', plafondCredit: 30_000 }, admin),
+    partenaires.enregistrerClient(null, { nom: 'Fatimé Ousmane', telephone: '+235 99 18 30 52' }, admin)
   ]
 
   caisse.ouvrirCaisse(50_000, admin)

@@ -36,3 +36,6 @@ licence-privee*
 *.pem
 *.key
 **/licence-privee*
+
+# Produit par `npm run plaquette`, a cote du PDF : 2 Mo de captures en base64.
+plaquette.html

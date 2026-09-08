@@ -113,10 +113,10 @@ try {
 
   const { utilisateurId: adminId } = configuration.configurerPharmacie({
     pharmacie: {
-      nom: 'Pharmacie du Plateau',
-      ville: 'Abidjan',
+      nom: 'Pharmacie Santé Pour Tous',
+      ville: 'N’Djaména',
       pays: "Côte d'Ivoire",
-      telephone: '+225 27 20 00 00 00',
+      telephone: '+235 27 20 00 00 00',
       devise: 'XOF',
       deviseSymbole: 'FCFA',
       deviseDecimales: 0
@@ -151,7 +151,7 @@ try {
   verifier(session.permissions.length === 50, "l'administrateur reçoit les 50 permissions", session.permissions.length)
 
   const caissierId = auth.creerUtilisateur(
-    { nomComplet: 'Jean Kouassi', identifiant: 'jean', motDePasse: 'Comptoir2026', roleId: 3 },
+    { nomComplet: 'Djibrine Adoum', identifiant: 'jean', motDePasse: 'Comptoir2026', roleId: 3 },
     adminId
   )
   const permissionsCaissier = auth.permissionsDe(caissierId)
@@ -374,7 +374,7 @@ try {
 
   const labo = partenaires.enregistrerFournisseur(
     null,
-    { nom: 'Laboratoire SantéPlus', telephone: '+225 07 00 00 00 00', conditionsPaiement: '30 jours' },
+    { nom: 'Laboratoire SantéPlus', telephone: '+235 07 00 00 00 00', conditionsPaiement: '30 jours' },
     adminId
   )
 
@@ -567,7 +567,7 @@ try {
 
   const client = partenaires.enregistrerClient(
     null,
-    { nom: 'Aminata Traoré', telephone: '+225 07 11 22 33 44', plafondCredit: 20_000 },
+    { nom: 'Aminata Hassane', telephone: '+235 66 11 22 33', plafondCredit: 20_000 },
     adminId
   )
 
@@ -1301,9 +1301,9 @@ try {
     fichierClients,
     [
       'Nom,Telephone,Ardoise',
-      'Awa Traore,+225 07 00 00 01,12500',
-      'Ibrahim Diallo,+225 07 00 00 02,0',
-      'Fatou Kone,+225 07 00 00 03,3 200'
+      'Awa Traore,+235 07 00 00 01,12500',
+      'Ibrahim Diallo,+235 07 00 00 02,0',
+      'Fatou Kone,+235 07 00 00 03,3 200'
     ].join('\n'),
     'utf8'
   )

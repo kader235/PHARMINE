@@ -106,10 +106,10 @@ function main(): void {
     console.log('Base neuve : configuration d’une officine de démonstration.')
     configuration.configurerPharmacie({
       pharmacie: {
-        nom: 'Pharmacie du Plateau',
-        ville: 'Abidjan',
+        nom: 'Pharmacie Santé Pour Tous',
+        ville: 'N’Djaména',
         pays: "Côte d'Ivoire",
-        telephone: '+225 27 20 30 40 50',
+        telephone: '+235 22 51 44 20',
         devise: 'XOF',
         deviseSymbole: 'FCFA',
         deviseDecimales: 0
@@ -168,8 +168,8 @@ function main(): void {
     {
       nom: 'Laboratoire SantéPlus',
       contactPrincipal: 'Serge Amani',
-      telephone: '+225 07 08 09 10 11',
-      ville: 'Abidjan',
+      telephone: '+235 66 90 14 22',
+      ville: 'N’Djaména',
       conditionsPaiement: '30 jours fin de mois',
       delaiLivraisonJours: 3
     },
@@ -178,10 +178,10 @@ function main(): void {
   const distrib = partenaires.enregistrerFournisseur(
     null,
     {
-      nom: 'Pharma Distribution CI',
+      nom: 'Tchad Pharma Distribution',
       contactPrincipal: 'Awa Koné',
-      telephone: '+225 05 44 22 18 90',
-      ville: 'Abidjan',
+      telephone: '+235 66 24 18 90',
+      ville: 'N’Djaména',
       conditionsPaiement: 'Comptant'
     },
     admin
@@ -240,11 +240,11 @@ function main(): void {
 
   // --- Clients --------------------------------------------------------------
   const clients = [
-    partenaires.enregistrerClient(null, { nom: 'Aminata Traoré', telephone: '+225 07 11 22 33 44', plafondCredit: 50_000 }, admin),
-    partenaires.enregistrerClient(null, { nom: 'Kouadio N’Guessan', telephone: '+225 05 66 77 88 99', plafondCredit: 30_000 }, admin),
-    partenaires.enregistrerClient(null, { nom: 'Fatou Diallo', telephone: '+225 01 23 45 67 89', plafondCredit: 25_000 }, admin),
-    partenaires.enregistrerClient(null, { nom: 'Ibrahim Cissé', telephone: '+225 07 45 61 20 33' }, admin),
-    partenaires.enregistrerClient(null, { nom: 'Clinique Les Palmiers', telephone: '+225 27 22 44 55 66', plafondCredit: 200_000 }, admin)
+    partenaires.enregistrerClient(null, { nom: 'Aminata Hassane', telephone: '+235 66 11 22 33', plafondCredit: 50_000 }, admin),
+    partenaires.enregistrerClient(null, { nom: 'Mahamat Saleh', telephone: '+235 63 44 21 07', plafondCredit: 30_000 }, admin),
+    partenaires.enregistrerClient(null, { nom: 'Fatimé Ousmane', telephone: '+235 99 18 30 52', plafondCredit: 25_000 }, admin),
+    partenaires.enregistrerClient(null, { nom: 'Ibrahim Abakar', telephone: '+235 66 72 45 18' }, admin),
+    partenaires.enregistrerClient(null, { nom: 'Clinique du Sahel', telephone: '+235 22 51 30 44', plafondCredit: 200_000 }, admin)
   ]
   console.log(`  ${clients.length} comptes clients`)
 

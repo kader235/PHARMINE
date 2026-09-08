@@ -20,6 +20,7 @@
     "icone": "electron scripts/icone.js",
     "licence:hors-ligne": "electron scripts/licence-hors-ligne.test.js",
     "ed25519": "node scripts/ed25519.test.js",
+    "plaquette": "electron-vite build && electron out/main/plaquette.js",
     "notes": "node scripts/notes-version.js",
     "essai": "electron-vite build && electron out/main/basedessai.js",
     "repertoire": "electron scripts/repertoire.js",
