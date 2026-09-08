@@ -38,6 +38,10 @@ import * as ventes from '../src/main/services/ventes'
 import * as partenaires from '../src/main/services/partenaires'
 
 const PRIX = '350 000 FCFA'
+// Un mobile tchadien fait huit chiffres : on les groupe par deux, comme ils se
+// dictent au telephone.
+const TELEPHONES = ['+235 62 87 37 99', '97 69 11 12', '69 18 67 66']
+const COURRIEL = 'gtb235td@gmail.com'
 const EDITEUR = 'GLOBALTECH BUSINESS TD'
 
 // Les permissions sont verifiees par appartenance exacte : « * » n'est pas un
@@ -448,6 +452,7 @@ function documentHtml(images: Record<string, string>): string {
   }
   .contact .ligne { display: flex; justify-content: space-between; margin-bottom: 2mm; }
   .contact .ligne:last-child { margin-bottom: 0; }
+  .contact .telephones strong { font-variant-numeric: tabular-nums; }
 </style></head><body>
 
 <!-- Couverture -->
@@ -653,8 +658,11 @@ function documentHtml(images: Record<string, string>): string {
 
   <div class="contact">
     <div class="ligne"><strong>${EDITEUR}</strong><span class="discret">N'Djaména, Tchad</span></div>
-    <div class="ligne"><span class="discret">Téléphone</span><strong>[votre numéro]</strong></div>
-    <div class="ligne"><span class="discret">Courriel</span><strong>[votre adresse]</strong></div>
+    <div class="ligne telephones">
+      <span class="discret">Téléphone</span>
+      <strong>${TELEPHONES.join(' &nbsp;·&nbsp; ')}</strong>
+    </div>
+    <div class="ligne"><span class="discret">Courriel</span><strong>${COURRIEL}</strong></div>
   </div>
 
   <div class="pied"><span>PHARMINA</span><span>${EDITEUR}</span></div>
