@@ -850,6 +850,12 @@ const SECTIONS: Section[] = [
           Sans Internet, votre fournisseur vous remet la mise à jour sur une clé USB. Il suffit de
           l’exécuter par-dessus l’installation existante.
         </p>
+        <p>
+          <strong>Selon votre formule.</strong> En formule Premium, vous installez les nouvelles
+          versions directement depuis ce panneau. En formule Standard, le logiciel vous signale
+          qu’une version existe — il ne vous laisse pas des mois sur une version corrigée sans le
+          savoir — mais c’est votre fournisseur qui vous la transmet.
+        </p>
       </>
     )
   },
@@ -1090,6 +1096,45 @@ const SECTIONS: Section[] = [
           <strong>Un écart qui revient chaque jour</strong> n’est pas une fatalité : consultez
           l’historique des sessions (<strong>F7</strong>) et le journal d’activité. Ils montrent qui
           tenait le comptoir et ce qui s’est passé.
+        </p>
+      </>
+    )
+  },
+  {
+    partie: 'Marches à suivre',
+    cle: 'faire-bilan',
+    titre: 'Savoir si le mois a été bon',
+    contenu: (
+      <>
+        <p>
+          Ouvrez <strong>Rapports</strong> et appuyez sur <strong>F9</strong>. Une feuille sort de
+          l’imprimante : c’est le bilan du mois.
+        </p>
+        <p>
+          Elle répond à la question que vous vous posez en fin de mois, et à celle que vous ne
+          pensez pas toujours à poser : <em>combien ai-je gagné, et par rapport au mois d’avant ?</em>
+        </p>
+        <p>
+          <strong>En haut</strong> — ce que vous avez encaissé, ce qu’il vous en reste une fois le
+          prix d’achat déduit, le nombre de ventes et le panier moyen. Chaque chiffre est comparé
+          au mois précédent, en hausse comme en baisse.
+        </p>
+        <p>
+          <strong>Ce qui a le plus rapporté</strong> — vos dix meilleurs produits, avec ce qu’ils
+          vous ont laissé. Un produit qui fait du chiffre sans marge se repère ici.
+        </p>
+        <p>
+          <strong>Votre argent qui dort</strong> — ce qui est en rayon sans avoir été vendu depuis
+          trois mois. C’est de l’argent que vous avez payé et qui ne travaille pas.
+        </p>
+        <p>
+          <strong>En bas</strong> — la valeur de votre stock, ce qui périmera dans les trois mois,
+          ce que vos clients vous doivent, et vos écarts de caisse du mois.
+        </p>
+        <p>
+          Imprimez-le chaque fin de mois et gardez-les. Au bout d’un an, la pile raconte votre
+          officine mieux que n’importe quel écran — et c’est le document à présenter quand on vous
+          demande vos comptes.
         </p>
       </>
     )

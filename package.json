@@ -22,6 +22,7 @@
     "ed25519": "node scripts/ed25519.test.js",
     "plaquette": "electron-vite build && electron out/main/plaquette.js",
     "notes": "node scripts/notes-version.js",
+    "publier": "node scripts/publier.js",
     "essai": "electron-vite build && electron out/main/basedessai.js",
     "repertoire": "electron scripts/repertoire.js",
     "licence": "electron scripts/licence.js",
