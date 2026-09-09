@@ -174,11 +174,20 @@ const TRACES: Record<NomIcone, ReactElement> = {
   'fleche-haut': <path d="M8 13V3M4 6.8 8 3l4 3.8" />,
   'fleche-bas': <path d="M8 3v10M4 9.2 8 13l4-3.8" />,
   'fleche-droite': <path d="M3 8h10M9.4 4l3.8 4-3.8 4" />,
+  /* Le triangle d'avertissement est PLEIN, le point d'exclamation decoupe
+     dedans — le panneau routier que tout le monde reconnait, y compris de
+     loin et sur un ecran fatigue. En trait fin, il se confondait avec le
+     reste et ne signalait plus rien.
+     Le decoupage passe par `evenodd` plutot que par un dessin blanc : l'icone
+     reste juste sur n'importe quel fond. */
   'triangle-alerte': (
-    <>
-      <path d="M7 2.5 1.4 12a1.1 1.1 0 0 0 1 1.7h11.2a1.1 1.1 0 0 0 1-1.7L9 2.5a1.1 1.1 0 0 0-2 0Z" />
-      <path d="M8 6.2v3M8 11.4h.01" />
-    </>
+    <path
+      fill="currentColor"
+      stroke="none"
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M9.04 1.86a1.2 1.2 0 0 0-2.08 0L.63 12.92a1.2 1.2 0 0 0 1.04 1.8h12.66a1.2 1.2 0 0 0 1.04-1.8L9.04 1.86ZM7.2 5.5h1.6v4.7H7.2V5.5Zm.8 5.85a.98.98 0 1 0 0 1.96.98.98 0 0 0 0-1.96Z"
+    />
   ),
   info: (
     <>

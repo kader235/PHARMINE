@@ -986,6 +986,15 @@ function PanneauLicence() {
           <dd style={{ letterSpacing: '0.08em', fontWeight: 600 }}>{etat.codeInstallation}</dd>
           <dt>État</dt>
           <dd>{etat.activee ? 'Activé' : 'Démonstration'}</dd>
+          {/* La formule doit se lire ici : un pharmacien qui appelle son
+              fournisseur doit pouvoir dire ce qu'il a, et un client Standard
+              doit savoir qu'une formule au-dessus existe. */}
+          {etat.activee ? (
+            <>
+              <dt>Formule</dt>
+              <dd>{etat.formule === 'premium' ? 'Premium' : 'Standard'}</dd>
+            </>
+          ) : null}
           {etat.horlogeSuspecte ? (
             <>
               <dt>Horloge</dt>

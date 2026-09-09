@@ -2267,6 +2267,63 @@ try {
   }
 
   // ==========================================================================
+  titre('La formule se lit dans l’etat de licence')
+
+  // Un pharmacien qui appelle son fournisseur doit pouvoir dire ce qu'il a. Et
+  // un client Standard doit savoir qu'une formule au-dessus existe — sans
+  // quoi il ne l'achetera jamais.
+  {
+    // On n'impose pas d'etat : on verifie que les trois sources s'accordent,
+    // quel que soit le poste. Une epreuve qui suppose un etat casse des que le
+    // scenario change d'ordre.
+    const courant = licence.etat(0)
+    verifier(
+      (courant.formule === null) === !courant.activee,
+      'la formule n’existe que si le poste est active',
+      { activee: courant.activee, formule: courant.formule }
+    )
+    verifier(
+      licence.formuleActive() === courant.formule,
+      'l’etat et la fonction disent la meme formule'
+    )
+    verifier(
+      licence.estPremium() === (courant.formule === 'premium'),
+      'estPremium suit exactement la formule lue'
+    )
+
+    // Le refus doit nommer la fonction, pas dire « cette fonction ».
+    if (!licence.estPremium()) {
+      let refus = ''
+      try {
+        licence.exigerPremium('bilan')
+      } catch (erreur) {
+        refus = (erreur as Error).message
+      }
+      verifier(refus.includes('bilan mensuel'), 'le refus nomme la fonction reservee', refus)
+      verifier(refus.includes('Premium'), 'le refus nomme la formule a prendre', refus)
+    }
+
+    // Un domaine inconnu ne doit pas produire un message vide.
+    if (!licence.estPremium()) {
+      let inconnu = ''
+      try {
+        licence.exigerPremium('domaine-qui-n-existe-pas')
+      } catch (erreur) {
+        inconnu = (erreur as Error).message
+      }
+      verifier(inconnu.length > 20, 'un domaine inconnu donne quand meme un message utile', inconnu)
+    }
+
+    // Et les deux ecritures de la formule doivent se relire l'une l'autre.
+    for (const f of ['standard', 'premium'] as const) {
+      verifier(
+        licence.formuleDepuisOptions(licence.optionsDepuisFormule(f)) === f,
+        `la formule ${f} se relit telle qu’elle a ete ecrite`
+      )
+    }
+  }
+
+  // ==========================================================================
   titre('Intégrité finale de la base')
 
   const integrite = base().prepare('PRAGMA integrity_check').get() as { integrity_check: string }

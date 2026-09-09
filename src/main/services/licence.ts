@@ -483,7 +483,6 @@ export function estPremium(): boolean {
 const PREMIUM: Record<string, string> = {
   export: 'L’export vers un tableur',
   bilan: 'Le bilan mensuel',
-  analyses: 'Les rapports approfondis',
   mise_a_jour: 'L’installation des nouvelles versions depuis le logiciel'
 }
 

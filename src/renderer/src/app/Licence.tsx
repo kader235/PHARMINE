@@ -13,6 +13,8 @@ import { Bandeau, Bouton, Champ, Modale, Panneau } from '../ui/Composants'
 
 export interface EtatLicence {
   activee: boolean
+  /** Formule vendue. Une démonstration n'en a aucune. */
+  formule: 'standard' | 'premium' | null
   codeInstallation: string
   expiration: string | null
   joursRestants: number | null

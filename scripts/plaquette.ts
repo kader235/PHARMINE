@@ -730,7 +730,9 @@ function documentHtml(images: Record<string, string>): string {
       <div class="tranche">payable en une tranche</div>
       <ul>
         <li>Tout ce que comprend la formule Standard.</li>
-        <li>Les nouvelles versions du logiciel, qui s'installent depuis le logiciel lui-même.</li>
+        <li><strong>Le bilan du mois</strong> : une feuille qui dit ce que vous avez gagné, comparé au mois d'avant.</li>
+        <li>L'export de vos chiffres vers un tableur, pour votre comptable.</li>
+        <li>Les nouvelles versions, qui s'installent depuis le logiciel lui-même.</li>
         <li>L'assistance par téléphone quand vous en avez besoin.</li>
       </ul>
     </div>
