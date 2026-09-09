@@ -436,6 +436,7 @@ app.whenReady().then(async () => {
         theme: r.getAttribute('data-theme') || 'clair',
         disposition: r.getAttribute('data-disposition') || 'confort',
         navFond: getComputedStyle(nav).backgroundColor,
+        barreFond: getComputedStyle(document.querySelector('.barre')).backgroundColor,
         navLargeur: Math.round(nav.getBoundingClientRect().width)
       }
     })()`
@@ -457,11 +458,18 @@ app.whenReady().then(async () => {
     const vu = (await fenetre.webContents.executeJavaScript(etatVisuel)) as {
       theme: string
       navFond: string
+      barreFond: string
     }
     console.log('    ' + JSON.stringify(vu))
     if (vu.navFond !== FOND_ATTENDU[theme]) {
+      erreurs.push(`Theme ${theme} : barre laterale ${vu.navFond} au lieu de ${FOND_ATTENDU[theme]}`)
+    }
+    // La barre du haut et la barre laterale doivent porter la MEME couleur :
+    // c'est le cadre colore des logiciels de gestion. Une seule des deux qui
+    // derive, et l'ecran redevient un assemblage batard.
+    if (vu.barreFond !== vu.navFond) {
       erreurs.push(
-        `Theme ${theme} : fond ${vu.navFond} au lieu de ${FOND_ATTENDU[theme]}`
+        `Theme ${theme} : la barre du haut (${vu.barreFond}) ne suit pas la barre laterale (${vu.navFond})`
       )
     }
     await photographier(fenetre, `theme-${theme}`, 400)
