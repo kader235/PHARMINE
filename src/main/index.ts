@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, Menu, shell } from 'electron'
 import { dirname, join } from 'node:path'
 import { fermerBase } from './db'
 import { ouvrirBaseOuSecourir } from './secours'
@@ -107,6 +107,13 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.whenReady().then(() => {
+    // Electron pose un menu par defaut — « File Edit View Window » — en
+    // ANGLAIS, au-dessus d'un logiciel entierement francais. `autoHideMenuBar`
+    // ne faisait que le cacher : la touche Alt le ramenait. Ici il n'existe
+    // pas. Aucune de ses entrees ne sert dans une officine, et une seule
+    // suffit a faire douter de tout le reste.
+    Menu.setApplicationMenu(null)
+
     // Une base illisible ne doit jamais refermer le logiciel en silence : le
     // pharmacien double-cliquerait sur l'icône sans que rien ne se passe, sans
     // savoir pourquoi ni quoi faire. Voir secours.ts.

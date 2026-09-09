@@ -98,7 +98,7 @@
   --tableau-entete-texte: #ffffff;
   --tableau-entete-graisse: 700;
   --panneau-entete-fond: var(--surface-attenuee);
-  --panneau-entete-texte: var(--accent-fonce);
+  --panneau-entete-texte: var(--texte-fort);
 
   /* Relief.
      Les logiciels de gestion d'avant le tout-plat donnaient du volume a leur
@@ -166,8 +166,15 @@ p {
   margin: 0;
 }
 
+/* Le lien est la SEULE chose coloree qui soit du texte. Il porte donc aussi
+   son trait, de la meme couleur : on doit le reconnaitre sans avoir a
+   distinguer une nuance de vert d'une nuance de noir — ce qui, sur un ecran
+   d'officine en plein soleil, ne va pas de soi. */
 a {
   color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-underline-offset: 2px;
 }
 
 /* Les chiffres alignés verticalement dans les tableaux : indispensable pour
@@ -840,9 +847,11 @@ a {
   box-shadow: inset 0 2px 3px var(--relief-ombre);
 }
 
+/* Un bouton destructeur garde son cadre rouge, mais son texte reste noir :
+   c'est la bordure qui avertit, pas le mot. */
 .bouton.danger {
-  color: var(--danger);
-  border-color: #e3b8b2;
+  color: var(--texte);
+  border-color: var(--danger);
 }
 
 .bouton.danger:hover:not(:disabled) {
@@ -984,10 +993,10 @@ a {
 }
 
 .variation.hausse {
-  color: var(--succes);
+  color: var(--texte);
 }
 .variation.baisse {
-  color: var(--danger);
+  color: var(--texte);
 }
 .variation.stable {
   color: var(--texte-faible);
@@ -1206,10 +1215,10 @@ table.tableau tbody tr.selectionnee td {
 }
 
 .etiquette.sans-point.danger {
-  color: var(--danger);
+  color: var(--texte);
 }
 .etiquette.sans-point.attention {
-  color: var(--attention);
+  color: var(--texte);
 }
 .etiquette.sans-point.neutre {
   color: var(--texte-attenue);
@@ -1461,7 +1470,7 @@ table.tableau tbody tr.selectionnee td {
 }
 
 .champ .erreur {
-  color: var(--danger);
+  color: var(--texte);
   font-size: 11.5px;
 }
 
@@ -1543,7 +1552,7 @@ table.tableau tbody tr.selectionnee td {
 
 .segments button.actif {
   background: var(--accent-clair);
-  color: var(--accent-fonce);
+  color: var(--texte-fort);
   font-weight: 600;
 }
 
@@ -2330,7 +2339,7 @@ table.tableau tbody tr.selectionnee td {
 .panier-total strong {
   font-size: 21px;
   font-weight: 700;
-  color: var(--accent-fonce);
+  color: var(--texte-fort);
   font-variant-numeric: tabular-nums;
 }
 
@@ -2423,10 +2432,10 @@ table.tableau tbody tr.selectionnee td {
 }
 
 .alerte-marque.urgent {
-  color: var(--danger);
+  color: var(--texte);
 }
 .alerte-marque.important {
-  color: var(--attention);
+  color: var(--texte);
 }
 .alerte-marque.information {
   color: var(--texte-attenue);
@@ -2703,7 +2712,7 @@ table.tableau tbody tr.selectionnee td {
 
 .verrou-erreur {
   margin-bottom: 10px;
-  color: var(--danger);
+  color: var(--texte);
   font-size: 12.5px;
   text-align: left;
 }
@@ -2776,9 +2785,12 @@ table.tableau tbody tr.selectionnee td {
   color: var(--texte-attenue);
 }
 
+/* Meme quand il ne reste que deux ventes, le bandeau ne se remplit pas de
+   jaune : il epaissit son filet. Une barre teintee en bas d'ecran, en
+   permanence, finit par ne plus rien signaler. */
 .bandeau-demo.serre {
-  background: var(--attention-fond);
-  color: var(--attention);
+  border-left: 4px solid var(--attention);
+  color: var(--texte);
 }
 
 .bandeau-demo-marque {
@@ -2854,7 +2866,7 @@ table.tableau tbody tr.selectionnee td {
   padding: 0;
   font-family: inherit;
   font-size: inherit;
-  color: var(--accent);
+  color: var(--texte);
   cursor: pointer;
 }
 
@@ -2874,12 +2886,17 @@ table.tableau tbody tr.selectionnee td {
    travail. Le code est retenu pour toujours.
    ============================================================================= */
 
+/* Fond neutre, la couleur dans le filet — la convention des boites de
+   dialogue de Windows : « la severite se lit a l'icone, pas au remplissage ».
+   Un aplat teinte sur toute la surface est ce qui donne l'air d'une carte
+   decorative plutot que d'un message du logiciel. */
 .rattachement {
   margin-bottom: 12px;
   padding: 13px 14px 14px;
-  border: 1px solid var(--attention);
-  border-radius: var(--rayon-panneau);
-  background: var(--attention-fond);
+  border: 1px solid var(--bordure);
+  border-left: 4px solid var(--attention);
+  border-radius: var(--rayon);
+  background: var(--surface);
 }
 
 .rattachement-entete {
@@ -2887,7 +2904,7 @@ table.tableau tbody tr.selectionnee td {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  color: var(--attention);
+  color: var(--texte-fort);
   font-size: 12.5px;
 }
 
@@ -2973,7 +2990,7 @@ table.tableau tbody tr.selectionnee td {
   margin-top: 11px;
   padding-top: 10px;
   border-top: 1px solid var(--attention);
-  color: var(--attention);
+  color: var(--texte-attenue);
   font-size: 12px;
 }
 
@@ -3058,7 +3075,7 @@ table.tableau tbody tr.selectionnee td {
 }
 
 .guide-titre:hover {
-  color: var(--accent);
+  color: var(--texte-fort);
 }
 
 /* Le numéro sert de repère quand on renvoie quelqu'un à une section au
@@ -3286,9 +3303,27 @@ table.tableau tbody tr.selectionnee td {
 
 /* La couleur ne porte jamais l'information seule : le texte dit toujours
    « expiré », « dans 12 jours », « dans 8 mois ». */
-.fiche-comptoir-faits .peremption.danger { color: var(--danger); }
-.fiche-comptoir-faits .peremption.attention { color: var(--attention); }
-.fiche-comptoir-faits .peremption.succes { color: var(--succes); }
+/* La peremption se lit en noir, et sa gravite se voit a la pastille qui la
+   precede. Le texte dit deja « dans 12 jours » ou « expire » : la couleur ne
+   fait que confirmer, elle ne doit pas etre le seul porteur. */
+.fiche-comptoir-faits .peremption {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fiche-comptoir-faits .peremption::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--texte-faible);
+}
+
+.fiche-comptoir-faits .peremption.danger::before { background: var(--danger); }
+.fiche-comptoir-faits .peremption.attention::before { background: var(--attention); }
+.fiche-comptoir-faits .peremption.succes::before { background: var(--succes); }
 
 .fiche-comptoir-equivalents {
   border-top: 1px solid var(--bordure-legere);
@@ -3419,7 +3454,7 @@ table.tableau tbody tr.selectionnee td {
 
 .code-barres-invalide {
   font-size: 8pt;
-  color: var(--danger);
+  color: var(--texte);
   text-align: center;
 }
 
@@ -3449,8 +3484,10 @@ table.tableau tbody tr.selectionnee td {
   margin: 14px 0 0;
   padding: 9px 12px;
   border-radius: var(--rayon);
-  background: var(--danger-fond);
-  color: var(--danger);
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-left: 4px solid var(--danger);
+  color: var(--texte);
   font-size: 13px;
 }
 
@@ -3579,8 +3616,8 @@ table.tableau tbody tr.selectionnee td {
 /* L'ecart ne se lit jamais a la seule couleur : le signe et le mot le disent
    aussi, pour une photocopie en noir et blanc comme pour un daltonien. */
 .bilan-ecart { font-size: 8.5pt; font-weight: 600; }
-.bilan-ecart.hausse { color: #15654e; }
-.bilan-ecart.baisse { color: #a8322a; }
+.bilan-ecart.hausse,
+.bilan-ecart.baisse { color: #1a2420; }
 .bilan-ecart.neutre { color: #6b7c75; font-weight: 400; }
 
 .bilan-bloc { margin-bottom: 6mm; break-inside: avoid; }

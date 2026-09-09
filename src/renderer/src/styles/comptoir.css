@@ -215,7 +215,7 @@
 .appoint:hover {
   background: var(--surface-active);
   border-color: var(--accent-bordure);
-  color: var(--accent-fonce);
+  color: var(--texte-fort);
 }
 
 .bilan {
@@ -245,11 +245,11 @@
 }
 
 .bilan-ligne.rendu strong {
-  color: var(--succes);
+  color: var(--texte-fort);
 }
 
 .bilan-ligne.credit strong {
-  color: var(--attention);
+  color: var(--texte-fort);
 }
 
 /* --- Fiche du compte client, au comptoir ------------------------------------ */
@@ -265,7 +265,8 @@
 
 .compte-client.alerte {
   border-color: #e3c48f;
-  background: var(--attention-fond);
+  background: var(--surface);
+  border-left: 4px solid var(--attention);
 }
 
 .compte-client-entete {
@@ -277,11 +278,11 @@
 
 .compte-client-entete strong {
   font-size: 12.5px;
-  color: var(--accent-fonce);
+  color: var(--texte-fort);
 }
 
 .compte-client.alerte .compte-client-entete strong {
-  color: var(--attention);
+  color: var(--texte-fort);
 }
 
 .compte-chiffre {

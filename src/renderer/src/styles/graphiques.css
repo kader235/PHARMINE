@@ -58,7 +58,7 @@
 
 .bandeau-module .segments button.actif {
   background: #fff;
-  color: var(--accent-fonce);
+  color: var(--texte-fort);
 }
 
 .bandeau-module .bouton {
@@ -75,7 +75,7 @@
 .bandeau-module .bouton.principal {
   background: #fff;
   border-color: #fff;
-  color: var(--accent-fonce);
+  color: var(--texte-fort);
 }
 
 .bandeau-module .bouton.principal:hover:not(:disabled) {
@@ -447,11 +447,11 @@
 }
 
 .fait-hausse {
-  color: var(--succes);
+  color: var(--texte);
 }
 
 .fait-baisse {
-  color: var(--danger);
+  color: var(--texte);
 }
 
 /* =============================================================================
