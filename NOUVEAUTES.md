@@ -18,6 +18,18 @@ place de ces lignes :
 Le titre de chaque section doit être `## <version>`, exactement : c'est ainsi
 que `npm run notes` retrouve la bonne.
 
+## 0.1.5
+
+Le logiciel change de visage.
+
+• Les couleurs, les cadres et les en-têtes reprennent la présentation des
+logiciels de gestion : plus lisible d'un coup d'œil, moins fatigant sur une
+longue journée.
+• Les avertissements se repèrent à un trait de couleur sur le côté, et restent
+lisibles même photocopiés.
+• Cinq couleurs au choix dans les paramètres : vert, bleu, cobalt, ardoise ou
+brique.
+
 ## 0.1.4
 
 Une feuille pour savoir comment va votre officine.

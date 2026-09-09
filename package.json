@@ -28,7 +28,8 @@
     "repertoire": "electron scripts/repertoire.js",
     "licence": "electron scripts/licence.js",
     "manuel": "electron-vite build && electron out/main/manuel.js",
-    "demo": "electron-vite build && electron out/main/demonstration.js"
+    "demo": "electron-vite build && electron out/main/demonstration.js",
+    "demo:preparer": "electron-vite build && electron out/main/demoPreparer.js"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
