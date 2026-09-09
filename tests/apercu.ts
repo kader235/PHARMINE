@@ -437,6 +437,7 @@ app.whenReady().then(async () => {
         disposition: r.getAttribute('data-disposition') || 'confort',
         navFond: getComputedStyle(nav).backgroundColor,
         barreFond: getComputedStyle(document.querySelector('.barre')).backgroundColor,
+        barreRelief: getComputedStyle(document.querySelector('.barre')).backgroundImage,
         navLargeur: Math.round(nav.getBoundingClientRect().width)
       }
     })()`
@@ -459,6 +460,7 @@ app.whenReady().then(async () => {
       theme: string
       navFond: string
       barreFond: string
+      barreRelief: string
     }
     console.log('    ' + JSON.stringify(vu))
     if (vu.navFond !== FOND_ATTENDU[theme]) {
@@ -467,6 +469,12 @@ app.whenReady().then(async () => {
     // La barre du haut et la barre laterale doivent porter la MEME couleur :
     // c'est le cadre colore des logiciels de gestion. Une seule des deux qui
     // derive, et l'ecran redevient un assemblage batard.
+    // Le degrade doit etre la : sans lui, la barre redevient un aplat, et tout
+    // le caractere « logiciel de gestion » disparait sans qu'aucun test ne
+    // proteste.
+    if (!vu.barreRelief.includes('gradient')) {
+      erreurs.push(`Theme ${theme} : la barre du haut a perdu son relief`)
+    }
     if (vu.barreFond !== vu.navFond) {
       erreurs.push(
         `Theme ${theme} : la barre du haut (${vu.barreFond}) ne suit pas la barre laterale (${vu.navFond})`

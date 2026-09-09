@@ -100,6 +100,18 @@
   --panneau-entete-fond: var(--surface-attenuee);
   --panneau-entete-texte: var(--accent-fonce);
 
+  /* Relief.
+     Les logiciels de gestion d'avant le tout-plat donnaient du volume a leur
+     encadrement : un degrade vertical, un filet clair en haut, un filet
+     sombre en bas. L'oeil lit alors la barre comme une piece posee sur
+     l'ecran, pas comme un rectangle peint. Ces trois teintes se derivent de
+     l'accent : un theme n'a rien a regler de plus. */
+  --relief-haut: color-mix(in srgb, var(--accent) 82%, #ffffff);
+  --relief-bas: color-mix(in srgb, var(--accent) 88%, #000000);
+  --relief-arete: color-mix(in srgb, var(--accent) 68%, #000000);
+  --relief-luisant: rgba(255, 255, 255, 0.22);
+  --relief-ombre: rgba(0, 0, 0, 0.16);
+
   --rayon: 3px;
   --rayon-panneau: 3px;
   --ombre-panneau: none;
@@ -218,8 +230,15 @@ a {
 .nav {
   width: var(--largeur-nav);
   flex: 0 0 var(--largeur-nav);
-  background: var(--nav-fond);
-  border-right: 1px solid var(--nav-bordure);
+  background-color: var(--nav-fond);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--nav-fond) 92%, #ffffff) 0%,
+    var(--nav-fond) 22%,
+    color-mix(in srgb, var(--nav-fond) 94%, #000000) 100%
+  );
+  border-right: 1px solid var(--relief-arete);
+  box-shadow: inset -1px 0 0 var(--relief-ombre);
   display: flex;
   flex-direction: column;
   transition: width 0.16s ease, flex-basis 0.16s ease;
@@ -467,8 +486,15 @@ a {
 .barre {
   height: var(--hauteur-barre);
   flex: 0 0 var(--hauteur-barre);
-  background: var(--accent);
-  border-bottom: 1px solid var(--accent-fonce);
+  background-color: var(--accent);
+  background-image: linear-gradient(
+    180deg,
+    var(--relief-haut) 0%,
+    var(--accent) 54%,
+    var(--relief-bas) 100%
+  );
+  border-bottom: 1px solid var(--relief-arete);
+  box-shadow: inset 0 1px 0 var(--relief-luisant), 0 1px 2px var(--relief-ombre);
   color: #fff;
   display: flex;
   align-items: center;
@@ -775,7 +801,11 @@ a {
   padding: 0 10px;
   border: 1px solid var(--bordure-nette);
   border-radius: var(--rayon);
-  background: var(--surface);
+  /* Bombe : clair en haut, un rien plus sombre en bas. C'est ce qui fait
+     qu'un bouton se voit comme un bouton, sans avoir a le survoler. */
+  background-color: var(--surface);
+  background-image: linear-gradient(180deg, #ffffff 0%, #f2f4f6 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
   color: var(--texte);
   font-size: 12px;
   font-weight: 500;
@@ -792,14 +822,22 @@ a {
 }
 
 .bouton.principal {
-  background: var(--accent);
-  border-color: var(--accent);
+  background-color: var(--accent);
+  background-image: linear-gradient(180deg, var(--relief-haut) 0%, var(--accent) 58%, var(--relief-bas) 100%);
+  border-color: var(--relief-arete);
+  box-shadow: inset 0 1px 0 var(--relief-luisant);
   color: #fff;
 }
 
 .bouton.principal:hover:not(:disabled) {
-  background: var(--accent-fonce);
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-fonce) 100%);
   border-color: var(--accent-fonce);
+}
+
+/* Enfonce au clic : le relief s'inverse. Un detail, mais c'est lui qui donne
+   la sensation d'un vrai bouton. */
+.bouton:active:not(:disabled) {
+  box-shadow: inset 0 2px 3px var(--relief-ombre);
 }
 
 .bouton.danger {
@@ -981,7 +1019,14 @@ table.tableau {
 
 table.tableau th {
   padding: var(--marge-cellule-v) var(--marge-cellule-h);
-  background: var(--tableau-entete-fond);
+  background-color: var(--tableau-entete-fond);
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tableau-entete-fond) 86%, #ffffff) 0%,
+    var(--tableau-entete-fond) 60%,
+    color-mix(in srgb, var(--tableau-entete-fond) 92%, #000000) 100%
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18);
   border-bottom: 1px solid var(--bordure);
   border-right: 1px solid var(--bordure-legere);
   color: var(--tableau-entete-texte);
