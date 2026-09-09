@@ -123,6 +123,11 @@ async function principal(): Promise<void> {
     frame: false,
     backgroundColor: '#eef2f3',
     webPreferences: {
+      // Cloison etanche : sans elle, la fenetre herite du stockage local du
+      // poste de l'editeur — le theme retenu la derniere fois s'y trouve, et
+      // la video est sortie en Cobalt alors que le logiciel livre est vert.
+      // Une cloison sans le prefixe « persist: » ne survit pas au processus.
+      partition: 'vitrine',
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,
@@ -143,7 +148,7 @@ async function principal(): Promise<void> {
         Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(c, val)
         c.dispatchEvent(new Event('input', { bubbles: true }))
       }
-      poser('input[name=identifiant], input[autocomplete=username]', 'kader')
+      poser('input[name=identifiant], input[autocomplete=username]', 'tchadien')
       poser('input[type=password]', 'Officine2026')
       await new Promise((r) => setTimeout(r, 250))
       document.querySelector('form button[type=submit], form .bouton.principal')?.click()

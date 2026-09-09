@@ -22,6 +22,8 @@
     "ed25519": "node scripts/ed25519.test.js",
     "plaquette": "electron-vite build && electron out/main/plaquette.js",
     "video": "electron-vite build && electron out/main/video.js",
+    "video:tiktok": "electron-vite build && electron out/main/videoTiktok.js",
+    "video:planches": "electron-vite build && electron out/main/videoPlanches.js",
     "notes": "node scripts/notes-version.js",
     "publier": "node scripts/publier.js",
     "essai": "electron-vite build && electron out/main/basedessai.js",

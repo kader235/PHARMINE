@@ -42,4 +42,7 @@ plaquette.html
 
 # Produite par `npm run video` : deux megaoctets qui se refont en une commande.
 Video-PHARMINA.mp4
+Video-PHARMINA-vertical.mp4
 essai-video.mp4
+# Les images extraites d'une video servent a la verifier, pas a la conserver.
+planches-video/

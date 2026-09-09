@@ -51,7 +51,7 @@ app.whenReady().then(() => {
   console.log('  Officine de démonstration prête — formule Premium activée.')
   console.log(`  ${cheminBase}`)
   console.log('')
-  console.log('  Identifiant : kader')
+  console.log('  Identifiant : tchadien')
   console.log('  Mot de passe : Officine2026')
   console.log('')
   app.exit(0)

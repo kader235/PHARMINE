@@ -233,6 +233,11 @@ async function produire(): Promise<void> {
     height: 940,
     show: false,
     webPreferences: {
+      // Cloison etanche : sans elle, la fenetre herite du stockage local du
+      // poste de l'editeur — le theme retenu la derniere fois s'y trouve, et
+      // la video est sortie en Cobalt alors que le logiciel livre est vert.
+      // Une cloison sans le prefixe « persist: » ne survit pas au processus.
+      partition: 'vitrine',
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
       nodeIntegration: false,

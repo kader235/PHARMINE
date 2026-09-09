@@ -37,6 +37,8 @@ export default defineConfig({
                 basedessai: resolve(__dirname, 'tests/basedessai.ts'),
                 plaquette: resolve(__dirname, 'scripts/plaquette.ts'),
                 video: resolve(__dirname, 'scripts/video.ts'),
+                videoTiktok: resolve(__dirname, 'scripts/video-tiktok.ts'),
+                videoPlanches: resolve(__dirname, 'scripts/video-planches.ts'),
                 demoPreparer: resolve(__dirname, 'scripts/demo-preparer.ts'),
                 apercu: resolve(__dirname, 'tests/apercu.ts'),
                 // Le guide en PDF est imprime depuis l'ecran d'aide du logiciel

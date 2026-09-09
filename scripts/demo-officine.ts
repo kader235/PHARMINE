@@ -106,8 +106,10 @@ export function garnirOfficine(): OfficineDemo {
       deviseDecimales: 0
     },
     administrateur: {
-      nomComplet: 'Kader Caman',
-      identifiant: 'kader',
+      // Le nom qui s'affiche en haut a droite pendant toute la video : ce doit
+      // etre celui d'une officine, pas celui de l'editeur.
+      nomComplet: 'Tchadien',
+      identifiant: 'tchadien',
       motDePasse: 'Officine2026'
     }
   })
