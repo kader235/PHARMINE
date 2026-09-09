@@ -24,6 +24,7 @@
     "video": "electron-vite build && electron out/main/video.js",
     "video:tiktok": "electron-vite build && electron out/main/videoTiktok.js",
     "video:planches": "electron-vite build && electron out/main/videoPlanches.js",
+    "affiches": "electron-vite build && electron out/main/affiches.js",
     "notes": "node scripts/notes-version.js",
     "publier": "node scripts/publier.js",
     "essai": "electron-vite build && electron out/main/basedessai.js",

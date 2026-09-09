@@ -39,6 +39,7 @@ export default defineConfig({
                 video: resolve(__dirname, 'scripts/video.ts'),
                 videoTiktok: resolve(__dirname, 'scripts/video-tiktok.ts'),
                 videoPlanches: resolve(__dirname, 'scripts/video-planches.ts'),
+                affiches: resolve(__dirname, 'scripts/affiches.ts'),
                 demoPreparer: resolve(__dirname, 'scripts/demo-preparer.ts'),
                 apercu: resolve(__dirname, 'tests/apercu.ts'),
                 // Le guide en PDF est imprime depuis l'ecran d'aide du logiciel

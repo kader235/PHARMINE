@@ -46,3 +46,5 @@ Video-PHARMINA-vertical.mp4
 essai-video.mp4
 # Les images extraites d'une video servent a la verifier, pas a la conserver.
 planches-video/
+# Les affiches se regenerent : « npm run affiches ».
+affiches/
