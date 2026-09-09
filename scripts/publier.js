@@ -140,10 +140,10 @@ function main() {
   // --- 4. Le numéro, puis le guide -----------------------------------------
   titre('4 · Le numéro et le guide')
 
-  execFileSync('npm', ['version', version, '--no-git-tag-version'], {
-    cwd: RACINE,
-    stdio: 'pipe'
-  })
+  // Sous Windows, `npm` est `npm.cmd` : execFileSync ne le trouve pas sans
+  // passer par le shell. On repasse donc par une commande de texte — le numero
+  // vient d'etre valide par expression reguliere, il ne peut rien injecter.
+  courir(`npm version ${version} --no-git-tag-version`)
   console.log(`  package.json porte ${version} — OK`)
 
   // Le guide se régénère APRÈS le changement de numéro : produit avant, il
