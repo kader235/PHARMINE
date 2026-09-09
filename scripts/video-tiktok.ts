@@ -152,6 +152,8 @@ async function principal(): Promise<void> {
   scene.webContents.on('unresponsive', () => console.log('  [page] ne répond plus'))
 
   await scene.loadFile(join(__dirname, '../renderer/index.html'))
+  scene.moveTop()
+  scene.focus()
   await attendre(1800)
 
   const js = (code: string): Promise<unknown> => scene.webContents.executeJavaScript(code)

@@ -113,8 +113,10 @@ function garnir(): void {
       deviseDecimales: 0
     },
     administrateur: {
-      nomComplet: 'Kader Caman',
-      identifiant: 'kader',
+      // Le nom qui s'affiche en haut a droite de chaque capture : ce doit etre
+      // celui d'une officine, pas celui de l'editeur.
+      nomComplet: 'Tchadien',
+      identifiant: 'tchadien',
       motDePasse: 'Officine2026'
     }
   })
@@ -257,7 +259,7 @@ async function produire(): Promise<void> {
         setter.call(champ, valeur)
         champ.dispatchEvent(new Event('input', { bubbles: true }))
       }
-      poser('input[name=identifiant], input[autocomplete=username]', 'kader')
+      poser('input[name=identifiant], input[autocomplete=username]', 'tchadien')
       poser('input[type=password]', 'Officine2026')
       await new Promise((r) => setTimeout(r, 200))
       document.querySelector('form button[type=submit], form .bouton.principal')?.click()
