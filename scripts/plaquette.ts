@@ -419,6 +419,11 @@ async function produire(): Promise<void> {
   fenetreDoc.destroy()
   fermerBase()
   rmSync(dossierTravail, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 })
+
+  // « window-all-closed » ne ferme plus l'application : sans cette ligne, le
+  // script restait en vie apres avoir ecrit le document, et il fallait
+  // l'interrompre a la main.
+  app.exit(0)
 }
 
 function documentHtml(images: Record<string, string>): string {
