@@ -444,15 +444,14 @@ app.whenReady().then(async () => {
   // capture decalee d'un cran passe inapercue : on a photographie Ardoise en
   // croyant tenir Emeraude, et personne ne l'a vu a l'oeil.
   const FOND_ATTENDU: Record<string, string> = {
-    clair: 'rgb(255, 255, 255)',
-    ocean: 'rgb(22, 40, 61)',
-    cobalt: 'rgb(26, 30, 60)',
-    ardoise: 'rgb(36, 43, 49)',
-    brique: 'rgb(46, 33, 29)',
-    emeraude: 'rgb(13, 138, 112)'
+    clair: 'rgb(15, 122, 98)',
+    ocean: 'rgb(26, 95, 168)',
+    cobalt: 'rgb(58, 68, 168)',
+    ardoise: 'rgb(70, 85, 97)',
+    brique: 'rgb(164, 70, 43)'
   }
 
-  for (const theme of ['clair', 'ocean', 'cobalt', 'ardoise', 'brique', 'emeraude']) {
+  for (const theme of ['clair', 'ocean', 'cobalt', 'ardoise', 'brique']) {
     await fenetre.webContents.executeJavaScript(apparence(theme, 'confort'))
     await new Promise((r) => setTimeout(r, 350))
     const vu = (await fenetre.webContents.executeJavaScript(etatVisuel)) as {

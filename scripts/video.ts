@@ -151,7 +151,7 @@ async function principal(): Promise<void> {
         await new Promise((r) => setTimeout(r, 100))
         if (document.querySelector('.nav-lien')) break
       }
-      document.documentElement.setAttribute('data-theme', 'emeraude')
+      // Le vert est desormais le theme par defaut : rien a poser.
 
       const style = document.createElement('style')
       style.textContent = ${JSON.stringify(HABILLAGE)}

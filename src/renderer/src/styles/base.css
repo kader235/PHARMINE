@@ -16,9 +16,11 @@
   --surface: #ffffff;
   --surface-attenuee: #f7f8fa;
   --surface-active: #eaf1ee;
-  --bordure: #e5e7ee;
-  --bordure-nette: #c9cdd8;
-  --bordure-legere: #eef0f4;
+  /* Cadres francs plutot que suggeres : dans un logiciel de gestion, on doit
+     voir ou commence et ou finit chaque zone, sans deviner. */
+  --bordure: #ccd3d9;
+  --bordure-nette: #a9b4bd;
+  --bordure-legere: #dfe4e9;
   --zebre: #fafbfc;
 
   /* Texte */
@@ -27,26 +29,28 @@
   --texte-attenue: #59636c;
   --texte-faible: #848d96;
 
-  /* Identité : vert d'officine, profond et peu saturé. */
-  --accent: #15654e;
-  --accent-fonce: #0f4b3a;
-  --accent-clair: #e9f1ee;
-  --accent-bordure: #a4c3b6;
+  /* Identité : vert d'officine, franc. La couleur porte la structure — barre
+     laterale, en-tetes, boutons — comme dans les logiciels de gestion dont les
+     pharmaciens ont l'habitude. */
+  --accent: #0f7a62;
+  --accent-fonce: #0a5c49;
+  --accent-clair: #e4f1ed;
+  --accent-bordure: #8dc0b1;
 
   /* Barre latérale claire : chaque module porte sa pastille de couleur, qui
      sert de repère — au bout de quelques jours, on vise la couleur avant de
      lire le libellé. Le thème ne recolore que l'accent et l'élément actif. */
-  --nav-fond: #ffffff;
-  --nav-texte: #4a5261;
-  --nav-texte-fort: #131820;
-  --nav-survol: #f2f4f8;
-  --nav-actif: #eef2fd;
-  --nav-actif-texte: #15654e;
-  --nav-bordure: #e8eaf0;
-  --nav-marque: #8b94a5;
+  --nav-fond: #0f7a62;
+  --nav-texte: #cfe6df;
+  --nav-texte-fort: #ffffff;
+  --nav-survol: #12886d;
+  --nav-actif: #ffffff;
+  --nav-actif-texte: #0a5c49;
+  --nav-bordure: #0a5c49;
+  --nav-marque: #a5d3c6;
   /* Opacité de la pastille de module : relevée sur fond sombre, où une
      teinte à 13 % disparaîtrait. */
-  --teinte-pastille: 13%;
+  --teinte-pastille: 26%;
 
   /* États sémantiques */
   --succes: #16794a;
@@ -90,14 +94,14 @@
   /* En-tetes de tableau et de panneau. Declares ici pour qu'un theme puisse
      les remplir d'aplat, a la maniere des logiciels de gestion, sans qu'aucune
      regle de mise en page ne vive dans le fichier des themes. */
-  --tableau-entete-fond: var(--surface-attenuee);
-  --tableau-entete-texte: var(--texte-attenue);
-  --tableau-entete-graisse: 600;
-  --panneau-entete-fond: var(--surface);
-  --panneau-entete-texte: inherit;
+  --tableau-entete-fond: var(--accent);
+  --tableau-entete-texte: #ffffff;
+  --tableau-entete-graisse: 700;
+  --panneau-entete-fond: var(--surface-attenuee);
+  --panneau-entete-texte: var(--accent-fonce);
 
-  --rayon: 8px;
-  --rayon-panneau: 11px;
+  --rayon: 3px;
+  --rayon-panneau: 3px;
   --ombre-panneau: none;
   --ombre-flottante: 0 10px 32px rgba(17, 23, 28, 0.22);
   --largeur-nav: 236px;
@@ -1605,24 +1609,35 @@ table.tableau tbody tr.selectionnee td {
   }
 }
 
+/* --- Avertissements ---------------------------------------------------------
+   Pas d'aplat pastel ni d'angles ronds : un cadre net, un filet de couleur a
+   gauche, et le texte en noir comme le reste. C'est la convention des
+   logiciels de gestion depuis toujours, et elle a une vertu — la couleur
+   signale la gravite sans rendre le message plus difficile a lire, ni sur un
+   ecran fatigue, ni photocopie. */
+
 .bandeau {
   display: flex;
   align-items: flex-start;
   gap: 9px;
-  padding: 10px 12px;
-  border: 1px solid;
+  padding: 9px 12px;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-left: 4px solid var(--bordure-nette);
   border-radius: var(--rayon);
+  color: var(--texte);
   font-size: 12.5px;
 }
 
 .bandeau strong {
   display: block;
-  font-weight: 600;
+  font-weight: 700;
+  color: var(--texte-fort);
 }
 
 .bandeau p {
-  margin-top: 1px;
-  opacity: 0.9;
+  margin-top: 2px;
+  color: var(--texte-attenue);
 }
 
 .bandeau svg {
@@ -1630,26 +1645,19 @@ table.tableau tbody tr.selectionnee td {
   margin-top: 1px;
 }
 
-.bandeau.danger {
-  background: var(--danger-fond);
-  border-color: #eec4bd;
-  color: #8c2417;
-}
-.bandeau.attention {
-  background: var(--attention-fond);
-  border-color: #ecd6a8;
-  color: #7d5207;
-}
-.bandeau.info {
-  background: var(--info-fond);
-  border-color: #c3d8ee;
-  color: #1a4c7d;
-}
-.bandeau.succes {
-  background: var(--succes-fond);
-  border-color: #b9dfca;
-  color: #12603a;
-}
+/* La couleur ne vit que dans le filet et l'icone. Le fond reste blanc :
+   c'est ce qui distingue un avertissement d'un bloc decoratif. */
+.bandeau.danger { border-left-color: var(--danger); }
+.bandeau.danger svg { color: var(--danger); }
+
+.bandeau.attention { border-left-color: var(--attention); }
+.bandeau.attention svg { color: var(--attention); }
+
+.bandeau.info { border-left-color: var(--info); }
+.bandeau.info svg { color: var(--info); }
+
+.bandeau.succes { border-left-color: var(--succes); }
+.bandeau.succes svg { color: var(--succes); }
 
 /* =============================================================================
    Notifications

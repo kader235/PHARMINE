@@ -1,48 +1,58 @@
 /* =============================================================================
-   PHARMINA — Thèmes et dispositions
+   PHARMINA — Thèmes
 
-   Un thème recolore la barre latérale et l'accent. Une disposition change la
-   place de la navigation et la densité d'affichage. Les deux axes sont
-   indépendants : une officine peut vouloir le thème Brique aussi bien sur un
-   poste tactile que sur un poste dense.
+   TOUS LES THÈMES PARTAGENT LA MÊME GRAMMAIRE
 
-   Tout passe par les variables déclarées dans base.css. Aucune règle ici ne
-   refait une mise en page : seulement des valeurs.
+   Celle des logiciels de gestion : barre latérale en aplat de couleur, en-têtes
+   de tableau pleins à texte blanc, angles droits, cadres nets. Cette grammaire
+   vit dans `base.css` — elle n'appartient à aucun thème en particulier.
+
+   Un thème ne change donc QUE la teinte. Vert, bleu, cobalt, ardoise, brique :
+   la même interface, dans la couleur que l'officine préfère.
+
+   POURQUOI CE PARTI PRIS
+
+   Un pharmacien qui a tenu son officine dix ans avec un logiciel de gestion
+   ne juge pas une interface sur sa modernité : il cherche ses repères. Les
+   aplats de couleur, les cadres francs et les en-têtes pleins sont la
+   grammaire qu'il connaît — elle raccourcit la formation et elle inspire
+   confiance, là où des cartes pastel aux angles ronds font « vitrine ».
+
+   Aucune règle de mise en page ici : seulement des valeurs.
    ============================================================================= */
 
 /* =============================================================================
-   1. CLAIR — barre latérale blanche, accent vert. Thème par défaut : ses
-      valeurs vivent dans base.css.
+   1. VERT — thème par défaut. Ses valeurs vivent dans base.css.
    ============================================================================= */
 
 /* =============================================================================
-   2. OCÉAN — bleu profond
+   2. BLEU — le bleu des applications de gestion
    ============================================================================= */
 
 [data-theme='ocean'] {
-  /* Fond sombre : la pastille a besoin de plus de matière pour se voir. */
-  --teinte-pastille: 24%;
-  --surface-active: #e9f0f7;
-  --accent: #1d5c96;
-  --accent-fonce: #14456f;
-  --accent-clair: #e9f0f7;
-  --accent-bordure: #a7c4de;
+  --accent: #1a5fa8;
+  --accent-fonce: #134680;
+  --accent-clair: #e6eef8;
+  --accent-bordure: #9fbede;
 
-  --nav-fond: #16283d;
-  --nav-texte: #a2b5c9;
-  --nav-texte-fort: #f3f7fb;
-  --nav-survol: #1f3651;
-  --nav-actif: #26456b;
-  --nav-actif-texte: #ffffff;
-  --nav-bordure: #22374f;
-  --nav-marque: #7ea3c6;
+  --nav-fond: #1a5fa8;
+  --nav-texte: #cfe0f2;
+  --nav-texte-fort: #ffffff;
+  --nav-survol: #1e6cbd;
+  --nav-actif: #ffffff;
+  --nav-actif-texte: #134680;
+  --nav-bordure: #134680;
+  --nav-marque: #a8c8e8;
 
-  --serie-1: #1d5c96;
-  --serie-2: #3576ac;
-  --serie-3: #5691c2;
-  --serie-4: #7dabd3;
-  --serie-5: #a6c5e2;
-  --serie-6: #cddff0;
+  --surface-active: #e6eef8;
+  --zebre: #f8fafd;
+
+  --serie-1: #1a5fa8;
+  --serie-2: #3c7cc0;
+  --serie-3: #6198d1;
+  --serie-4: #8bb4e0;
+  --serie-5: #b4cfec;
+  --serie-6: #dbe8f6;
 }
 
 /* =============================================================================
@@ -50,347 +60,87 @@
    ============================================================================= */
 
 [data-theme='cobalt'] {
-  /* Fond sombre : la pastille a besoin de plus de matière pour se voir. */
-  --teinte-pastille: 24%;
-  --surface-active: #ecedf9;
   --accent: #3a44a8;
   --accent-fonce: #2b3382;
-  --accent-clair: #ecedf9;
-  --accent-bordure: #b3b8e0;
+  --accent-clair: #eaebf8;
+  --accent-bordure: #b0b5e2;
 
-  --nav-fond: #1a1e3c;
-  --nav-texte: #a8adcb;
-  --nav-texte-fort: #f4f5fb;
-  --nav-survol: #252a52;
-  --nav-actif: #303670;
-  --nav-actif-texte: #ffffff;
-  --nav-bordure: #262b4f;
-  --nav-marque: #8b93c8;
+  --nav-fond: #3a44a8;
+  --nav-texte: #d3d6f1;
+  --nav-texte-fort: #ffffff;
+  --nav-survol: #444fbd;
+  --nav-actif: #ffffff;
+  --nav-actif-texte: #2b3382;
+  --nav-bordure: #2b3382;
+  --nav-marque: #aeb4e8;
+
+  --surface-active: #eaebf8;
+  --zebre: #fafafe;
 
   --serie-1: #3a44a8;
-  --serie-2: #525cbb;
-  --serie-3: #6f78cb;
-  --serie-4: #9199da;
-  --serie-5: #b4bae8;
-  --serie-6: #d6daf4;
+  --serie-2: #5860be;
+  --serie-3: #7880ce;
+  --serie-4: #9ba1de;
+  --serie-5: #c0c4eb;
+  --serie-6: #e2e4f7;
 }
 
 /* =============================================================================
-   4. ARDOISE — gris neutre, sans couleur d'appoint
-      Pour qui trouve toute teinte de marque déplacée dans un outil de travail.
+   4. ARDOISE — gris de travail, pour qui ne veut aucune couleur
    ============================================================================= */
 
 [data-theme='ardoise'] {
-  /* Fond sombre : la pastille a besoin de plus de matière pour se voir. */
-  --teinte-pastille: 24%;
-  --surface-active: #eceef0;
-  --accent: #46545f;
-  --accent-fonce: #333e47;
-  --accent-clair: #ecedef;
-  --accent-bordure: #b6bec5;
+  --accent: #465561;
+  --accent-fonce: #333f49;
+  --accent-clair: #ecf0f2;
+  --accent-bordure: #b4bfc7;
 
-  --nav-fond: #242b31;
-  --nav-texte: #a8b1b9;
-  --nav-texte-fort: #f4f6f7;
-  --nav-survol: #2f383f;
-  --nav-actif: #3b464f;
-  --nav-actif-texte: #ffffff;
-  --nav-bordure: #2e363d;
-  --nav-marque: #8c979f;
+  --nav-fond: #465561;
+  --nav-texte: #d3dade;
+  --nav-texte-fort: #ffffff;
+  --nav-survol: #526270;
+  --nav-actif: #ffffff;
+  --nav-actif-texte: #333f49;
+  --nav-bordure: #333f49;
+  --nav-marque: #aeb9c1;
 
-  --serie-1: #46545f;
-  --serie-2: #5e6d79;
-  --serie-3: #7a8894;
-  --serie-4: #99a5ae;
-  --serie-5: #b8c1c8;
-  --serie-6: #d6dce0;
+  --surface-active: #ecf0f2;
+  --zebre: #fafbfc;
+
+  --serie-1: #465561;
+  --serie-2: #61717e;
+  --serie-3: #7f8e9a;
+  --serie-4: #a0acb5;
+  --serie-5: #c2cad0;
+  --serie-6: #e2e7ea;
 }
 
 /* =============================================================================
-   5. BRIQUE — terre cuite, chaleureux
+   5. BRIQUE — terre cuite, chaleureuse
    ============================================================================= */
 
 [data-theme='brique'] {
-  /* Fond sombre : la pastille a besoin de plus de matière pour se voir. */
-  --teinte-pastille: 24%;
-  --surface-active: #f7ece8;
   --accent: #a4462b;
-  --accent-fonce: #833520;
-  --accent-clair: #f7ece8;
-  --accent-bordure: #dcb3a4;
+  --accent-fonce: #7f351f;
+  --accent-clair: #f7eae6;
+  --accent-bordure: #ddb0a0;
 
-  --nav-fond: #2e211d;
-  --nav-texte: #c0aaa2;
-  --nav-texte-fort: #faf4f2;
-  --nav-survol: #3d2c26;
-  --nav-actif: #4f382f;
-  --nav-actif-texte: #ffffff;
-  --nav-bordure: #3a2a24;
-  --nav-marque: #a9887b;
+  --nav-fond: #a4462b;
+  --nav-texte: #f0d4cb;
+  --nav-texte-fort: #ffffff;
+  --nav-survol: #b85033;
+  --nav-actif: #ffffff;
+  --nav-actif-texte: #7f351f;
+  --nav-bordure: #7f351f;
+  --nav-marque: #e2b5a5;
+
+  --surface-active: #f7eae6;
+  --zebre: #fdfaf9;
 
   --serie-1: #a4462b;
-  --serie-2: #b85f43;
-  --serie-3: #c87c63;
-  --serie-4: #d69b87;
-  --serie-5: #e3bbad;
-  --serie-6: #f0dbd2;
-}
-
-/* =============================================================================
-   DISPOSITIONS
-   ============================================================================= */
-
-/* --- Compacte : le maximum de lignes à l'écran ------------------------------- */
-
-[data-disposition='compacte'] {
-  --police-base: 12px;
-  --police-tableau: 11.5px;
-  --marge-cellule-v: 3px;
-  --marge-cellule-h: 8px;
-  --hauteur-controle: 26px;
-  --hauteur-ligne-nav: 27px;
-  --hauteur-barre: 44px;
-  --largeur-nav: 196px;
-}
-
-[data-disposition='compacte'] .contenu {
-  padding: 10px 12px 20px;
-}
-
-[data-disposition='compacte'] .page-entete {
-  margin-bottom: 10px;
-}
-
-[data-disposition='compacte'] .page-entete h1 {
-  font-size: 17px;
-}
-
-[data-disposition='compacte'] .indicateurs {
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 8px;
-}
-
-[data-disposition='compacte'] .indicateur {
-  padding: 9px 11px 10px;
-}
-
-[data-disposition='compacte'] .indicateur-valeur {
-  margin-top: 5px;
-  font-size: 20px;
-}
-
-[data-disposition='compacte'] .panneau-entete {
-  min-height: 33px;
-  padding: 7px 11px;
-}
-
-/* --- Tactile : navigation en onglets, cibles larges -------------------------- */
-
-[data-disposition='tactile'] {
-  --police-base: 13.5px;
-  --police-tableau: 13px;
-  --marge-cellule-v: 9px;
-  --marge-cellule-h: 13px;
-  --hauteur-controle: 38px;
-  --hauteur-barre: 54px;
-}
-
-[data-disposition='tactile'] .contenu {
-  padding: 16px 18px 30px;
-}
-
-[data-disposition='tactile'] .bouton {
-  padding: 0 15px;
-  font-size: 13px;
-}
-
-[data-disposition='tactile'] .barre-fonctions {
-  height: 42px;
-}
-
-[data-disposition='tactile'] .touche-fonction {
-  padding: 0 14px;
-  font-size: 12.5px;
-}
-
-[data-disposition='tactile'] .panneau-entete {
-  min-height: 46px;
-  padding: 12px 16px;
-}
-
-/* La navigation passe en haut : les modules deviennent des onglets, comme sur
-   les postes de vente tactiles. */
-[data-disposition='tactile'] .application {
-  flex-direction: column;
-}
-
-[data-disposition='tactile'] .nav {
-  width: 100%;
-  flex: 0 0 auto;
-  flex-direction: row;
-  align-items: stretch;
-  border-right: 0;
-  border-bottom: 1px solid var(--nav-bordure);
-  overflow-x: auto;
-}
-
-[data-disposition='tactile'] .nav-entete {
-  min-height: 0;
-  padding: 0 18px 0 14px;
-  border-right: 1px solid var(--nav-bordure);
-  flex: 0 0 auto;
-}
-
-/* L'officine et le compte reviennent dans la barre supérieure et la barre
-   d'état : les répéter ici gaspillerait la largeur. */
-[data-disposition='tactile'] .nav-officine,
-[data-disposition='tactile'] .nav-groupe,
-[data-disposition='tactile'] .nav-pied {
-  display: none;
-}
-
-[data-disposition='tactile'] .nav-liste {
-  flex: 1;
-  display: flex;
-  align-items: stretch;
-  padding: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-[data-disposition='tactile'] .nav-liste > div {
-  display: flex;
-  align-items: stretch;
-}
-
-[data-disposition='tactile'] .nav-lien {
-  width: auto;
-  height: auto;
-  min-height: 52px;
-  padding: 0 17px;
-  gap: 9px;
-  border-radius: 0;
-  border-bottom: 3px solid transparent;
-  font-size: 13px;
-}
-
-[data-disposition='tactile'] .nav-lien.actif {
-  background: var(--nav-survol);
-  border-bottom-color: var(--nav-marque);
-}
-
-/* =============================================================================
-   Sélecteur de thème
-   ============================================================================= */
-
-.choix-themes,
-.choix-dispositions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.choix-theme {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  height: 32px;
-  padding: 0 12px 0 9px;
-  border: 1px solid var(--bordure);
-  border-radius: 16px;
-  background: var(--surface);
-  font-size: 12.5px;
-  color: var(--texte);
-}
-
-.choix-theme:hover {
-  border-color: var(--accent-bordure);
-  background: var(--surface-attenuee);
-}
-
-.choix-theme.actif {
-  border-color: var(--accent);
-  background: var(--accent-clair);
-  color: var(--accent-fonce);
-  font-weight: 600;
-}
-
-/* Pastille bicolore : le fond de la barre latérale et la couleur d'accent.
-   C'est exactement ce qui distingue un thème d'un autre. */
-.choix-pastille {
-  display: block;
-  width: 14px;
-  height: 14px;
-  flex: 0 0 14px;
-  border-radius: 50%;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-}
-
-/* =============================================================================
-   6. ÉMERAUDE — le style des logiciels de gestion
-
-   Inspiré de ce que l'éditeur a construit pendant des années sous WebDev, et
-   de ce que ses clients tchadiens ont sous les yeux depuis toujours : un vert
-   émeraude saturé, des angles droits, des en-têtes pleins.
-
-   POURQUOI CE THÈME EXISTE
-
-   Un pharmacien qui a tenu son officine dix ans avec un logiciel de gestion
-   classique ne juge pas une interface sur sa modernité : il cherche ses
-   repères. Un en-tête de tableau en aplat de couleur, un total en gros
-   caractères sur fond plein, des cadres nets — c'est la grammaire qu'il
-   connaît, et elle raccourcit la formation.
-
-   CE QUI CHANGE VRAIMENT
-
-   La couleur, mais aussi la FORME : les angles passent à deux pixels au lieu
-   de huit, les bordures se durcissent, les en-têtes se remplissent. C'est ce
-   trio qui fait la différence — un simple changement de teinte n'y suffirait
-   pas.
-   ============================================================================= */
-
-[data-theme='emeraude'] {
-  --teinte-pastille: 26%;
-
-  /* Le vert de SOLUS : saturé, franc, sans nuance pastel. */
-  --accent: #0f9e80;
-  --accent-fonce: #0a7a63;
-  --accent-clair: #e3f5f0;
-  --accent-bordure: #7fc9b6;
-
-  --nav-fond: #0d8a70;
-  --nav-texte: #c8ece2;
-  --nav-texte-fort: #ffffff;
-  --nav-survol: #0f9a7d;
-  --nav-actif: #ffffff;
-  --nav-actif-texte: #0a6b56;
-  --nav-bordure: #0a7a63;
-  --nav-marque: #9fdccc;
-
-  /* Angles droits : c'est la moitié de l'identité de ces logiciels. */
-  --rayon: 2px;
-  --rayon-panneau: 2px;
-
-  /* Bordures franches plutôt que suggérées. */
-  --bordure: #cbd8d4;
-  --bordure-nette: #a8bdb7;
-  --bordure-legere: #dfe8e5;
-
-  /* En-têtes pleins, texte blanc : la signature visuelle du genre. */
-  --tableau-entete-fond: #0f9e80;
-  --tableau-entete-texte: #ffffff;
-  --tableau-entete-graisse: 700;
-  --panneau-entete-fond: #f2f8f6;
-  --panneau-entete-texte: #0a6b56;
-
-  --surface-attenuee: #f3f8f6;
-  --surface-active: #e3f5f0;
-  --zebre: #f7fbfa;
-
-  --serie-1: #0f9e80;
-  --serie-2: #34b39a;
-  --serie-3: #5cc6b1;
-  --serie-4: #86d7c8;
-  --serie-5: #b0e5db;
-  --serie-6: #d8f2ed;
+  --serie-2: #bd6046;
+  --serie-3: #cf8069;
+  --serie-4: #dfa392;
+  --serie-5: #ecc6bb;
+  --serie-6: #f7e5df;
 }

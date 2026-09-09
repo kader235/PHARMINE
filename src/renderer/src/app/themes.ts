@@ -11,7 +11,7 @@
  * responsable n'ont pas les mêmes besoins, même dans une seule officine.
  */
 
-export type CleTheme = 'clair' | 'ocean' | 'cobalt' | 'ardoise' | 'brique' | 'emeraude'
+export type CleTheme = 'clair' | 'ocean' | 'cobalt' | 'ardoise' | 'brique'
 export type CleDisposition = 'confort' | 'compacte' | 'tactile'
 
 export interface DefinitionTheme {
@@ -22,16 +22,15 @@ export interface DefinitionTheme {
 }
 
 export const THEMES: DefinitionTheme[] = [
-  // Le clair d'abord : c'est le thème par défaut, et le seul dont la barre
-  // latérale reste blanche. Les quatre autres l'assombrissent.
-  { cle: 'clair', nom: 'Clair', pastille: ['#ffffff', '#15654e'] },
-  { cle: 'ocean', nom: 'Océan', pastille: ['#16283d', '#1d5c96'] },
-  { cle: 'cobalt', nom: 'Cobalt', pastille: ['#1a1e3c', '#3a44a8'] },
-  { cle: 'ardoise', nom: 'Ardoise', pastille: ['#242b31', '#46545f'] },
-  { cle: 'brique', nom: 'Brique', pastille: ['#2e211d', '#a4462b'] },
-  // Emeraude ferme la liste : c'est le seul theme qui change aussi la forme —
-  // angles droits, en-tetes pleins — a la maniere des logiciels de gestion.
-  { cle: 'emeraude', nom: 'Émeraude', pastille: ['#0d8a70', '#0f9e80'] }
+  // Tous partagent la meme grammaire — barre laterale pleine, en-tetes de
+  // tableau en aplat, angles droits. Seule la teinte change. La cle « clair »
+  // est conservee pour ne pas invalider les preferences deja enregistrees sur
+  // les postes ; elle designe desormais le vert.
+  { cle: 'clair', nom: 'Vert', pastille: ['#0f7a62', '#0a5c49'] },
+  { cle: 'ocean', nom: 'Bleu', pastille: ['#1a5fa8', '#134680'] },
+  { cle: 'cobalt', nom: 'Cobalt', pastille: ['#3a44a8', '#2b3382'] },
+  { cle: 'ardoise', nom: 'Ardoise', pastille: ['#465561', '#333f49'] },
+  { cle: 'brique', nom: 'Brique', pastille: ['#a4462b', '#7f351f'] }
 ]
 
 export interface DefinitionDisposition {
