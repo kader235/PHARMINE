@@ -39,3 +39,7 @@ licence-privee*
 
 # Produit par `npm run plaquette`, a cote du PDF : 2 Mo de captures en base64.
 plaquette.html
+
+# Produite par `npm run video` : deux megaoctets qui se refont en une commande.
+Video-PHARMINA.mp4
+essai-video.mp4

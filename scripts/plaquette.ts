@@ -41,7 +41,7 @@ const STANDARD = '275 000 FCFA'
 const PREMIUM = '350 000 FCFA'
 // Un mobile tchadien fait huit chiffres : on les groupe par deux, comme ils se
 // dictent au telephone.
-const TELEPHONES = ['+235 62 87 37 99', '97 69 11 12', '69 18 67 66']
+const TELEPHONES = ['+235 97 69 11 12', '69 18 67 66']
 const COURRIEL = 'gtb235td@gmail.com'
 const EDITEUR = 'GLOBALTECH BUSINESS TD'
 
