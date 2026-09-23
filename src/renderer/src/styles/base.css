@@ -120,6 +120,13 @@
   --largeur-nav-reduite: 46px;
   --hauteur-barre: 62px;
   --hauteur-nav: 54px;
+
+  /* Le filet des encadres d'alerte. Le fond reste blanc : la couleur se tient
+     dans l'icone et dans ce trait fin tout autour — pas dans une bande a
+     gauche, qui est la signature des interfaces dessinees par une machine. */
+  --danger-bordure: color-mix(in srgb, var(--danger) 42%, var(--bordure));
+  --attention-bordure: color-mix(in srgb, var(--attention) 45%, var(--bordure));
+  --succes-bordure: color-mix(in srgb, var(--succes) 42%, var(--bordure));
 }
 
 * {
@@ -356,7 +363,7 @@ a {
   min-width: 17px;
   height: 16px;
   padding: 0 4px;
-  border-radius: 8px;
+  border-radius: 4px;
   background: var(--danger);
   color: #fff;
   font-size: 10px;
@@ -697,6 +704,7 @@ a {
 }
 
 /* Contrôles en pilule, à droite de l'en-tête : période, exercice, filtres. */
+/* Arrondi de fenetre, pas de bouton de site web. */
 .pilule {
   display: inline-flex;
   align-items: center;
@@ -704,7 +712,7 @@ a {
   height: 32px;
   padding: 0 12px;
   border: 1px solid var(--bordure);
-  border-radius: 16px;
+  border-radius: var(--rayon);
   background: var(--surface);
   font-size: 12.5px;
   color: var(--texte);
@@ -1025,6 +1033,21 @@ table.tableau th:last-child {
    déclaration générale `text-align: left` du `th` l'emportait sur
    `.cellule-nombre`, et « PRIX DE VENTE » se lisait à gauche d'une colonne de
    montants alignés à droite. */
+/* Une ligne sur deux est teintee. Sur un tableau de vingt lignes et huit
+   colonnes, c'est ce qui evite de lire le prix de la ligne d'en dessous. La
+   teinte est a peine visible : elle guide l'oeil, elle ne decoupe pas. */
+table.tableau tbody tr:nth-child(even) {
+  background: var(--surface-attenuee);
+}
+
+/* Les chiffres a chasse fixe : sans cela, « 1 111 » est plus etroit que
+   « 8 888 » et les colonnes de montants ondulent. */
+.cellule-nombre,
+table.tableau td.cellule-nombre {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
 table.tableau th.cellule-nombre,
 table.tableau th.cellule-actions {
   text-align: right;
@@ -1543,7 +1566,7 @@ table.tableau tbody tr.selectionnee td {
   display: flex;
   flex-direction: column;
   background: var(--surface);
-  border-radius: 7px;
+  border-radius: 4px;
   box-shadow: var(--ombre-flottante);
   overflow: hidden;
 }
@@ -1609,12 +1632,10 @@ table.tableau tbody tr.selectionnee td {
 .etat-vide-icone {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
-  margin-bottom: 6px;
-  border-radius: 50%;
-  background: var(--surface-active);
-  color: var(--accent);
+  width: 26px;
+  height: 26px;
+  margin-bottom: 4px;
+  color: var(--texte-faible);
 }
 
 .etat-vide strong {
@@ -1688,7 +1709,6 @@ table.tableau tbody tr.selectionnee td {
   padding: 9px 12px;
   background: var(--surface);
   border: 1px solid var(--bordure);
-  border-left: 4px solid var(--bordure-nette);
   border-radius: var(--rayon);
   color: var(--texte);
   font-size: 12.5px;
@@ -1711,10 +1731,10 @@ table.tableau tbody tr.selectionnee td {
 
 /* La couleur ne vit que dans le filet et l'icone. Le fond reste blanc :
    c'est ce qui distingue un avertissement d'un bloc decoratif. */
-.bandeau.danger { border-left-color: var(--danger); }
+.bandeau.danger { border-color: var(--danger-bordure, var(--bordure)); }
 .bandeau.danger svg { color: var(--danger); }
 
-.bandeau.attention { border-left-color: var(--attention); }
+.bandeau.attention { border-color: var(--attention-bordure, var(--bordure)); }
 .bandeau.attention svg { color: var(--attention); }
 
 /* Un encadre d'information n'est pas un avertissement : il explique, il
@@ -1722,11 +1742,10 @@ table.tableau tbody tr.selectionnee td {
    la couleur aux messages qui demandent une action. */
 .bandeau.info {
   background: var(--neutre-fond);
-  border-left-color: var(--bordure-nette);
 }
 .bandeau.info svg { color: var(--texte-attenue); }
 
-.bandeau.succes { border-left-color: var(--succes); }
+.bandeau.succes { border-color: var(--succes-bordure, var(--bordure)); }
 .bandeau.succes svg { color: var(--succes); }
 
 /* =============================================================================
@@ -1752,7 +1771,6 @@ table.tableau tbody tr.selectionnee td {
   padding: 11px 12px;
   background: var(--surface);
   border: 1px solid var(--bordure);
-  border-left: 3px solid var(--accent);
   border-radius: var(--rayon);
   box-shadow: var(--ombre-flottante);
   pointer-events: auto;
@@ -1830,7 +1848,7 @@ table.tableau tbody tr.selectionnee td {
   grid-template-columns: 1.32fr 1fr;
   min-height: 452px;
   border: 1px solid var(--bordure);
-  border-radius: 14px;
+  border-radius: 4px;
   background: var(--surface);
   box-shadow: 0 22px 54px rgba(15, 30, 25, 0.11), 0 2px 6px rgba(15, 30, 25, 0.05);
   overflow: hidden;
@@ -1891,7 +1909,7 @@ table.tableau tbody tr.selectionnee td {
   flex-direction: column;
   justify-content: space-between;
   padding: 32px 30px 26px;
-  background: linear-gradient(168deg, var(--accent) 0%, var(--accent-fonce) 100%);
+  background: var(--accent);
   color: #fff;
 }
 
@@ -2005,7 +2023,7 @@ table.tableau tbody tr.selectionnee td {
 .accueil-carte {
   width: min(400px, 100%);
   background: var(--surface);
-  border-radius: 8px;
+  border-radius: 4px;
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
   overflow: hidden;
 }
@@ -2025,7 +2043,7 @@ table.tableau tbody tr.selectionnee td {
   width: 42px;
   height: 42px;
   margin: 0 auto 12px;
-  border-radius: 9px;
+  border-radius: 4px;
   background: var(--accent);
   color: #fff;
 }
@@ -2542,7 +2560,7 @@ table.tableau tbody tr.selectionnee td {
   height: 40px;
   padding: 0 10px 0 6px;
   border: 1px solid transparent;
-  border-radius: 20px;
+  border-radius: var(--rayon);
   background: transparent;
   color: var(--texte);
   text-align: left;
@@ -2588,8 +2606,7 @@ table.tableau tbody tr.selectionnee td {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--fond) 88%, transparent);
-  backdrop-filter: blur(7px);
+  background: var(--fond);
 }
 
 .verrou-carte {
@@ -2740,7 +2757,6 @@ table.tableau tbody tr.selectionnee td {
    jaune : il epaissit son filet. Une barre teintee en bas d'ecran, en
    permanence, finit par ne plus rien signaler. */
 .bandeau-demo.serre {
-  border-left: 4px solid var(--attention);
   color: var(--texte);
 }
 
@@ -2845,7 +2861,6 @@ table.tableau tbody tr.selectionnee td {
   margin-bottom: 12px;
   padding: 13px 14px 14px;
   border: 1px solid var(--bordure);
-  border-left: 4px solid var(--attention);
   border-radius: var(--rayon);
   background: var(--surface);
 }
@@ -3437,7 +3452,6 @@ table.tableau tbody tr.selectionnee td {
   border-radius: var(--rayon);
   background: var(--surface);
   border: 1px solid var(--bordure);
-  border-left: 4px solid var(--danger);
   color: var(--texte);
   font-size: 13px;
 }

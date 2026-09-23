@@ -21,7 +21,11 @@ interface Section {
 
 const EDITEUR = {
   societe: 'GLOBALTECH BUSINESS TD',
-  siege: 'Siège : Moursal, Avenue Goukouni Weddey — N’Djamena, Tchad'
+  siege: 'Siège : Moursal, Avenue Goukouni Weddey — N’Djamena, Tchad',
+  // Les numéros de l'assistance. Ils figurent dans le logiciel et dans le
+  // guide, et nulle part ailleurs : un pharmacien qui a un souci au comptoir ne
+  // doit pas avoir à chercher une plaquette dans un tiroir.
+  assistance: 'Assistance : 97 69 11 12 · 62 87 37 99 · 67 46 84 75'
 }
 
 const SECTIONS: Section[] = [
@@ -61,18 +65,19 @@ const SECTIONS: Section[] = [
     contenu: (
       <>
         <p>
-          <strong>À gauche</strong>, la liste des modules, rangés en trois familles : Exploitation
-          (ce que vous faites tous les jours), Gestion (votre catalogue et votre stock),
-          Administration. Chaque module a sa couleur : au bout de quelques jours, vous visez la
-          couleur avant de lire le mot.
+          <strong>Tout en haut</strong>, une seule ligne : les rubriques que vous ouvrez tous les
+          jours, écrites en toutes lettres. Tableau de bord, Ventes, Caisse, Produits, Stock,
+          Péremptions, Achats, Clients, Rapports. Vous cliquez sur le mot, vous y êtes.
         </p>
         <p>
-          Le bouton en haut à gauche replie la barre latérale quand vous avez besoin de place.
+          <strong>Plus</strong>, au bout de la ligne, ouvre le reste : fournisseurs, inventaire,
+          finances, alertes, utilisateurs, journal, paramètres, et ce guide. Ce sont les écrans
+          qu’on ouvre une fois par semaine ou par mois — ils ne prennent pas la place des autres.
         </p>
         <p>
-          <strong>En haut</strong>, la recherche générale. Tapez le nom d’un produit, d’un client,
-          d’un fournisseur ou le numéro d’une vente : le logiciel cherche partout à la fois. Le
-          raccourci est <strong>Ctrl + K</strong>.
+          <strong>À droite de la même ligne</strong>, la recherche générale. Tapez le nom d’un
+          produit, d’un client, d’un fournisseur ou le numéro d’une vente : le logiciel cherche
+          partout à la fois. Le raccourci est <strong>Ctrl + K</strong>.
         </p>
         <p>
           À côté, la cloche indique les alertes en cours, et le bouton de votre nom donne accès à
@@ -1294,6 +1299,7 @@ export default function Aide() {
           <h1>PHARMINA — Guide d’utilisation</h1>
           <p className="guide-editeur">{EDITEUR.societe}</p>
           <p className="guide-siege">{EDITEUR.siege}</p>
+          <p className="guide-siege">{EDITEUR.assistance}</p>
           <p className="guide-intro">
             Ce guide se lit en une demi-heure. Il explique chaque fonction du logiciel, dans
             l’ordre où vous les rencontrerez. Gardez-le à portée de main les premiers jours.
@@ -1329,6 +1335,7 @@ export default function Aide() {
             <strong>{EDITEUR.societe}</strong>
           </p>
           <p>{EDITEUR.siege}</p>
+          <p>{EDITEUR.assistance}</p>
         </div>
       </div>
     </>

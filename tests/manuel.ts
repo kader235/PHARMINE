@@ -79,12 +79,24 @@ async function produire(): Promise<void> {
     })()`)
   await new Promise((r) => setTimeout(r, 2200))
 
+  // Le guide ne figure plus dans la barre du haut : il vit sous « Plus », avec
+  // les écrans qu'on ouvre une fois par mois. On ouvre donc le menu avant de
+  // chercher le lien.
   const ouvert = await fenetre.webContents.executeJavaScript(`
-    (() => {
-      const b = Array.from(document.querySelectorAll('.nav-lien'))
-        .find((e) => e.textContent && e.textContent.trim().startsWith('Guide'))
-      if (b) { b.click(); return true }
-      return false
+    (async () => {
+      const cliquer = () => {
+        const b = Array.from(document.querySelectorAll('.nav-lien'))
+          .find((e) => e.textContent && e.textContent.trim().startsWith('Guide'))
+        if (!b) return false
+        b.click()
+        return true
+      }
+      if (cliquer()) return true
+      const plus = document.querySelector('.nav-plus > .nav-lien')
+      if (!plus) return false
+      plus.click()
+      await new Promise((r) => setTimeout(r, 250))
+      return cliquer()
     })()`)
 
   if (!ouvert) throw new Error('Le module Guide est introuvable dans la navigation.')
