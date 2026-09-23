@@ -20,8 +20,8 @@ const ContexteNotifications = createContext<Contexte | null>(null)
 
 const ICONES: Record<Ton, NomIcone> = {
   succes: 'coche',
-  danger: 'triangle-alerte',
-  attention: 'triangle-alerte',
+  danger: 'alerte-cercle',
+  attention: 'alerte-cercle',
   info: 'info',
   neutre: 'info'
 }

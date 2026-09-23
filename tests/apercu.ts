@@ -370,7 +370,6 @@ app.whenReady().then(async () => {
       return {
         fenetre: { largeur: window.innerWidth, hauteur: window.innerHeight },
         nav: mesure('.nav'),
-        barre: mesure('.barre'),
         fonctions: mesure('.barre-fonctions'),
         etat: mesure('.barre-etat')
       }
@@ -380,14 +379,17 @@ app.whenReady().then(async () => {
   }
 
   const anomalies: string[] = []
-  if (!coque.barre || coque.barre.hauteur > 72) {
-    anomalies.push(`barre superieure anormale : ${coque.barre?.hauteur ?? 'absente'} px`)
+  // Le menu occupe toute la largeur, en haut, sur une seule ligne. S'il
+  // retombait en colonne — un `flex-direction` qui derive, une largeur qui ne
+  // suit plus — les rubriques s'empileraient et l'ecran serait perdu.
+  if (!coque.nav || coque.nav.hauteur > 72) {
+    anomalies.push(`barre de menu anormale : ${coque.nav?.hauteur ?? 'absente'} px`)
   }
-  if (coque.barre && coque.barre.direction !== 'row') {
-    anomalies.push(`barre superieure en ${coque.barre.direction}`)
+  if (coque.nav && coque.nav.direction !== 'row') {
+    anomalies.push(`barre de menu en ${coque.nav.direction}`)
   }
-  if (!coque.nav || coque.nav.hauteur < coque.fenetre.hauteur * 0.8) {
-    anomalies.push('la barre laterale ne remplit pas la hauteur')
+  if (coque.nav && coque.nav.largeur < coque.fenetre.largeur * 0.98) {
+    anomalies.push('la barre de menu ne prend pas toute la largeur')
   }
   if (!coque.fonctions || coque.fonctions.hauteur > 44) {
     anomalies.push(`barre de fonctions anormale : ${coque.fonctions?.hauteur ?? 'absente'} px`)
@@ -436,9 +438,8 @@ app.whenReady().then(async () => {
         theme: r.getAttribute('data-theme') || 'clair',
         disposition: r.getAttribute('data-disposition') || 'confort',
         navFond: getComputedStyle(nav).backgroundColor,
-        barreFond: getComputedStyle(document.querySelector('.barre')).backgroundColor,
-        barreRelief: getComputedStyle(document.querySelector('.barre')).backgroundImage,
-        navLargeur: Math.round(nav.getBoundingClientRect().width)
+        rubriques: document.querySelectorAll('.nav-liste .nav-lien').length,
+        navHauteur: Math.round(nav.getBoundingClientRect().height)
       }
     })()`
 
@@ -459,26 +460,18 @@ app.whenReady().then(async () => {
     const vu = (await fenetre.webContents.executeJavaScript(etatVisuel)) as {
       theme: string
       navFond: string
-      barreFond: string
-      barreRelief: string
+      rubriques: number
+      navHauteur: number
     }
     console.log('    ' + JSON.stringify(vu))
     if (vu.navFond !== FOND_ATTENDU[theme]) {
-      erreurs.push(`Theme ${theme} : barre laterale ${vu.navFond} au lieu de ${FOND_ATTENDU[theme]}`)
+      erreurs.push(`Theme ${theme} : barre de menu ${vu.navFond} au lieu de ${FOND_ATTENDU[theme]}`)
     }
-    // La barre du haut et la barre laterale doivent porter la MEME couleur :
-    // c'est le cadre colore des logiciels de gestion. Une seule des deux qui
-    // derive, et l'ecran redevient un assemblage batard.
-    // Le degrade doit etre la : sans lui, la barre redevient un aplat, et tout
-    // le caractere « logiciel de gestion » disparait sans qu'aucun test ne
-    // proteste.
-    if (!vu.barreRelief.includes('gradient')) {
-      erreurs.push(`Theme ${theme} : la barre du haut a perdu son relief`)
-    }
-    if (vu.barreFond !== vu.navFond) {
-      erreurs.push(
-        `Theme ${theme} : la barre du haut (${vu.barreFond}) ne suit pas la barre laterale (${vu.navFond})`
-      )
+    // Les rubriques du quotidien doivent rester visibles d'un coup d'oeil. Si
+    // la barre n'en montre plus qu'une poignee, c'est que la liste a ete
+    // amputee ou qu'elle deborde sans qu'on le voie a l'oeil.
+    if (vu.rubriques < 6) {
+      erreurs.push(`Theme ${theme} : ${vu.rubriques} rubrique(s) dans la barre`)
     }
     await photographier(fenetre, `theme-${theme}`, 400)
   }
@@ -936,6 +929,32 @@ app.whenReady().then(async () => {
     if (!ouvert) erreurs.push('Verrouillage : le bon mot de passe n a pas ouvert le poste')
   }
 
+  /**
+   * Ouvre une rubrique par son nom, qu'elle soit dans la barre ou sous « Plus ».
+   *
+   * Les rubriques rares ne sont plus toutes visibles d'emblée : chercher
+   * « Paramètres » parmi les liens affichés ne donnait plus rien, et le banc
+   * accusait la navigation d'avoir perdu un module.
+   */
+  const ouvrirRubrique = async (libelle: string): Promise<boolean> =>
+    (await fenetre.webContents.executeJavaScript(`
+      (async () => {
+        const nom = ${JSON.stringify(libelle)}
+        const cliquer = () => {
+          const lien = Array.from(document.querySelectorAll('.nav-lien'))
+            .find((b) => b.textContent && b.textContent.trim().startsWith(nom))
+          if (!lien) return false
+          lien.click()
+          return true
+        }
+        if (cliquer()) return true
+        const plus = document.querySelector('.nav-plus > .nav-lien')
+        if (!plus) return false
+        plus.click()
+        await new Promise((r) => setTimeout(r, 200))
+        return cliquer()
+      })()`)) as boolean
+
   // --- Imprimantes vues par le poste -------------------------------------------
   const imprimantes = (await fenetre.webContents.executeJavaScript(
     `window.pharmina.appeler('impression.imprimantes')`
@@ -943,11 +962,9 @@ app.whenReady().then(async () => {
   console.log(`  imprimantes detectees : ${imprimantes.length}`)
 
   // --- Reglages : impression et protection des donnees -------------------------
-  const indexParametres = (await fenetre.webContents.executeJavaScript(`
-    Array.from(document.querySelectorAll('.nav-lien'))
-      .findIndex((b) => b.textContent && b.textContent.trim().startsWith('Paramètres'))`)) as number
+  const parametresOuverts = await ouvrirRubrique('Paramètres')
 
-  if (indexParametres < 0) {
+  if (!parametresOuverts) {
     erreurs.push('Module Parametres introuvable dans la navigation')
   } else {
     const onglet = (nom: string): string =>
@@ -958,9 +975,7 @@ app.whenReady().then(async () => {
         return false
       })()`
 
-    await fenetre.webContents.executeJavaScript(
-      `document.querySelectorAll('.nav-lien')[${indexParametres}].click()`
-    )
+    await ouvrirRubrique('Paramètres')
     await new Promise((r) => setTimeout(r, 900))
 
     await fenetre.webContents.executeJavaScript(onglet('Règles'))
@@ -1412,16 +1427,11 @@ app.whenReady().then(async () => {
   // bandeau disparait des que le poste est active. Le code d'installation doit
   // rester lisible dans les parametres, y compris des annees plus tard, le
   // jour ou l'officine change d'ordinateur.
-  const indexReglages = (await fenetre.webContents.executeJavaScript(`
-    Array.from(document.querySelectorAll('.nav-lien'))
-      .findIndex((b) => b.textContent && b.textContent.trim().startsWith('Param'))`)) as number
+  const reglagesOuverts = await ouvrirRubrique('Param')
 
-  if (indexReglages < 0) {
+  if (!reglagesOuverts) {
     erreurs.push('Module Parametres introuvable')
   } else {
-    await fenetre.webContents.executeJavaScript(
-      `document.querySelectorAll('.nav-lien')[${indexReglages}].click()`
-    )
     await new Promise((r) => setTimeout(r, 900))
 
     const surOnglet = await fenetre.webContents.executeJavaScript(`

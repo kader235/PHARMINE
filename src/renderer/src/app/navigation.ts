@@ -217,6 +217,29 @@ export const LIBELLES_GROUPE: Record<DefinitionModule['groupe'], string> = {
   administration: 'Administration'
 }
 
+/**
+ * Les rubriques qui tiennent dans la barre du haut.
+ *
+ * Neuf, pas dix-sept : au-delà, les mots ne tiennent plus sur une ligne et la
+ * barre se met à déborder ou à rapetisser jusqu'à l'illisible. Ce sont celles
+ * qu'on ouvre tous les jours ; le reste vit sous « Plus », et reste atteignable
+ * en deux gestes.
+ *
+ * L'ordre est celui de la journée : on regarde où on en est, on vend, on
+ * encaisse, puis on s'occupe du stock et des clients.
+ */
+export const MODULES_BARRE: readonly CleModule[] = [
+  'tableau-bord',
+  'ventes',
+  'caisse',
+  'produits',
+  'stock',
+  'peremptions',
+  'achats',
+  'clients',
+  'rapports'
+]
+
 /** Cible de navigation : un module, éventuellement avec un élément à ouvrir. */
 export interface Destination {
   module: CleModule

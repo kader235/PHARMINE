@@ -119,6 +119,7 @@
   --largeur-nav: 236px;
   --largeur-nav-reduite: 46px;
   --hauteur-barre: 62px;
+  --hauteur-nav: 54px;
 }
 
 * {
@@ -228,175 +229,127 @@ a {
 
 .application {
   display: flex;
+  flex-direction: column;
   height: 100%;
   overflow: hidden;
 }
 
-/* --- Barre latérale --------------------------------------------------------- */
+/* --- La barre de menu, en haut ---------------------------------------------
+
+   Les rubriques etaient rangees dans une colonne a gauche, en trois groupes
+   coiffes de titres — « Exploitation », « Gestion », « Administration ». Les
+   personnes qui ont essaye le logiciel sans etre du metier s'y perdaient :
+   dix-sept lignes empilees, et il fallait deviner sous quel groupe se range ce
+   qu'on cherche.
+
+   Les rubriques du quotidien tiennent desormais sur une seule ligne, en haut,
+   ecrites en toutes lettres. Neuf mots cote a cote se lisent d'un coup d'oeil
+   la ou une colonne se parcourt. Le reste — ce qu'on ouvre une fois par mois —
+   se trouve sous « Plus ».
+
+   Pas d'icone dans cette barre : neuf mots suffisent, et des icones y
+   ajouteraient un dechiffrage de plus. Elles restent dans le menu « Plus »,
+   ou elles aident a distinguer des rubriques rares. */
 
 .nav {
-  width: var(--largeur-nav);
-  flex: 0 0 var(--largeur-nav);
-  background-color: var(--nav-fond);
-  background-image: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--nav-fond) 92%, #ffffff) 0%,
-    var(--nav-fond) 22%,
-    color-mix(in srgb, var(--nav-fond) 94%, #000000) 100%
-  );
-  border-right: 1px solid var(--relief-arete);
-  box-shadow: inset -1px 0 0 var(--relief-ombre);
+  flex: 0 0 var(--hauteur-nav);
+  height: var(--hauteur-nav);
   display: flex;
-  flex-direction: column;
-  transition: width 0.16s ease, flex-basis 0.16s ease;
-}
-
-.nav.reduite {
-  width: var(--largeur-nav-reduite);
-  flex-basis: var(--largeur-nav-reduite);
+  align-items: stretch;
+  padding-right: 14px;
+  background: var(--nav-fond);
+  color: #ffffff;
+  position: relative;
+  z-index: 30;
 }
 
 .nav-entete {
   display: flex;
   align-items: center;
-  gap: 11px;
-  min-height: var(--hauteur-barre);
-  padding: 14px 16px;
+  gap: 10px;
   flex: 0 0 auto;
+  padding: 0 20px 0 16px;
 }
 
 .nav-logo {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  flex: 0 0 32px;
-  border-radius: 8px;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  border-radius: 6px;
   /* La croix porte ses propres couleurs : elle se pose sur du blanc, pas sur
      un aplat qui les etoufferait. */
   background: #ffffff;
-  border: 1px solid var(--bordure);
-}
-
-/* Marque sur deux lignes : le nom, puis ce que fait le logiciel. */
-.nav-marque {
-  min-width: 0;
-  overflow: hidden;
 }
 
 .nav-marque strong {
-  display: block;
-  font-size: 14.5px;
-  font-weight: 700;
-  letter-spacing: 0.01em;
-  color: var(--nav-texte-fort);
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  color: #ffffff;
   white-space: nowrap;
 }
 
-.nav-marque span {
-  display: block;
-  margin-top: 1px;
-  font-size: 11.5px;
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--nav-marque);
-  white-space: nowrap;
-}
-
+/* La ligne « Gestion de pharmacie » et le nom de l'officine tenaient sous la
+   marque dans la colonne. En haut, ils voleraient la place des rubriques :
+   l'officine se lit desormais dans la barre d'etat, en bas. */
+.nav-marque span,
 .nav-officine {
-  padding: 0 14px 12px;
-  color: var(--nav-texte);
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-}
-
-.nav-officine strong {
-  display: block;
-  color: var(--nav-texte-fort);
-  font-size: 11.5px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  overflow: hidden;
+  display: none;
 }
 
 .nav-liste {
-  flex: 1;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 4px 12px 14px;
-}
-
-.nav-groupe {
-  margin-top: 16px;
-  padding: 0 12px 8px;
-  color: var(--nav-marque);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  overflow: hidden;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
 }
 
 .nav-lien {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 11px;
-  width: 100%;
-  height: var(--hauteur-ligne-nav);
-  padding: 0 10px;
-  margin-bottom: 2px;
+  gap: 7px;
+  height: 100%;
+  padding: 0 14px;
   border: 0;
-  border-radius: 10px;
   background: transparent;
-  color: var(--nav-texte);
+  color: rgba(255, 255, 255, 0.82);
   font-size: 13.5px;
   font-weight: 500;
-  text-align: left;
   white-space: nowrap;
-  overflow: hidden;
 }
 
 .nav-lien:hover {
-  background: var(--nav-survol);
-  color: var(--nav-texte-fort);
+  background: rgba(255, 255, 255, 0.09);
+  color: #ffffff;
 }
 
 .nav-lien.actif {
-  background: var(--nav-actif);
-  color: var(--nav-actif-texte);
+  color: #ffffff;
   font-weight: 600;
 }
 
-/* L'icone du module.
- *
- * Elle portait une pastille teintee de la couleur du module — bleu pour les
- * produits, orange pour le stock. Sur une barre laterale en aplat de couleur,
- * ces pastilles font tache : une douzaine de teintes qui se disputent le fond.
- *
- * Dans les logiciels de gestion, l'icone est monochrome et prend la couleur du
- * texte : blanche sur le fond colore, couleur d'accent sur l'element actif.
- * C'est la selection qui porte la couleur, pas chaque ligne. */
-.nav-pastille-module {
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  flex: 0 0 22px;
-  background: none;
-  color: inherit;
+/* Le trait sous la rubrique ouverte. Un aplat plus clair aurait fait un pave
+   au milieu de la barre ; le trait dit la meme chose sans decouper. */
+.nav-lien.actif::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 3px;
+  background: #ffffff;
+  border-radius: 2px 2px 0 0;
 }
 
-.nav-lien svg {
-  flex: 0 0 18px;
+/* Dans la barre, les rubriques n'ont que leur nom. */
+.nav-liste .nav-pastille-module {
+  display: none;
 }
 
 .nav-lien-libelle {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
 }
 
 .nav-pastille {
@@ -412,64 +365,161 @@ a {
   text-align: center;
 }
 
-.nav-lien.actif .nav-pastille {
-  background: var(--danger);
+/* --- Le menu « Plus » ------------------------------------------------------ */
+
+.nav-plus {
+  position: relative;
+  display: flex;
 }
 
-.nav-pied {
-  flex: 0 0 auto;
-  border-top: 1px solid var(--nav-bordure);
-  padding: 8px;
+.nav-deroulant {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 40;
+  min-width: 300px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--bordure);
+  border-top: 0;
+  box-shadow: 0 10px 28px rgba(20, 35, 45, 0.18);
 }
 
-.nav-utilisateur {
+.nav-deroulant-groupe {
+  padding: 10px 10px 5px;
+  color: var(--texte-faible);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.nav-deroulant .nav-lien {
+  height: 38px;
+  width: 100%;
+  padding: 0 10px;
+  color: var(--texte);
+  font-size: 13.5px;
+}
+
+.nav-deroulant .nav-lien:hover {
+  background: var(--accent-clair);
+  color: var(--texte-fort);
+}
+
+.nav-deroulant .nav-lien.actif::after {
+  display: none;
+}
+
+.nav-deroulant .nav-pastille-module {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  color: var(--accent);
+}
+
+.nav-espace {
+  flex: 1;
+  min-width: 12px;
+}
+
+.nav-outils {
   display: flex;
   align-items: center;
-  gap: 9px;
-  width: 100%;
-  padding: 7px 8px;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.nav .bouton-icone {
+  color: rgba(255, 255, 255, 0.88);
+  background: transparent;
+  border: 0;
+}
+
+.nav .bouton-icone:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.nav .bouton-icone .point {
+  border-color: var(--nav-fond);
+}
+
+.nav .barre-utilisateur {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 36px;
+  margin-left: 6px;
+  padding: 0 8px;
   border: 0;
   border-radius: var(--rayon);
   background: transparent;
-  color: var(--nav-texte-fort);
+  color: #ffffff;
   text-align: left;
-  overflow: hidden;
+  white-space: nowrap;
 }
 
-.nav-utilisateur:hover {
-  background: var(--nav-survol);
+.nav .barre-utilisateur:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.nav .barre-utilisateur-texte strong {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.nav .barre-utilisateur-texte span {
+  display: block;
+  font-size: 10.5px;
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .nav-avatar {
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
-  flex: 0 0 26px;
+  width: 28px;
+  height: 28px;
+  flex: 0 0 28px;
   border-radius: 5px;
-  background: var(--accent);
+  background: rgba(255, 255, 255, 0.2);
   color: #fff;
-  font-size: 10px;
+  font-size: 10.5px;
   font-weight: 700;
 }
 
-.nav-utilisateur-texte {
-  overflow: hidden;
-  white-space: nowrap;
+/* La recherche se pose sur la barre : un champ blanc y ferait une tache, un
+   champ transparent se lit mal. Un voile clair, et le blanc a la saisie. */
+.nav .recherche-globale {
+  width: 250px;
 }
 
-.nav-utilisateur-texte strong {
-  display: block;
-  font-size: 12px;
-  font-weight: 600;
-  text-overflow: ellipsis;
-  overflow: hidden;
+.nav .recherche-champ {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: rgba(255, 255, 255, 0.86);
 }
 
-.nav-utilisateur-texte span {
-  display: block;
-  color: var(--nav-texte);
-  font-size: 10.5px;
+.nav .recherche-champ input {
+  color: #ffffff;
+}
+
+.nav .recherche-champ input::placeholder {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.nav .recherche-champ:focus-within {
+  background: #ffffff;
+  border-color: #ffffff;
+  box-shadow: none;
+}
+
+.nav .recherche-champ:focus-within input,
+.nav .recherche-champ:focus-within input::placeholder {
+  color: var(--texte);
 }
 
 /* --- Zone principale -------------------------------------------------------- */
@@ -482,122 +532,6 @@ a {
   flex-direction: column;
   min-width: 0;
   overflow: hidden;
-}
-
-/* La barre du haut est un aplat de couleur, comme la barre laterale.
- *
- * C'est la signature des applications de gestion : l'ecran est encadre par la
- * couleur, et le contenu vit dans le blanc. Une barre blanche au-dessus d'une
- * barre laterale coloree donnait un assemblage batard — moitie logiciel de
- * gestion, moitie site web. */
-.barre {
-  height: var(--hauteur-barre);
-  flex: 0 0 var(--hauteur-barre);
-  background-color: var(--accent);
-  background-image: linear-gradient(
-    180deg,
-    var(--relief-haut) 0%,
-    var(--accent) 54%,
-    var(--relief-bas) 100%
-  );
-  border-bottom: 1px solid var(--relief-arete);
-  box-shadow: inset 0 1px 0 var(--relief-luisant), 0 1px 2px var(--relief-ombre);
-  color: #fff;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 0 16px;
-}
-
-.barre-fil {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.barre-fil strong {
-  font-size: 13px;
-}
-
-.barre-fil strong {
-  color: #ffffff;
-  font-weight: 600;
-}
-
-.barre-espace {
-  flex: 1;
-}
-
-.barre-outils {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.bouton-icone {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border: 1px solid transparent;
-  border-radius: var(--rayon);
-  background: transparent;
-  color: var(--texte-attenue);
-  position: relative;
-}
-
-.bouton-icone:hover {
-  background: var(--surface-attenuee);
-  border-color: var(--bordure);
-  color: var(--texte);
-}
-
-/* Dans la barre coloree, les outils passent en blanc et se posent sur un
-   voile clair au survol : une bordure grise y serait invisible. */
-.barre .bouton-icone {
-  color: rgba(255, 255, 255, 0.88);
-}
-
-.barre .bouton-icone:hover {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: transparent;
-  color: #ffffff;
-}
-
-.barre .bouton-icone .point {
-  border-color: var(--accent);
-}
-
-.barre .barre-utilisateur {
-  color: #ffffff;
-}
-
-.barre .barre-utilisateur:hover {
-  background: rgba(255, 255, 255, 0.14);
-  border-color: transparent;
-}
-
-.barre .barre-utilisateur-texte span {
-  color: rgba(255, 255, 255, 0.75);
-}
-
-.barre .nav-avatar {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-}
-
-.bouton-icone .point {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--danger);
-  border: 1.5px solid var(--surface);
 }
 
 .contenu {
@@ -895,18 +829,23 @@ a {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  min-height: 40px;
-  padding: 10px 14px;
+  min-height: 44px;
+  padding: 12px 16px;
   border-bottom: 1px solid var(--bordure-legere);
-  background: var(--panneau-entete-fond);
+  background: var(--surface);
   color: var(--panneau-entete-texte);
 }
 
+/* Le titre du panneau porte la couleur du logiciel.
+ *
+ * C'est la seule entorse a la regle « tout le texte est noir » : un titre de
+ * carte n'est pas du texte qu'on lit, c'est un reperage. Tout le reste du
+ * panneau — chiffres, libelles, tableaux — reste en noir. */
 .panneau-entete h2 {
   font-size: 14px;
   font-weight: 600;
   letter-spacing: -0.005em;
-  color: var(--texte-fort);
+  color: var(--accent);
 }
 
 .panneau-entete p {
@@ -930,17 +869,25 @@ a {
    Indicateurs
    ============================================================================= */
 
-/* Cartes d'indicateur : un sur-titre discret, puis le chiffre en grand.
-   Rien d'autre — pas d'icône décorative, pas d'aplat de couleur. */
+/* Cartes d'indicateur : le chiffre en grand, son nom sur un bandeau de
+   couleur en bas de la carte. */
 .indicateurs {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(178px, 1fr));
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
+/* Le contenu est centre : sur une rangee de cartes, un chiffre cale a gauche
+   laisse une trainee de blanc a sa droite et la rangee parait bancale. Centre,
+   chaque carte se lit comme une etiquette. */
 .indicateur {
-  padding: 13px 15px 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 104px;
+  text-align: center;
+  padding: 18px 14px 0;
   background: var(--surface);
   border: 1px solid var(--bordure);
   border-radius: var(--rayon-panneau);
@@ -948,20 +895,39 @@ a {
   overflow: hidden;
 }
 
+/* Le bandeau du bas. Il sort des marges de la carte pour la toucher de bord
+   a bord : un bandeau qui flotte au milieu du blanc ferait une etiquette
+   posee dessus, pas le pied de la carte. */
 .indicateur-libelle {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  color: var(--texte-faible);
-  font-size: 9.5px;
+  margin: 16px -14px 0;
+  padding: 7px 10px;
+  min-height: 30px;
+  background: var(--couleur-indicateur, var(--accent));
+  color: #ffffff;
+  font-size: 11.5px;
   font-weight: 600;
-  letter-spacing: 0.13em;
-  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  text-transform: none;
 }
 
+/* Les couleurs du bandeau, distribuees dans l'ordre des cartes.
+ *
+ * Elles ne veulent rien dire une par une — elles servent a retrouver la meme
+ * carte au meme endroit d'un jour sur l'autre, sans lire. Six teintes : au
+ * dela, deux voisines se ressemblent et le reperage ne marche plus. */
+.indicateurs .indicateur:nth-child(6n + 1) { --couleur-indicateur: #0f7a62; }
+.indicateurs .indicateur:nth-child(6n + 2) { --couleur-indicateur: #2b6cb0; }
+.indicateurs .indicateur:nth-child(6n + 3) { --couleur-indicateur: #c2691c; }
+.indicateurs .indicateur:nth-child(6n + 4) { --couleur-indicateur: #157f96; }
+.indicateurs .indicateur:nth-child(6n + 5) { --couleur-indicateur: #6a5aa8; }
+.indicateurs .indicateur:nth-child(6n + 6) { --couleur-indicateur: #9a7113; }
+
 .indicateur-valeur {
-  margin-top: 7px;
-  font-size: 26px;
+  font-size: 28px;
   font-weight: 700;
   letter-spacing: -0.025em;
   line-height: 1.05;
@@ -980,6 +946,7 @@ a {
   margin-top: 6px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
   font-size: 11px;
   color: var(--texte-faible);
@@ -1716,7 +1683,7 @@ table.tableau tbody tr.selectionnee td {
 
 .bandeau {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 9px;
   padding: 9px 12px;
   background: var(--surface);
@@ -1727,20 +1694,19 @@ table.tableau tbody tr.selectionnee td {
   font-size: 12.5px;
 }
 
+.bandeau-texte {
+  flex: 1;
+  min-width: 0;
+}
+
 .bandeau strong {
   display: block;
   font-weight: 700;
   color: var(--texte-fort);
 }
 
-.bandeau p {
-  margin-top: 2px;
-  color: var(--texte-attenue);
-}
-
 .bandeau svg {
   flex: 0 0 16px;
-  margin-top: 1px;
 }
 
 /* La couleur ne vit que dans le filet et l'icone. Le fond reste blanc :
@@ -2527,41 +2493,26 @@ table.tableau tbody tr.selectionnee td {
    une bande calme au lieu d'une rangée de vignettes.
    ============================================================================= */
 
+/* Les cartes du tableau de bord etaient soudees en une seule rangee separee
+   par des filets. Detachees, chacune redevient une carte qu'on lit seule. */
 .indicateurs.bande {
   display: grid;
   grid-auto-flow: column;
   grid-auto-columns: 1fr;
-  gap: 0;
-  background: var(--surface);
-  border: 1px solid var(--bordure);
-  border-radius: var(--rayon-panneau);
-  overflow: hidden;
+  gap: 14px;
 }
 
 .indicateurs.bande .indicateur {
-  border: 0;
-  border-right: 1px solid var(--bordure-legere);
-  border-radius: 0;
-  padding: 16px 20px 18px;
+  padding: 20px 16px 0;
 }
 
-.indicateurs.bande .indicateur:last-child {
-  border-right: 0;
-}
-
-/* Sur le bandeau, le libellé revient en casse normale : les petites
-   capitales conviennent à une étiquette isolée, pas à cinq côte à côte. */
 .indicateurs.bande .indicateur-libelle {
-  font-size: 12px;
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-  color: var(--texte-attenue);
+  margin-left: -16px;
+  margin-right: -16px;
 }
 
 .indicateurs.bande .indicateur-valeur {
-  margin-top: 8px;
-  font-size: 24px;
+  font-size: 30px;
 }
 
 @media (max-width: 1180px) {
@@ -2571,7 +2522,7 @@ table.tableau tbody tr.selectionnee td {
   }
 
   .indicateurs.bande .indicateur {
-    border-bottom: 1px solid var(--bordure-legere);
+    min-height: 96px;
   }
 }
 

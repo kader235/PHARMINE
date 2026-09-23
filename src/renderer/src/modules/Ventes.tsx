@@ -567,14 +567,10 @@ function Comptoir() {
           {signalements.length > 0 || bloquants.length > 0 ? (
             <div style={{ padding: '10px 12px', display: 'grid', gap: 6 }}>
               {bloquants.map((a, i) => (
-                <Bandeau key={`b${i}`} ton="danger" titre={a.message}>
-                  {a.detail}
-                </Bandeau>
+                <Bandeau key={`b${i}`} ton="danger" titre={a.message} />
               ))}
               {signalements.map((a, i) => (
-                <Bandeau key={`s${i}`} ton="attention" titre={a.message}>
-                  {a.detail}
-                </Bandeau>
+                <Bandeau key={`s${i}`} ton="attention" titre={a.message} />
               ))}
             </div>
           ) : null}

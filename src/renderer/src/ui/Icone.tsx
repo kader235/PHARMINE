@@ -36,6 +36,7 @@ export type NomIcone =
   | 'fleche-bas'
   | 'fleche-droite'
   | 'triangle-alerte'
+  | 'alerte-cercle'
   | 'info'
   | 'horloge'
   | 'calendrier'
@@ -180,6 +181,23 @@ const TRACES: Record<NomIcone, ReactElement> = {
      reste et ne signalait plus rien.
      Le decoupage passe par `evenodd` plutot que par un dessin blanc : l'icone
      reste juste sur n'importe quel fond. */
+  /**
+   * Le signe d'alerte.
+   *
+   * Un disque plein, le point d'exclamation decoupe dedans. Le triangle qu'on
+   * utilisait avant se lit comme un panneau routier : il crie. Le disque dit la
+   * meme chose posement, et c'est le signe que portent les logiciels de
+   * gestion depuis toujours.
+   */
+  'alerte-cercle': (
+    <path
+      fill="currentColor"
+      stroke="none"
+      fillRule="evenodd"
+      clipRule="evenodd"
+      d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1Zm-.8 3.2h1.6v5.1H7.2V4.2Zm.8 6.3a1 1 0 1 0 0 2 1 1 0 0 0 0-2Z"
+    />
+  ),
   'triangle-alerte': (
     <path
       fill="currentColor"

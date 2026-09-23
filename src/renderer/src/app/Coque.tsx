@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactElement } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement } from 'react'
 import { useSession } from './Session'
 import { useVerrou } from './Verrou'
 import { BandeauDemonstration, FenetreActivation, useLicence } from './Licence'
@@ -7,6 +7,7 @@ import {
   ContexteNavigation,
   LIBELLES_GROUPE,
   MODULES,
+  MODULES_BARRE,
   type CleModule,
   type Destination,
   type DefinitionModule
@@ -92,7 +93,7 @@ export default function Coque() {
   const [destination, setDestination] = useState<Destination>({
     module: accessibles[0]?.cle ?? 'tableau-bord'
   })
-  const [reduite, setReduite] = useState(false)
+  const [plusOuvert, setPlusOuvert] = useState(false)
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [activationOuverte, setActivationOuverte] = useState(false)
   const licence = useLicence()
@@ -112,6 +113,7 @@ export default function Coque() {
   const naviguer = useCallback((cible: Destination) => {
     setDestination(cible)
     setMenuOuvert(false)
+    setPlusOuvert(false)
     document.querySelector('.contenu')?.scrollTo({ top: 0 })
   }, [])
 
@@ -145,122 +147,157 @@ export default function Coque() {
   const moduleCourant = MODULES.find((m) => m.cle === destination.module) ?? accessibles[0]!
   const Ecran = ECRANS[moduleCourant.cle]
 
-  const parGroupe = useMemo(() => {
-    const groupes: Record<string, DefinitionModule[]> = {}
-    for (const m of accessibles) {
-      ;(groupes[m.groupe] ??= []).push(m)
+  // Ce qui tient dans la barre, et ce qui va sous « Plus ». L'ordre de la barre
+  // est celui de MODULES_BARRE — celui de la journée — et non celui du
+  // catalogue des modules.
+  const dansLaBarre = useMemo(
+    () =>
+      MODULES_BARRE.map((cle) => accessibles.find((m) => m.cle === cle)).filter(
+        (m): m is DefinitionModule => Boolean(m)
+      ),
+    [accessibles]
+  )
+  const sousPlus = useMemo(
+    () => accessibles.filter((m) => !MODULES_BARRE.includes(m.cle)),
+    [accessibles]
+  )
+
+  // Le menu « Plus » se referme quand on clique ailleurs. Sans cela il reste
+  // ouvert par-dessus l'écran et il faut deviner qu'un second clic sur « Plus »
+  // le ferme.
+  const boitePlus = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!plusOuvert) return
+    const fermer = (evenement: MouseEvent): void => {
+      if (!boitePlus.current?.contains(evenement.target as Node)) setPlusOuvert(false)
     }
-    return groupes
-  }, [accessibles])
+    const echapper = (evenement: KeyboardEvent): void => {
+      if (evenement.key === 'Escape') setPlusOuvert(false)
+    }
+    document.addEventListener('mousedown', fermer)
+    document.addEventListener('keydown', echapper)
+    return () => {
+      document.removeEventListener('mousedown', fermer)
+      document.removeEventListener('keydown', echapper)
+    }
+  }, [plusOuvert])
 
   return (
     <ContexteNavigation.Provider value={naviguer}>
       <FournisseurFonctions>
       <div className="application">
-        <nav className={`nav${reduite ? ' reduite' : ''}`} aria-label="Navigation principale">
+        <nav className="nav" aria-label="Navigation principale">
           <div className="nav-entete">
             <span className="nav-logo">
               <CroixPharmacie taille={19} />
             </span>
-            {!reduite ? (
-              <span className="nav-marque">
-                <strong>PHARMINA</strong>
-                <span>Gestion de pharmacie</span>
-              </span>
+            <span className="nav-marque">
+              <strong>PHARMINA</strong>
+              <span>Gestion de pharmacie</span>
+            </span>
+          </div>
+
+          <div className="nav-liste">
+            {dansLaBarre.map((m) => (
+              <button
+                key={m.cle}
+                className={`nav-lien${m.cle === moduleCourant.cle ? ' actif' : ''}`}
+                onClick={() => naviguer({ module: m.cle })}
+                aria-current={m.cle === moduleCourant.cle ? 'page' : undefined}
+              >
+                <span className="nav-pastille-module" aria-hidden="true">
+                  <Icone nom={m.icone} taille={18} />
+                </span>
+                <span className="nav-lien-libelle">{m.libelle}</span>
+              </button>
+            ))}
+
+            {sousPlus.length ? (
+              <div className="nav-plus" ref={boitePlus}>
+                <button
+                  className={`nav-lien${sousPlus.some((m) => m.cle === moduleCourant.cle) ? ' actif' : ''}`}
+                  onClick={() => setPlusOuvert((o) => !o)}
+                  aria-expanded={plusOuvert}
+                >
+                  <span className="nav-lien-libelle">Plus</span>
+                  <Icone nom="chevron-bas" taille={13} />
+                </button>
+
+                {plusOuvert ? (
+                  <div className="nav-deroulant" role="menu">
+                    {(['exploitation', 'gestion', 'administration'] as const).map((groupe) => {
+                      const modules = sousPlus.filter((m) => m.groupe === groupe)
+                      if (!modules.length) return null
+                      return (
+                        <div key={groupe}>
+                          <div className="nav-deroulant-groupe">{LIBELLES_GROUPE[groupe]}</div>
+                          {modules.map((m) => {
+                            const compteur = m.cle === 'alertes' ? (alertes.donnees?.total ?? 0) : 0
+                            return (
+                              <button
+                                key={m.cle}
+                                className={`nav-lien${m.cle === moduleCourant.cle ? ' actif' : ''}`}
+                                onClick={() => naviguer({ module: m.cle })}
+                                role="menuitem"
+                              >
+                                <span className="nav-pastille-module" aria-hidden="true">
+                                  <Icone nom={m.icone} taille={18} />
+                                </span>
+                                <span className="nav-lien-libelle">{m.libelle}</span>
+                                {compteur > 0 ? (
+                                  <span className="nav-pastille">{compteur}</span>
+                                ) : null}
+                              </button>
+                            )
+                          })}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ) : null}
+              </div>
             ) : null}
           </div>
 
-          {!reduite ? (
-            <div className="nav-officine">
-              <strong>{session.pharmacie.nom}</strong>
-              {session.pharmacie.ville ?? ''}
-            </div>
-          ) : null}
+          <div className="nav-espace" />
 
-          <div className="nav-liste">
-            {(['exploitation', 'gestion', 'administration'] as const).map((groupe) => {
-              const modules = parGroupe[groupe]
-              if (!modules?.length) return null
-              return (
-                <div key={groupe}>
-                  {!reduite ? <div className="nav-groupe">{LIBELLES_GROUPE[groupe]}</div> : null}
-                  {modules.map((m) => {
-                    const compteur = m.cle === 'alertes' ? (alertes.donnees?.total ?? 0) : 0
-                    return (
-                      <button
-                        key={m.cle}
-                        className={`nav-lien${m.cle === moduleCourant.cle ? ' actif' : ''}`}
-                        onClick={() => naviguer({ module: m.cle })}
-                        title={reduite ? m.libelle : undefined}
-                        aria-current={m.cle === moduleCourant.cle ? 'page' : undefined}
-                        style={{ ['--couleur-module' as string]: m.couleur }}
-                      >
-                        <span className="nav-pastille-module" aria-hidden="true">
-                          <Icone nom={m.icone} taille={18} />
-                        </span>
-                        {!reduite ? (
-                          <>
-                            <span className="nav-lien-libelle">{m.libelle}</span>
-                            {compteur > 0 ? <span className="nav-pastille">{compteur}</span> : null}
-                          </>
-                        ) : null}
-                      </button>
-                    )
-                  })}
-                </div>
-              )
-            })}
+          <RechercheGlobale />
+
+          <div className="nav-outils">
+            {session.peut('alertes.voir') ? (
+              <BoutonIcone
+                icone="alerte"
+                titre={
+                  alertes.donnees?.total
+                    ? `${alertes.donnees.total} alerte(s) en cours`
+                    : 'Aucune alerte en cours'
+                }
+                point={(alertes.donnees?.urgent ?? 0) > 0}
+                onClick={() => naviguer({ module: 'alertes' })}
+              />
+            ) : null}
+            <BoutonIcone
+              icone="sortie"
+              titre="Se déconnecter"
+              onClick={() => session.deconnecter()}
+            />
+
+            <button
+              className="barre-utilisateur"
+              onClick={() => setMenuOuvert(true)}
+              title="Mon compte et apparence"
+            >
+              <span className="nav-avatar">{initiales(session.utilisateur.nom_complet)}</span>
+              <span className="barre-utilisateur-texte">
+                <strong>{session.utilisateur.nom_complet}</strong>
+                <span>{session.utilisateur.role}</span>
+              </span>
+              <Icone nom="chevron-bas" taille={13} />
+            </button>
           </div>
-
         </nav>
 
         <div className="zone-travail">
-          <header className="barre">
-            <BoutonIcone
-              icone="panneau"
-              titre={reduite ? 'Déployer le menu' : 'Réduire le menu'}
-              onClick={() => setReduite((r) => !r)}
-            />
-            <div className="barre-fil">
-              <span>{moduleCourant.fil}</span>
-              <Icone nom="chevron-droit" taille={11} />
-              <strong>{moduleCourant.libelle}</strong>
-            </div>
-
-            <div className="barre-espace" />
-
-            <RechercheGlobale />
-
-            <div className="barre-outils">
-              {session.peut('alertes.voir') ? (
-                <BoutonIcone
-                  icone="alerte"
-                  titre={
-                    alertes.donnees?.total
-                      ? `${alertes.donnees.total} alerte(s) en cours`
-                      : 'Aucune alerte en cours'
-                  }
-                  point={(alertes.donnees?.urgent ?? 0) > 0}
-                  onClick={() => naviguer({ module: 'alertes' })}
-                />
-              ) : null}
-              <BoutonIcone icone="sortie" titre="Se déconnecter" onClick={() => session.deconnecter()} />
-
-              <button
-                className="barre-utilisateur"
-                onClick={() => setMenuOuvert(true)}
-                title="Mon compte et apparence"
-              >
-                <span className="nav-avatar">{initiales(session.utilisateur.nom_complet)}</span>
-                <span className="barre-utilisateur-texte">
-                  <strong>{session.utilisateur.nom_complet}</strong>
-                  <span>{session.utilisateur.role}</span>
-                </span>
-                <Icone nom="chevron-bas" taille={13} />
-              </button>
-            </div>
-          </header>
-
           <main className="contenu">
             <div className="contenu-large">
               <Ecran destination={destination} />

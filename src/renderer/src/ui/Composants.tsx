@@ -87,8 +87,8 @@ export function Etiquette({
 
 const ICONE_BANDEAU: Record<Ton, NomIcone> = {
   succes: 'coche',
-  attention: 'triangle-alerte',
-  danger: 'triangle-alerte',
+  attention: 'alerte-cercle',
+  danger: 'alerte-cercle',
   info: 'info',
   neutre: 'info'
 }
@@ -104,12 +104,21 @@ export function Bandeau({
   children?: ReactNode
   action?: ReactNode
 }) {
+  // Une seule ligne, et rien en dessous.
+  //
+  // Le bandeau portait un titre puis une explication en plus petit — « Une
+  // vente a credit doit etre rattachee a un client. » suivi de « Selectionnez
+  // le client avant de finaliser. » La deuxieme ligne ne disait rien que la
+  // premiere ne disait deja, et deux niveaux de texte dans un encadre de trois
+  // centimetres se lisent moins vite qu'un seul.
+  //
+  // Le corps n'est donc affiche que si le bandeau n'a pas de titre : il est
+  // alors le message lui-meme.
   return (
     <div className={`bandeau ${ton}`}>
       <Icone nom={ICONE_BANDEAU[ton]} />
-      <div style={{ flex: 1, minWidth: 0 }}>
-        {titre ? <strong>{titre}</strong> : null}
-        {children ? <p>{children}</p> : null}
+      <div className="bandeau-texte">
+        {titre ? <strong>{titre}</strong> : children}
       </div>
       {action}
     </div>
@@ -162,10 +171,9 @@ export function ErreurEcran({
   return (
     <div className="etat-vide">
       <span className="etat-vide-icone" style={{ background: 'var(--danger-fond)', color: 'var(--danger)' }}>
-        <Icone nom="triangle-alerte" taille={19} />
+        <Icone nom="alerte-cercle" taille={19} />
       </span>
       <strong>{erreur.message}</strong>
-      {erreur.detail ? <p>{erreur.detail}</p> : null}
       {onReessayer ? (
         <Bouton onClick={onReessayer} icone="fleche-droite">
           Réessayer
@@ -278,9 +286,15 @@ export function Indicateur({
   unite?: string
   ton?: Ton
 }) {
+  // Le chiffre d'abord, son nom en dessous sur un bandeau de couleur.
+  //
+  // L'etiquette etait au-dessus, en petites capitales grises : il fallait la
+  // lire pour savoir ce que le chiffre comptait, et cinq cartes cote a cote
+  // donnaient cinq lignes de gris avant cinq chiffres. Le bandeau colore se
+  // repere sans etre lu — on retrouve « la caisse » a sa couleur — et le
+  // chiffre occupe la carte.
   return (
     <article className="indicateur">
-      <div className="indicateur-libelle">{libelle}</div>
       <div
         className="indicateur-valeur chiffres"
         style={ton === 'danger' ? { color: 'var(--danger)' } : undefined}
@@ -288,6 +302,7 @@ export function Indicateur({
         {valeur}
         {unite ? <span className="unite">{unite}</span> : null}
       </div>
+      <div className="indicateur-libelle">{libelle}</div>
     </article>
   )
 }
