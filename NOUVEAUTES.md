@@ -18,6 +18,19 @@ place de ces lignes :
 Le titre de chaque section doit être `## <version>`, exactement : c'est ainsi
 que `npm run notes` retrouve la bonne.
 
+## 0.2.0
+
+Le menu passe en haut, et vous recevez un code de secours.
+
+• Les rubriques du quotidien tiennent sur une ligne en haut de l’écran. Le
+reste se trouve sous « Plus ».
+• Chaque chiffre du tableau de bord a sa carte, avec son nom sur un bandeau de
+couleur.
+• Un code de secours vous est remis à l’installation : il rouvre le logiciel si
+le mot de passe de l’administrateur est perdu. Imprimez-le et rangez-le hors de
+l’officine.
+• Les avertissements tiennent désormais sur une seule ligne.
+
 ## 0.1.5
 
 Le logiciel change de visage.
