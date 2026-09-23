@@ -3629,3 +3629,124 @@ table.tableau tbody tr.selectionnee td {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+/* =============================================================================
+   Code de secours
+   ============================================================================= */
+
+/* Le code s'affiche une seule fois dans la vie d'un compte. Tout ici sert a ce
+   qu'il soit reellement mis de cote : il est ecrit gros, encadre comme un
+   document a decouper, et on ne peut pas continuer sans avoir coche qu'il est
+   range. */
+
+.secours {
+  display: grid;
+  gap: 14px;
+}
+
+.secours-titre {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--texte-fort);
+}
+
+.secours-texte {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--texte-attenue);
+}
+
+.secours-unique {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--texte);
+}
+
+/* Le cadre : un rectangle a decouper, pas une carte de site web. Le trait est
+   discontinu parce que c'est ce que fait un papier qu'on decoupe. */
+.secours-cadre {
+  padding: 18px 16px 14px;
+  border: 1px dashed var(--bordure-nette);
+  background: var(--surface-attenuee);
+  text-align: center;
+}
+
+.secours-officine {
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--texte-attenue);
+}
+
+/* Un code se recopie a la main, souvent au telephone. Les groupes restent
+   separes, la chasse est fixe, et la taille est celle d'un chiffre qu'on lit
+   de l'autre bout du comptoir. */
+.secours-code {
+  font-size: 30px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--texte-fort);
+  word-spacing: 0.1em;
+}
+
+.secours-mention {
+  margin-top: 10px;
+  font-size: 10.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--texte-faible);
+}
+
+.secours-actions {
+  align-items: center;
+}
+
+.secours-case {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--texte);
+  cursor: pointer;
+}
+
+/* L'issue de secours sur l'ecran de connexion : un lien, pas un bouton. On ne
+   la cherche qu'une fois dans la vie du poste — mais ce jour-la, vite. */
+.connexion-oubli {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 12.5px;
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+@media print {
+  /* A l'impression, il ne reste que le papier a ranger : ni formulaire, ni
+     boutons, ni case a cocher. */
+  body:has(.secours) .accueil-entete,
+  body:has(.secours) .etapes,
+  body:has(.secours) .accueil-pied,
+  body:has(.secours) .secours-actions,
+  body:has(.secours) .secours .rangee {
+    display: none !important;
+  }
+
+  .secours-cadre {
+    border-color: #000;
+  }
+}
+
+/* Le corps d'une fenetre n'a pas de marge par lui-meme : chaque ecran pose la
+   sienne, parce qu'un tableau doit toucher les bords quand un formulaire, lui,
+   doit respirer. Celle-ci sert aux formulaires. */
+.modale-formulaire {
+  display: grid;
+  gap: 12px;
+  padding: 14px 16px 16px;
+}

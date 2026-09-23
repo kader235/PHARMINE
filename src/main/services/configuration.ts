@@ -33,6 +33,7 @@ import {
   parametreEntier
 } from './commun'
 import { creerUtilisateur, type DemandeUtilisateur } from './auth'
+import { engendrerCodeSecours } from './secours-compte'
 import { chiffrerFichier, dechiffrerFichier, estChiffre } from './coffre'
 import { scellementDisponible } from '../db/cles'
 
@@ -59,7 +60,9 @@ export interface DemandeConfiguration {
  * dans une seule transaction : le logiciel ne peut pas se retrouver à moitié
  * configuré.
  */
-export function configurerPharmacie(demande: DemandeConfiguration): { utilisateurId: number } {
+export function configurerPharmacie(
+  demande: DemandeConfiguration
+): { utilisateurId: number; codeSecours: string } {
   const deja = base().prepare('SELECT configure_at FROM pharmacie WHERE id = 1').get() as unknown as
     | { configure_at: string | null }
     | undefined
@@ -104,6 +107,14 @@ export function configurerPharmacie(demande: DemandeConfiguration): { utilisateu
 
     const utilisateurId = creerUtilisateur({ ...demande.administrateur, roleId: 1 }, null)
 
+    // Le code de secours est délivré tout de suite, pas plus tard.
+    //
+    // C'est le seul moment où l'on est certain que quelqu'un regarde l'écran et
+    // qu'il n'y a encore rien à perdre. Proposé « quand vous aurez le temps »,
+    // il ne serait jamais imprimé, et le jour où le mot de passe se perd,
+    // l'officine serait enfermée dehors avec ses données dedans.
+    const codeSecours = engendrerCodeSecours(utilisateurId, utilisateurId)
+
     journaliser({
       utilisateurId,
       action: 'Pharmacie configurée',
@@ -112,7 +123,7 @@ export function configurerPharmacie(demande: DemandeConfiguration): { utilisateu
       resume: `${p.nom} — devise ${p.devise}`
     })
 
-    return { utilisateurId }
+    return { utilisateurId, codeSecours }
   })
 }
 

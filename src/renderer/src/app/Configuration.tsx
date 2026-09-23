@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { appeler, messageErreur, type ErreurAffichable } from '../lib/api'
 import Icone from '../ui/Icone'
 import { Bandeau, Bouton, Champ, Liste } from '../ui/Composants'
+import { PanneauCodeSecours } from './CodeSecours'
 
 const DEVISES = [
   { valeur: 'XOF|FCFA|0', libelle: 'Franc CFA (UEMOA) — FCFA' },
@@ -41,7 +42,10 @@ interface DonneesAdmin {
  * serait une perte de temps.
  */
 export default function Configuration({ onTermine }: { onTermine: () => void }) {
-  const [etape, setEtape] = useState<1 | 2>(1)
+  // Trois etapes, et la troisieme n'est pas une formalite : c'est la seule
+  // fois ou le code de secours s'affiche.
+  const [etape, setEtape] = useState<1 | 2 | 3>(1)
+  const [codeSecours, setCodeSecours] = useState('')
   const [erreur, setErreur] = useState<ErreurAffichable | null>(null)
   const [enCours, setEnCours] = useState(false)
 
@@ -78,7 +82,7 @@ export default function Configuration({ onTermine }: { onTermine: () => void }) 
     const [code, symbole, decimales] = officine.devise.split('|')
 
     try {
-      await appeler('app.configurer', {
+      const resultat = (await appeler('app.configurer', {
         pharmacie: {
           nom: officine.nom.trim(),
           ville: officine.ville.trim() || null,
@@ -95,8 +99,13 @@ export default function Configuration({ onTermine }: { onTermine: () => void }) 
           identifiant: admin.identifiant.trim().toLowerCase(),
           motDePasse: admin.motDePasse
         }
-      })
-      onTermine()
+      })) as { utilisateurId: number; codeSecours: string }
+
+      // On ne rend pas la main tout de suite : le code doit etre montre, et
+      // l'ecran suivant ne se passe pas.
+      setCodeSecours(resultat.codeSecours)
+      setEtape(3)
+      setEnCours(false)
     } catch (e) {
       setErreur(messageErreur(e))
       setEnCours(false)
@@ -120,16 +129,37 @@ export default function Configuration({ onTermine }: { onTermine: () => void }) 
             Votre pharmacie
           </div>
           <span className="etape-trait" />
-          <div className={`etape ${etape === 2 ? 'active' : ''}`}>
-            <span className="etape-puce">2</span>
+          <div className={`etape ${etape === 2 ? 'active' : etape > 2 ? 'faite' : ''}`}>
+            <span className="etape-puce">{etape > 2 ? <Icone nom="coche" taille={11} /> : '2'}</span>
             Votre compte
+          </div>
+          <span className="etape-trait" />
+          <div className={`etape ${etape === 3 ? 'active' : ''}`}>
+            <span className="etape-puce">3</span>
+            Votre code de secours
           </div>
         </div>
 
         <div className="accueil-corps">
           {erreur ? <Bandeau ton="danger">{erreur.message}</Bandeau> : null}
 
-          {etape === 1 ? (
+          {etape === 3 ? (
+            <PanneauCodeSecours
+              code={codeSecours}
+              nomOfficine={officine.nom.trim()}
+              pied={(range) => (
+                <Bouton
+                  variante="principal"
+                  pleine
+                  disabled={!range}
+                  onClick={onTermine}
+                  icone="fleche-droite"
+                >
+                  Ouvrir PHARMINA
+                </Bouton>
+              )}
+            />
+          ) : etape === 1 ? (
             <>
               <Champ
                 libelle="Nom de la pharmacie"

@@ -23,6 +23,7 @@ import * as impression from '../services/impression'
 import * as reprise from '../services/reprise'
 import * as licence from '../services/licence'
 import * as miseAJour from '../services/miseAJour'
+import * as secours from '../services/secours-compte'
 
 /** Session courante. Une seule à la fois : c'est un poste de travail, pas un serveur. */
 interface Contexte {
@@ -112,6 +113,20 @@ const CANAUX: Record<string, Canal> = {
     themeDefaut: configuration.themeParDefaut()
   })),
   'app.configurer': c(null, (p) => configuration.configurerPharmacie(p)),
+  // --- Reprise de compte -----------------------------------------------------
+  // Ces deux canaux sont ouverts a tout le monde : ils servent PRECISEMENT
+  // quand personne ne peut se connecter. Le service se defend seul — meme
+  // message de refus dans tous les cas, et blocage au bout de cinq essais.
+  'secours.rouvrir': c(
+    null,
+    (p: { identifiant: string; code: string; nouveauMotDePasse: string }) =>
+      secours.rouvrirAvecCodeSecours(p.identifiant, p.code, p.nouveauMotDePasse)
+  ),
+  'secours.engendrer': c('utilisateurs.gerer', (p: { id: number }, ctx) =>
+    secours.engendrerCodeSecours(p.id, ctx.utilisateurId)
+  ),
+  'secours.etat': c('utilisateurs.voir', (p: { id: number }) => secours.etatCodeSecours(p.id)),
+
   'auth.connecter': c(null, (p: { identifiant: string; motDePasse: string }) => {
     const session = auth.connecter(p.identifiant, p.motDePasse)
     contexte = {

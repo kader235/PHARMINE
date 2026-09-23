@@ -18,6 +18,7 @@ import type { Pharmacie, SessionActive } from '@shared/types'
 import { appeler, messageErreur, type ErreurAffichable } from '../lib/api'
 import { dateLongue } from '../lib/format'
 import { Bandeau, Bouton, Case, Champ } from '../ui/Composants'
+import RepriseCompte from './RepriseCompte'
 
 /**
  * Marque du logiciel : la croix de pharmacie aux couleurs du drapeau tchadien.
@@ -103,6 +104,7 @@ export default function Connexion({
   const [seSouvenir, setSeSouvenir] = useState(retenu.length > 0)
   const [erreur, setErreur] = useState<ErreurAffichable | null>(null)
   const [enCours, setEnCours] = useState(false)
+  const [repriseOuverte, setRepriseOuverte] = useState(false)
   const champMotDePasse = useRef<HTMLInputElement>(null)
 
   // L'identifiant est deja la : c'est le mot de passe qu'on attend. Placer le
@@ -186,6 +188,16 @@ export default function Connexion({
               Se connecter
             </Bouton>
 
+            {/* L'issue de secours. Discrete — on ne la cherche qu'une fois — mais
+                ecrite, parce que le jour ou on la cherche, on la cherche vite. */}
+            <button
+              type="button"
+              className="connexion-oubli"
+              onClick={() => setRepriseOuverte(true)}
+            >
+              Mot de passe perdu ?
+            </button>
+
             <p className="connexion-note">
               Seul votre identifiant est retenu, jamais votre mot de passe. Toute opération est
               enregistrée à votre nom.
@@ -216,6 +228,8 @@ export default function Connexion({
         </aside>
 
       </div>
+
+      {repriseOuverte ? <RepriseCompte onFermer={() => setRepriseOuverte(false)} /> : null}
     </div>
   )
 }

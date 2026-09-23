@@ -34,6 +34,7 @@ import * as repertoire from '../src/main/services/repertoire'
 import * as reprise from '../src/main/services/reprise'
 import * as stock from '../src/main/services/stock'
 import * as secours from '../src/main/secours'
+import * as secoursCompte from '../src/main/services/secours-compte'
 import * as miseAJour from '../src/main/services/miseAJour'
 import * as codesBarres from '../src/main/services/codesBarres'
 import * as achats from '../src/main/services/achats'
@@ -112,7 +113,7 @@ try {
     'au moins 8'
   )
 
-  const { utilisateurId: adminId } = configuration.configurerPharmacie({
+  const { utilisateurId: adminId, codeSecours: codeSecoursInitial } = configuration.configurerPharmacie({
     pharmacie: {
       nom: 'Pharmacie Santé Pour Tous',
       ville: 'N’Djaména',
@@ -2037,10 +2038,23 @@ try {
     base().exec('DROP VIEW IF EXISTS v_produit_etat')
     base().exec('DROP INDEX IF EXISTS idx_produits_principe_norme')
     base().exec('ALTER TABLE produits DROP COLUMN principe_actif_norme')
+    for (const colonne of [
+      'code_secours_hash',
+      'code_secours_sel',
+      'code_secours_iter',
+      'code_secours_cree_at',
+      'code_secours_utilise_at',
+      'secours_tentatives',
+      'secours_bloque_jusqu_a'
+    ]) {
+      base().exec(`ALTER TABLE utilisateurs DROP COLUMN ${colonne}`)
+    }
     base().prepare('DELETE FROM schema_migrations WHERE version >= 9').run()
     fermerBase()
 
-    const copie = `${baseAncienne}.avant-migration-9`
+    // Le nom porte le numéro de la DERNIÈRE migration en attente, pas celui de
+    // la première : il change à chaque migration ajoutée.
+    const copie = `${baseAncienne}.avant-migration-${VERSION_SCHEMA}`
     verifier(!existsSync(copie), 'aucune copie ne traine avant l’ouverture')
 
     ouvrirBase(baseAncienne)
@@ -2324,6 +2338,75 @@ try {
   }
 
   // ==========================================================================
+  titre('Le code de secours')
+
+  // Le parcours se joue en dernier : il change le mot de passe de
+  // l'administrateur, et tout ce qui precede se connecte avec l'ancien.
+  verifier(
+    typeof codeSecoursInitial === 'string' && codeSecoursInitial.length >= 16,
+    'un code de secours est delivre a la configuration',
+    codeSecoursInitial?.length
+  )
+  verifier(
+    /^[0-9A-HJKMNP-TV-Z]{4}(-[0-9A-HJKMNP-TV-Z]{4}){3}$/.test(codeSecoursInitial),
+    'le code ne contient ni I, ni L, ni O, ni U — on le recopie a la main',
+    codeSecoursInitial
+  )
+
+  const etatAvant = secoursCompte.etatCodeSecours(adminId)
+  verifier(etatAvant.existe && !etatAvant.utiliseLe, 'le code est en place et jamais servi')
+
+  // La base ne doit contenir le code nulle part en clair : c'est ce qui fait
+  // qu'un employe qui ouvre le fichier n'y trouve pas de quoi entrer.
+  const enDur = base()
+    .prepare(
+      `SELECT COUNT(*) n FROM utilisateurs
+        WHERE code_secours_hash LIKE ? OR code_secours_sel LIKE ?`
+    )
+    .get(`%${codeSecoursInitial.replace(/-/g, '')}%`, `%${codeSecoursInitial.replace(/-/g, '')}%`) as {
+    n: number
+  }
+  verifier(enDur.n === 0, 'le code n’est stocke nulle part en clair')
+
+  refuse(
+    'un code faux est refuse',
+    () => secoursCompte.rouvrirAvecCodeSecours('marie', 'ZZZZ-ZZZZ-ZZZZ-ZZZZ', 'Officine2026'),
+    'code de secours incorrect'
+  )
+  refuse(
+    'un identifiant inconnu donne le meme refus',
+    () => secoursCompte.rouvrirAvecCodeSecours('inconnu', codeSecoursInitial, 'Officine2026'),
+    'code de secours incorrect'
+  )
+  refuse(
+    'un mot de passe trop court ne brule pas le code',
+    () => secoursCompte.rouvrirAvecCodeSecours('marie', codeSecoursInitial, 'court'),
+    'au moins 8'
+  )
+  verifier(
+    secoursCompte.etatCodeSecours(adminId).utiliseLe === null,
+    'apres ces refus, le code sert toujours'
+  )
+
+  // Espaces, minuscules, tirets oublies : le pharmacien recopie d'un papier.
+  const recopie = codeSecoursInitial.toLowerCase().replace(/-/g, ' ')
+  const reprise2 = secoursCompte.rouvrirAvecCodeSecours('marie', recopie, 'Officine2026')
+  verifier(reprise2.nomComplet === 'Marie Dupont', 'le compte est rouvert avec le code')
+  verifier(
+    typeof reprise2.codeSuivant === 'string' && reprise2.codeSuivant !== codeSecoursInitial,
+    'un code neuf est delivre dans la foulee'
+  )
+
+  const sessionReprise = auth.connecter('marie', 'Officine2026')
+  verifier(sessionReprise.utilisateur.id === adminId, 'le nouveau mot de passe ouvre le compte')
+  auth.deconnecter(sessionReprise.sessionId, adminId)
+
+  refuse(
+    'le code deja servi ne marche plus',
+    () => secoursCompte.rouvrirAvecCodeSecours('marie', codeSecoursInitial, 'Officine2026'),
+    'code de secours incorrect'
+  )
+
   titre('Intégrité finale de la base')
 
   const integrite = base().prepare('PRAGMA integrity_check').get() as { integrity_check: string }

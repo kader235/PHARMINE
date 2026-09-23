@@ -97,6 +97,46 @@ const SECTIONS: Section[] = [
   },
   {
     partie: 'Prendre en main',
+    cle: 'code-secours',
+    titre: 'Votre code de secours',
+    contenu: (
+      <>
+        <p>
+          À la toute première ouverture, le logiciel affiche un code de seize caractères et vous
+          propose de l’imprimer. C’est la seule chose à mettre de côté ce jour-là, et il faut le
+          faire vraiment.
+        </p>
+        <p>
+          <strong>À quoi il sert.</strong> Le jour où le mot de passe de l’administrateur est perdu,
+          ce code rouvre le compte : sur l’écran de connexion, cliquez
+          <strong> Mot de passe perdu ?</strong>, saisissez votre identifiant, le code, et le
+          nouveau mot de passe que vous voulez. Un code neuf s’affiche aussitôt — imprimez-le à son
+          tour, l’ancien ne marche plus.
+        </p>
+        <p>
+          <strong>Où le ranger.</strong> Hors de l’officine : chez vous, ou dans un coffre. Pas dans
+          le tiroir de la caisse, pas collé sous le clavier. Quelqu’un qui a le code entre dans
+          votre logiciel.
+        </p>
+        <p>
+          <strong>Ce que personne ne peut faire.</strong> Ni un employé, ni nous ne pouvons le
+          retrouver à votre place : le logiciel n’en garde qu’une empreinte, jamais le code. C’est
+          exactement ce qui fait qu’un tiers ne peut pas l’obtenir non plus.
+        </p>
+        <p>
+          <strong>Si vous l’avez perdu</strong> et que vous pouvez encore vous connecter, ouvrez
+          Plus puis Utilisateurs, et cliquez <strong>Code de secours</strong> sur la ligne du
+          compte. Un code neuf est délivré, et l’ancien cesse de fonctionner.
+        </p>
+        <p>
+          Si vous avez perdu le code <em>et</em> le mot de passe, il ne reste que la reprise d’une
+          sauvegarde sur un poste neuf. C’est long. D’où l’insistance.
+        </p>
+      </>
+    )
+  },
+  {
+    partie: 'Prendre en main',
     cle: 'securite-poste',
     titre: 'Verrouiller votre poste',
     contenu: (
@@ -1254,8 +1294,8 @@ const SECTIONS: Section[] = [
         </p>
         <p>
           <strong>Mot de passe oublié.</strong> Un administrateur peut le réinitialiser depuis
-          l’écran Utilisateurs. Si c’est le seul administrateur qui a oublié le sien, contactez
-          {' ' + EDITEUR.societe}.
+          l’écran Utilisateurs. Si c’est le seul administrateur qui a oublié le sien, utilisez le
+          code de secours : sur l’écran de connexion, <strong>Mot de passe perdu ?</strong>.
         </p>
         <p>
           <strong>Le logiciel refuse d’ouvrir vos données.</strong> Cela arrive quand le fichier

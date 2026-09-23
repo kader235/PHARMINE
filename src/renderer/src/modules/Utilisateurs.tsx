@@ -17,6 +17,7 @@ import {
   Panneau,
   Segments
 } from '../ui/Composants'
+import { AvertissementCodeUnique, PanneauCodeSecours } from '../app/CodeSecours'
 import Tableau, { CellulePrincipale } from '../ui/Tableau'
 import { depuis, initiales } from '../lib/format'
 
@@ -41,12 +42,29 @@ export default function Utilisateurs() {
   const [onglet, setOnglet] = useState<'comptes' | 'roles'>('comptes')
   const [creation, setCreation] = useState(false)
   const [droits, setDroits] = useState<Utilisateur | null>(null)
+  const [codeDelivre, setCodeDelivre] = useState<{ pour: string; code: string } | null>(null)
 
   const utilisateurs = useRequete<Utilisateur[]>('utilisateurs.lister')
   const roles = useRequete<Role[]>('utilisateurs.roles')
   const permissions = useRequete<Permission[]>('utilisateurs.permissions')
 
   const action = useAction()
+
+  /**
+   * Delivre un code de secours neuf pour ce compte.
+   *
+   * Utile quand le papier d'origine a ete perdu, ou quand la personne qui le
+   * gardait a quitte l'officine. L'ancien cesse aussitot de fonctionner.
+   */
+  async function delivrerCode(u: Utilisateur): Promise<void> {
+    const code = await action.executer('secours.engendrer', { id: u.id })
+    if (typeof code === 'string') {
+      setCodeDelivre({ pour: u.nom_complet, code })
+      notifications.succes('Code de secours délivré')
+    } else if (action.erreur) {
+      notifications.erreur('Opération refusée', action.erreur.message)
+    }
+  }
 
   async function basculerActif(u: Utilisateur): Promise<void> {
     const r = await action.executer('utilisateurs.modifier', {
@@ -126,12 +144,17 @@ export default function Utilisateurs() {
               cle: 'actions',
               entete: '',
               actions: true,
-              largeur: '190px',
+              largeur: '300px',
               rendu: (u: Utilisateur) => (
                 <div className="rangee" style={{ justifyContent: 'flex-end', gap: 4 }}>
                   {session.peut('utilisateurs.permissions') ? (
                     <Bouton compact variante="discret" onClick={() => setDroits(u)}>
                       Permissions
+                    </Bouton>
+                  ) : null}
+                  {session.peut('utilisateurs.gerer') ? (
+                    <Bouton compact variante="discret" onClick={() => delivrerCode(u)}>
+                      Code de secours
                     </Bouton>
                   ) : null}
                   {session.peut('utilisateurs.gerer') && u.id !== session.utilisateur.id ? (
@@ -204,6 +227,24 @@ export default function Utilisateurs() {
           permissions={permissions.donnees ?? []}
           onFermer={() => setDroits(null)}
         />
+      ) : null}
+
+      {codeDelivre ? (
+        <Modale
+          titre={`Code de secours — ${codeDelivre.pour}`}
+          large
+          onFermer={() => setCodeDelivre(null)}
+        >
+          <AvertissementCodeUnique />
+          <PanneauCodeSecours
+            code={codeDelivre.code}
+            pied={(range) => (
+              <Bouton variante="principal" pleine disabled={!range} onClick={() => setCodeDelivre(null)}>
+                Fermer
+              </Bouton>
+            )}
+          />
+        </Modale>
       ) : null}
     </>
   )

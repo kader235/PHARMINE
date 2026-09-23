@@ -335,6 +335,35 @@ app.whenReady().then(async () => {
   )
   await photographier(fenetre, 'connexion-remplie', 300)
 
+  // L'issue de secours. C'est le seul écran du logiciel qu'on atteint sans être
+  // connecté : s'il disparaissait, une officine qui perd son mot de passe
+  // n'aurait plus aucune porte, et rien ne le signalerait.
+  const repriseAtteignable = (await fenetre.webContents.executeJavaScript(`
+    (async () => {
+      const lien = document.querySelector('.connexion-oubli')
+      if (!lien) return null
+      lien.click()
+      await new Promise((r) => setTimeout(r, 400))
+      const champs = Array.from(document.querySelectorAll('.modale label'))
+        .map((e) => e.textContent.replace(/\\s+/g, ' ').trim())
+      return { ouvert: !!document.querySelector('.modale'), champs }
+    })()`)) as { ouvert: boolean; champs: string[] } | null
+
+  if (!repriseAtteignable?.ouvert) {
+    erreurs.push('Le code de secours n est pas atteignable depuis la connexion')
+  }
+  console.log(`  reprise de compte -> ${JSON.stringify(repriseAtteignable)}`)
+  await photographier(fenetre, 'mot-de-passe-perdu', 300)
+
+  await fenetre.webContents.executeJavaScript(`
+    (() => {
+      const b = Array.from(document.querySelectorAll('.modale button'))
+        .find((e) => e.textContent.trim() === 'Annuler')
+      if (b) b.click()
+      return true
+    })()`)
+  await new Promise((r) => setTimeout(r, 400))
+
   await fenetre.webContents.executeJavaScript(`document.querySelector('button[type=submit]').click()`)
   await photographier(fenetre, 'tableau-de-bord', 1600)
 
